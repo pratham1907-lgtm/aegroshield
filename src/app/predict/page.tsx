@@ -156,9 +156,9 @@ export default function PredictPage() {
 
       router.push("/dashboard");
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Diagnosis request failed:", error);
-      alert("Failed to connect to the diagnosis backend server.");
+      alert("Error: " + (error.message || "Unable to connect to backend server"));
       setIsSubmitting(false);
     }
   };
