@@ -158,7 +158,14 @@ export default function PredictPage() {
 
     } catch (error: any) {
       console.error("Diagnosis request failed:", error);
-      alert("Error: " + (error.message || "Unable to connect to backend server"));
+      let errMsg = error.message || "Unable to connect to backend server";
+      
+      // If the error is a 401 UNAUTHENTICATED from Gemini (usually an OAuth token instead of API key)
+      if (errMsg.includes("UNAUTHENTICATED") || errMsg.includes("ACCESS_TOKEN_TYPE_UNSUPPORTED")) {
+        errMsg = "Your Gemini API Key is invalid or has expired.\n\nThe key you provided is an OAuth token instead of a permanent API Key. Please get a valid API Key (starting with 'AIza...') from https://aistudio.google.com/app/apikey and update it in your Vercel Environment Variables.";
+      }
+      
+      alert(errMsg);
       setIsSubmitting(false);
     }
   };
