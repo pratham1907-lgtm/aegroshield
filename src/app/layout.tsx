@@ -1,4 +1,5 @@
 import { LanguageProvider } from '@/lib/language-context';
+import { CartProvider } from '@/lib/cart-context';
 import NavbarClient from '@/components/Navbar';
 import Chatbot from '@/components/Chatbot';
 import './globals.css';
@@ -20,9 +21,11 @@ export default function RootLayout({
       </head>
       <body>
         <LanguageProvider>
-          <NavbarClient />
-          {children}
-          <Chatbot />
+          <CartProvider>
+            <NavbarClient />
+            {children}
+            <Chatbot />
+          </CartProvider>
         </LanguageProvider>
       </body>
     </html>

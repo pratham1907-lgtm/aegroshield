@@ -2,12 +2,8 @@
 
 import Link from 'next/link';
 import { useLanguage, type Language } from '@/lib/language-context';
-
-const LANG_LABELS: Record<Language, string> = {
-  en: '🇬🇧 EN',
-  hi: '🇮🇳 हिं',
-  'hi-en': '🇮🇳 HG',
-};
+import { useCart } from '@/lib/cart-context';
+import { ShoppingBag, Store } from 'lucide-react';
 
 const LANG_OPTIONS: { value: Language; label: string }[] = [
   { value: 'en',    label: '🇬🇧 English' },
@@ -17,6 +13,7 @@ const LANG_OPTIONS: { value: Language; label: string }[] = [
 
 export default function Navbar() {
   const { lang, setLang, t } = useLanguage();
+  const { cartCount } = useCart();
 
   return (
     <nav className="navbar">
@@ -28,6 +25,19 @@ export default function Navbar() {
         <Link href="/marketplace">{t('nav.store')}</Link>
         <Link href="/market">{t('nav.market')}</Link>
         <Link href="/calculator">{t('nav.calculator')}</Link>
+
+        {/* ── Cart Icon ── */}
+        <Link href="/cart" className="nav-cart-btn" title="View Cart">
+          <ShoppingBag size={18} />
+          <span>Cart</span>
+          {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
+        </Link>
+
+        {/* ── Seller Portal Link ── */}
+        <Link href="/vendor/login" className="nav-seller-btn" title="Seller Portal">
+          <Store size={16} />
+          <span>Seller Portal</span>
+        </Link>
 
         {/* ── Language Toggle ── */}
         <div className="lang-toggle-wrap">
