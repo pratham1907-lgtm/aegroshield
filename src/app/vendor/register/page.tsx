@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { registerVendor } from '@/lib/ecommerce-service';
+import { registerVendor, disableDemoMode } from '@/lib/ecommerce-service';
 import { ALL_DISTRICTS } from '@/lib/marketplace-data';
 import { Store, ShieldCheck, ArrowRight } from 'lucide-react';
 
@@ -25,6 +25,8 @@ export default function VendorRegisterPage() {
       return;
     }
 
+    disableDemoMode(); // Real registration always creates a clean real account!
+
     registerVendor({
       name: formData.name,
       ownerName: formData.ownerName,
@@ -34,7 +36,7 @@ export default function VendorRegisterPage() {
       license: formData.license,
     });
 
-    alert('Store registered successfully! Redirecting to Vendor Dashboard.');
+    alert('Store registered successfully in database! Opening clean Vendor Dashboard.');
     router.push('/vendor/dashboard');
   };
 
@@ -130,7 +132,7 @@ export default function VendorRegisterPage() {
 
           <div className="auth-footer">
             <p>Already registered?</p>
-            <Link href="/vendor/login" className="auth-link">
+            <Link href="/login?role=vendor" className="auth-link">
               Login to Seller Account →
             </Link>
           </div>

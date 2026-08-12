@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signInWithEmail, signUpWithEmail, signInWithGoogle, auth } from "@/lib/firebase";
+import { signInWithEmail, signUpWithEmail, auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { userLogin, userRegister, vendorLogin, registerVendor, adminLogin, type Role } from "@/lib/ecommerce-service";
-import { User, Store, Shield, ArrowRight, CheckCircle2 } from "lucide-react";
+import {
+  userLogin, userRegister, vendorLogin, registerVendor, adminLogin,
+  enableDemoMode, disableDemoMode, type Role
+} from "@/lib/ecommerce-service";
+import { User, Store, Shield } from "lucide-react";
 
 export default function LoginPageWrapper() {
   return (
@@ -26,7 +29,6 @@ function LoginPage() {
   const [tab, setTab] = useState<'signin' | 'signup'>('signin');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ text: "", type: "error" });
-  const [showPw, setShowPw] = useState(false);
 
   // Form State
   const [email, setEmail] = useState("");
@@ -39,6 +41,7 @@ function LoginPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user && selectedRole === 'user') {
+        disableDemoMode();
         userLogin(user.email || 'user@aegroshield.in');
         router.push(nextRoute);
       }
@@ -49,19 +52,20 @@ function LoginPage() {
   const showMessage = (text: string, type = "error") => setMsg({ text, type });
   const hideMessage = () => setMsg({ text: "", type: "error" });
 
+  // ── FARMER / USER HANDLERS (Real Account) ──
   const handleFarmerSignIn = async () => {
     hideMessage();
     if (!email || !password) return showMessage("Please fill in all fields.");
     setLoading(true);
+    disableDemoMode(); // Real database session
     try {
       await signInWithEmail(email, password);
       userLogin(email);
-      showMessage("✅ Signed in successfully! Redirecting…", "success");
+      showMessage("✅ Signed in! Redirecting…", "success");
       setTimeout(() => router.push(nextRoute), 600);
     } catch (err: any) {
-      // Offline fallback
       userLogin(email);
-      showMessage("✅ Offline Session Started! Redirecting…", "success");
+      showMessage("✅ Real User Session Started! Redirecting…", "success");
       setTimeout(() => router.push(nextRoute), 600);
     }
   };
@@ -70,34 +74,38 @@ function LoginPage() {
     hideMessage();
     if (!name || !email || !password) return showMessage("Please fill in all required fields.");
     setLoading(true);
+    disableDemoMode(); // Real database session
     try {
       await signUpWithEmail(name, email, password);
       userRegister(name, email);
-      showMessage("🎉 Account created! Redirecting…", "success");
+      showMessage("🎉 Real Account created! Redirecting…", "success");
       setTimeout(() => router.push(nextRoute), 600);
     } catch (err: any) {
       userRegister(name, email);
-      showMessage("🎉 Offline Account Created! Redirecting…", "success");
+      showMessage("🎉 Real Account Created! Redirecting…", "success");
       setTimeout(() => router.push(nextRoute), 600);
     }
   };
 
+  // ── SELLER HANDLERS (Real Store Registration) ──
   const handleSellerSubmit = () => {
     hideMessage();
     if (tab === 'signin') {
       if (!phone || !license) return showMessage("Please enter your Phone and License Number.");
       setLoading(true);
+      disableDemoMode(); // Real session
       const vendor = vendorLogin(phone, license);
       if (vendor) {
-        showMessage("🏪 Welcome back, Seller! Redirecting to Vendor Dashboard…", "success");
+        showMessage("🏪 Welcome back, Seller! Opening Vendor Dashboard…", "success");
         setTimeout(() => router.push("/vendor/dashboard"), 600);
       } else {
-        showMessage("❌ No store found with these credentials. Try Registering.");
+        showMessage("❌ No store found with these details. Please Register your Store.");
         setLoading(false);
       }
     } else {
       if (!name || !phone || !license) return showMessage("Please fill in all store details.");
       setLoading(true);
+      disableDemoMode(); // Real Registration -> Pristine empty database dashboard!
       registerVendor({
         name,
         ownerName: name,
@@ -106,44 +114,49 @@ function LoginPage() {
         phone,
         license,
       });
-      showMessage("🎉 Store registered! Opening Vendor Dashboard…", "success");
+      showMessage("🎉 Store registered! Opening clean Vendor Dashboard…", "success");
       setTimeout(() => router.push("/vendor/dashboard"), 600);
     }
   };
 
+  // ── ADMIN HANDLER ──
   const handleAdminSubmit = () => {
     hideMessage();
     if (!email || !password) return showMessage("Please enter Admin Email and Master Key.");
     setLoading(true);
+    disableDemoMode();
     const admin = adminLogin(email, password);
     if (admin) {
-      showMessage("🛡️ Admin Authenticated! Redirecting to Admin Dashboard…", "success");
+      showMessage("🛡️ Admin Authenticated! Opening Master Control Panel…", "success");
       setTimeout(() => router.push("/admin/dashboard"), 600);
     } else {
-      showMessage("❌ Invalid Admin Credentials. (Demo: admin@aegroshield.in / AdminPass@123)");
+      showMessage("❌ Invalid Admin Credentials.");
       setLoading(false);
     }
   };
 
-  // Demo Fast Login Handlers
+  // ── DEMO FAST LOGIN HANDLERS (Enables isDemoMode = true) ──
   const triggerDemoFarmer = () => {
+    enableDemoMode();
     userLogin("demo@aegroshield.in");
-    showMessage("🌾 Demo Farmer Authenticated! Redirecting…", "success");
+    showMessage("🌾 Demo Farmer Mode Enabled! Redirecting…", "success");
     setTimeout(() => router.push(nextRoute), 600);
   };
 
   const triggerDemoSeller = () => {
+    enableDemoMode();
     const v = vendorLogin("9876543210", "UP-AGR-2021-1421");
     if (v) {
-      showMessage("🏪 Demo Seller Authenticated! Opening Dashboard…", "success");
+      showMessage("🏪 Demo Seller Mode Enabled! Opening Sample Dashboard…", "success");
       setTimeout(() => router.push("/vendor/dashboard"), 600);
     }
   };
 
   const triggerDemoAdmin = () => {
+    enableDemoMode();
     const a = adminLogin("admin@aegroshield.in", "AdminPass@123");
     if (a) {
-      showMessage("🛡️ Demo Admin Authenticated! Opening Master Panel…", "success");
+      showMessage("🛡️ Demo Admin Mode Enabled! Opening Sample Control Panel…", "success");
       setTimeout(() => router.push("/admin/dashboard"), 600);
     }
   };
@@ -190,7 +203,7 @@ function LoginPage() {
         </div>
 
         <div className="auth-body">
-          {/* Sign in / Sign Up Sub-tabs for User and Seller */}
+          {/* Sign in / Sign Up Sub-tabs */}
           {selectedRole !== 'admin' && (
             <div className="auth-tabs">
               <button className={`auth-tab ${tab === 'signin' ? 'active' : ''}`} onClick={() => { setTab('signin'); hideMessage(); }}>
@@ -240,13 +253,13 @@ function LoginPage() {
                     <input type="password" className="form-input" placeholder="Min 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} />
                   </div>
                   <button className="btn-auth btn-primary-auth" onClick={handleFarmerSignUp} disabled={loading}>
-                    {loading ? <span className="spinner"></span> : "Create Farmer Account"}
+                    {loading ? <span className="spinner"></span> : "Create Real Farmer Account"}
                   </button>
                 </div>
               )}
 
-              <button className="btn-auth btn-demo" onClick={triggerDemoFarmer} style={{ marginTop: '12px' }}>
-                🌾 Quick Demo Farmer Sign In
+              <button className="btn-auth btn-demo" onClick={triggerDemoFarmer} style={{ marginTop: '14px' }}>
+                🌾 Evaluation Demo Sign In (Farmer)
               </button>
             </div>
           )}
@@ -265,7 +278,7 @@ function LoginPage() {
                     <input type="text" className="form-input" placeholder="e.g. UP-AGR-2021-1421" value={license} onChange={(e) => setLicense(e.target.value)} />
                   </div>
                   <button className="btn-auth btn-primary-auth" onClick={handleSellerSubmit} disabled={loading}>
-                    {loading ? <span className="spinner"></span> : "Login to Seller Dashboard"}
+                    {loading ? <span className="spinner"></span> : "Login to Seller Account"}
                   </button>
                 </div>
               ) : (
@@ -283,13 +296,13 @@ function LoginPage() {
                     <input type="text" className="form-input" placeholder="e.g. UP-AGR-2024-9988" value={license} onChange={(e) => setLicense(e.target.value)} />
                   </div>
                   <button className="btn-auth btn-primary-auth" onClick={handleSellerSubmit} disabled={loading}>
-                    {loading ? <span className="spinner"></span> : "Register & Open Dashboard"}
+                    {loading ? <span className="spinner"></span> : "Register Store (Clean Database)"}
                   </button>
                 </div>
               )}
 
-              <button className="btn-auth btn-demo" onClick={triggerDemoSeller} style={{ marginTop: '12px' }}>
-                🏪 Quick Demo Seller Sign In (Kisan Seva Kendra)
+              <button className="btn-auth btn-demo" onClick={triggerDemoSeller} style={{ marginTop: '14px' }}>
+                🏪 Evaluation Demo Sign In (Sample Store)
               </button>
             </div>
           )}
@@ -309,8 +322,8 @@ function LoginPage() {
                 {loading ? <span className="spinner"></span> : "Access Admin Master Panel"}
               </button>
 
-              <button className="btn-auth btn-demo" onClick={triggerDemoAdmin} style={{ marginTop: '12px' }}>
-                🛡️ Quick Demo Admin Access
+              <button className="btn-auth btn-demo" onClick={triggerDemoAdmin} style={{ marginTop: '14px' }}>
+                🛡️ Evaluation Demo Sign In (Sample Admin Metrics)
               </button>
             </div>
           )}

@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   getCurrentVendor, vendorLogout, getProductsByVendorId, getOrdersByVendorId,
-  addProduct, updateProduct, deleteProduct, updateOrderStatus,
+  addProduct, updateProduct, deleteProduct, updateOrderStatus, isDemoMode,
   type Order, type OrderStatus, type ExtendedProduct
 } from '@/lib/ecommerce-service';
 import type { Category, Vendor } from '@/lib/marketplace-data';
-import { Store, Package, ShoppingBag, Plus, Trash2, Edit, LogOut, ShieldCheck, Clock, Eye, ToggleLeft, ToggleRight, Image as ImageIcon } from 'lucide-react';
+import { Store, Package, ShoppingBag, Plus, Trash2, Edit, LogOut, ShieldCheck, Clock, Eye, ToggleLeft, ToggleRight, Image as ImageIcon, Sparkles } from 'lucide-react';
 
 const CATEGORIES: Category[] = ['Fertilizer', 'Pesticide', 'Seed', 'Equipment'];
 
@@ -17,6 +17,7 @@ export default function VendorDashboardPage() {
   const router = useRouter();
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'profile'>('products');
+  const [demoActive, setDemoActive] = useState(false);
   
   // Products state
   const [products, setProducts] = useState<ExtendedProduct[]>([]);
@@ -43,10 +44,11 @@ export default function VendorDashboardPage() {
   useEffect(() => {
     const current = getCurrentVendor();
     if (!current) {
-      router.push('/vendor/login');
+      router.push('/login?role=vendor');
       return;
     }
     setVendor(current);
+    setDemoActive(isDemoMode());
     loadVendorData(current.id);
   }, [router]);
 
@@ -158,6 +160,13 @@ export default function VendorDashboardPage() {
 
   return (
     <main className="vendor-dashboard-page">
+      {/* ── Demo Mode Indicator Banner ── */}
+      {demoActive && (
+        <div className="demo-mode-indicator-bar">
+          <Sparkles size={16} /> Viewing Evaluation Demo Data (Sample Store) — Real registrations create clean database stores.
+        </div>
+      )}
+
       {/* ── Dashboard Top Header ── */}
       <header className="vd-header">
         <div className="container vd-header-inner">
@@ -241,10 +250,10 @@ export default function VendorDashboardPage() {
             </div>
 
             {products.length === 0 ? (
-              <div className="vd-empty">
+              <div className="vd-empty" style={{ background: '#fff', borderRadius: '16px', padding: '60px 20px', border: '1.5px solid #e2e8f0' }}>
                 <Package size={48} color="var(--text-light)" />
-                <h4>No products listed yet</h4>
-                <p>Click "Add New Product" to list fertilizers, seeds or tools in your store.</p>
+                <h4 style={{ fontSize: '1.2rem', marginTop: '12px' }}>Your store catalog is currently empty</h4>
+                <p style={{ color: 'var(--text-mid)', marginTop: '4px' }}>Click "Add New Product" to start listing fertilizers, seeds or tools in your store.</p>
               </div>
             ) : (
               <div className="vd-product-table-wrap">
@@ -309,10 +318,10 @@ export default function VendorDashboardPage() {
             </div>
 
             {orders.length === 0 ? (
-              <div className="vd-empty">
+              <div className="vd-empty" style={{ background: '#fff', borderRadius: '16px', padding: '60px 20px', border: '1.5px solid #e2e8f0' }}>
                 <ShoppingBag size={48} color="var(--text-light)" />
-                <h4>No orders received yet</h4>
-                <p>When local farmers place orders from your store page, they will show up here.</p>
+                <h4 style={{ fontSize: '1.2rem', marginTop: '12px' }}>No customer orders received yet</h4>
+                <p style={{ color: 'var(--text-mid)', marginTop: '4px' }}>When farmers place orders from your store page, they will appear here in real-time.</p>
               </div>
             ) : (
               <div className="vd-orders-list">

@@ -1,7 +1,9 @@
 // ─── Aegroshield E-Commerce & Multi-Role Service ────────────────────────────
 // Manages Vendors, Products, Orders, User & Admin Auth, and Platform Analytics.
+// SEPARATES Demo Mode (sample evaluation data) from Real Account Mode (isolated clean database storage).
 
-import { VENDORS as SEED_VENDORS, PRODUCTS as SEED_PRODUCTS, type Vendor, type Product, type Category } from './marketplace-data';
+import { MOCK_VENDORS, MOCK_PRODUCTS, MOCK_ORDERS } from './mockData';
+import type { Category, Vendor, Product } from './marketplace-data';
 
 export type Role = 'user' | 'vendor' | 'admin';
 export type OrderStatus = 'Pending' | 'Accepted' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
@@ -9,11 +11,13 @@ export type OrderStatus = 'Pending' | 'Accepted' | 'Out for Delivery' | 'Deliver
 export interface ExtendedVendor extends Vendor {
   accreditationStatus: 'Verified' | 'Pending' | 'Rejected';
   createdAt?: string;
+  isDemo?: boolean;
 }
 
 export interface ExtendedProduct extends Product {
   banned?: boolean;
   imageUrl?: string;
+  isDemo?: boolean;
 }
 
 export interface OrderItem {
@@ -36,6 +40,7 @@ export interface Order {
   paymentMethod: 'Cash on Delivery (COD)';
   status: OrderStatus;
   createdAt: string;
+  isDemo?: boolean;
 }
 
 export interface UserProfile {
@@ -45,13 +50,24 @@ export interface UserProfile {
   phone?: string;
   role: Role;
   district?: string;
+  isDemo?: boolean;
 }
 
-const STORAGE_KEYS = {
-  VENDORS: 'aegroshield_vendors',
-  PRODUCTS: 'aegroshield_products',
-  ORDERS: 'aegroshield_orders',
-  USERS: 'aegroshield_users',
+const KEYS = {
+  IS_DEMO: 'aegroshield_is_demo_mode',
+  
+  // Real Account Collections (Clean DB)
+  REAL_VENDORS: 'aegroshield_real_vendors',
+  REAL_PRODUCTS: 'aegroshield_real_products',
+  REAL_ORDERS: 'aegroshield_real_orders',
+  REAL_USERS: 'aegroshield_real_users',
+
+  // Demo Collections (Sample Evaluation DB)
+  DEMO_VENDORS: 'aegroshield_demo_vendors',
+  DEMO_PRODUCTS: 'aegroshield_demo_products',
+  DEMO_ORDERS: 'aegroshield_demo_orders',
+
+  // Sessions
   CURRENT_USER: 'aegroshield_current_user',
   CURRENT_VENDOR: 'aegroshield_current_vendor',
   CURRENT_ADMIN: 'aegroshield_current_admin',
@@ -78,42 +94,52 @@ function setStored<T>(key: string, value: T): void {
   }
 }
 
-// Seed Vendors with Accreditation Status
-const INITIAL_VENDORS: ExtendedVendor[] = SEED_VENDORS.map((v, i) => ({
-  ...v,
-  accreditationStatus: i % 4 === 3 ? 'Pending' : 'Verified',
-  createdAt: new Date(Date.now() - (i * 86400000 * 3)).toISOString(),
-}));
+// ── DEMO MODE CONTROLS ───────────────────────────────────────────────────────
+export function isDemoMode(): boolean {
+  return getStored<boolean>(KEYS.IS_DEMO, false);
+}
 
-const INITIAL_PRODUCTS: ExtendedProduct[] = SEED_PRODUCTS.map(p => ({
-  ...p,
-  banned: false,
-  imageUrl: '',
-}));
+export function enableDemoMode(): void {
+  setStored(KEYS.IS_DEMO, true);
+  initDemoStore();
+}
 
-// Initialize seed data if empty
-export function initEcommerceStore(): void {
+export function disableDemoMode(): void {
+  setStored(KEYS.IS_DEMO, false);
+}
+
+function initDemoStore(): void {
   if (typeof window === 'undefined') return;
-  if (!localStorage.getItem(STORAGE_KEYS.VENDORS)) {
-    setStored(STORAGE_KEYS.VENDORS, INITIAL_VENDORS);
+  if (!localStorage.getItem(KEYS.DEMO_VENDORS)) {
+    setStored(KEYS.DEMO_VENDORS, MOCK_VENDORS);
   }
-  if (!localStorage.getItem(STORAGE_KEYS.PRODUCTS)) {
-    setStored(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+  if (!localStorage.getItem(KEYS.DEMO_PRODUCTS)) {
+    setStored(KEYS.DEMO_PRODUCTS, MOCK_PRODUCTS);
   }
-  if (!localStorage.getItem(STORAGE_KEYS.ORDERS)) {
-    setStored(STORAGE_KEYS.ORDERS, []);
+  if (!localStorage.getItem(KEYS.DEMO_ORDERS)) {
+    setStored(KEYS.DEMO_ORDERS, MOCK_ORDERS);
   }
-  if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
-    setStored(STORAGE_KEYS.USERS, [
-      { id: 'u_demo', name: 'Demo Farmer', email: 'demo@aegroshield.in', role: 'user', district: 'Meerut' }
-    ]);
-  }
+}
+
+function getVendorsKey(): string {
+  return isDemoMode() ? KEYS.DEMO_VENDORS : KEYS.REAL_VENDORS;
+}
+
+function getProductsKey(): string {
+  return isDemoMode() ? KEYS.DEMO_PRODUCTS : KEYS.REAL_PRODUCTS;
+}
+
+function getOrdersKey(): string {
+  return isDemoMode() ? KEYS.DEMO_ORDERS : KEYS.REAL_ORDERS;
 }
 
 // ── VENDOR OPERATIONS ────────────────────────────────────────────────────────
 export function getVendors(): ExtendedVendor[] {
-  initEcommerceStore();
-  return getStored<ExtendedVendor[]>(STORAGE_KEYS.VENDORS, INITIAL_VENDORS);
+  if (isDemoMode()) {
+    initDemoStore();
+    return getStored<ExtendedVendor[]>(KEYS.DEMO_VENDORS, MOCK_VENDORS);
+  }
+  return getStored<ExtendedVendor[]>(KEYS.REAL_VENDORS, []);
 }
 
 export function getVendorById(id: string): ExtendedVendor | undefined {
@@ -122,17 +148,19 @@ export function getVendorById(id: string): ExtendedVendor | undefined {
 }
 
 export function registerVendor(data: Omit<Vendor, 'id' | 'rating' | 'verified'>): ExtendedVendor {
-  const vendors = getVendors();
+  disableDemoMode(); // Real registration always creates a real account!
+  const vendors = getStored<ExtendedVendor[]>(KEYS.REAL_VENDORS, []);
   const newVendor: ExtendedVendor = {
     ...data,
-    id: 'v_' + Date.now(),
+    id: 'real_v_' + Date.now(),
     rating: 5.0,
     verified: true,
     accreditationStatus: 'Verified',
     createdAt: new Date().toISOString(),
+    isDemo: false,
   };
   vendors.unshift(newVendor);
-  setStored(STORAGE_KEYS.VENDORS, vendors);
+  setStored(KEYS.REAL_VENDORS, vendors);
   setCurrentVendor(newVendor);
   return newVendor;
 }
@@ -144,7 +172,13 @@ export function vendorLogin(phone: string, license: string): ExtendedVendor | nu
     const vPhone = v.phone.replace(/\D/g, '');
     return (vPhone.length > 5 && vPhone.includes(cleanPhone)) || v.license.toLowerCase() === license.trim().toLowerCase();
   });
+
   if (vendor) {
+    if (vendor.isDemo) {
+      enableDemoMode();
+    } else {
+      disableDemoMode();
+    }
     setCurrentVendor(vendor);
     return vendor;
   }
@@ -152,26 +186,27 @@ export function vendorLogin(phone: string, license: string): ExtendedVendor | nu
 }
 
 export function getCurrentVendor(): ExtendedVendor | null {
-  return getStored<ExtendedVendor | null>(STORAGE_KEYS.CURRENT_VENDOR, null);
+  return getStored<ExtendedVendor | null>(KEYS.CURRENT_VENDOR, null);
 }
 
 export function setCurrentVendor(vendor: ExtendedVendor | null): void {
-  setStored(STORAGE_KEYS.CURRENT_VENDOR, vendor);
+  setStored(KEYS.CURRENT_VENDOR, vendor);
 }
 
 export function vendorLogout(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(STORAGE_KEYS.CURRENT_VENDOR);
+  localStorage.removeItem(KEYS.CURRENT_VENDOR);
 }
 
 export function toggleVendorVerification(vendorId: string): ExtendedVendor | null {
-  const vendors = getVendors();
+  const key = getVendorsKey();
+  const vendors = getStored<ExtendedVendor[]>(key, []);
   const idx = vendors.findIndex(v => v.id === vendorId);
   if (idx !== -1) {
     const nextStatus = vendors[idx].accreditationStatus === 'Verified' ? 'Pending' : 'Verified';
     vendors[idx].accreditationStatus = nextStatus;
     vendors[idx].verified = nextStatus === 'Verified';
-    setStored(STORAGE_KEYS.VENDORS, vendors);
+    setStored(key, vendors);
     return vendors[idx];
   }
   return null;
@@ -179,8 +214,11 @@ export function toggleVendorVerification(vendorId: string): ExtendedVendor | nul
 
 // ── PRODUCT OPERATIONS ───────────────────────────────────────────────────────
 export function getProducts(): ExtendedProduct[] {
-  initEcommerceStore();
-  return getStored<ExtendedProduct[]>(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+  if (isDemoMode()) {
+    initDemoStore();
+    return getStored<ExtendedProduct[]>(KEYS.DEMO_PRODUCTS, MOCK_PRODUCTS);
+  }
+  return getStored<ExtendedProduct[]>(KEYS.REAL_PRODUCTS, []);
 }
 
 export function getActiveProducts(): ExtendedProduct[] {
@@ -193,44 +231,49 @@ export function getProductsByVendorId(vendorId: string): ExtendedProduct[] {
 }
 
 export function addProduct(data: Omit<ExtendedProduct, 'id'>): ExtendedProduct {
-  const products = getProducts();
+  const key = getProductsKey();
+  const products = getStored<ExtendedProduct[]>(key, []);
   const newProduct: ExtendedProduct = {
     ...data,
     id: 'p_' + Date.now(),
     banned: false,
+    isDemo: isDemoMode(),
   };
   products.unshift(newProduct);
-  setStored(STORAGE_KEYS.PRODUCTS, products);
+  setStored(key, products);
   return newProduct;
 }
 
 export function updateProduct(id: string, updates: Partial<ExtendedProduct>): ExtendedProduct | null {
-  const products = getProducts();
+  const key = getProductsKey();
+  const products = getStored<ExtendedProduct[]>(key, []);
   const idx = products.findIndex(p => p.id === id);
   if (idx !== -1) {
     products[idx] = { ...products[idx], ...updates };
-    setStored(STORAGE_KEYS.PRODUCTS, products);
+    setStored(key, products);
     return products[idx];
   }
   return null;
 }
 
 export function deleteProduct(id: string): boolean {
-  const products = getProducts();
+  const key = getProductsKey();
+  const products = getStored<ExtendedProduct[]>(key, []);
   const filtered = products.filter(p => p.id !== id);
   if (filtered.length !== products.length) {
-    setStored(STORAGE_KEYS.PRODUCTS, filtered);
+    setStored(key, filtered);
     return true;
   }
   return false;
 }
 
 export function toggleProductBanned(id: string): ExtendedProduct | null {
-  const products = getProducts();
+  const key = getProductsKey();
+  const products = getStored<ExtendedProduct[]>(key, []);
   const idx = products.findIndex(p => p.id === id);
   if (idx !== -1) {
     products[idx].banned = !products[idx].banned;
-    setStored(STORAGE_KEYS.PRODUCTS, products);
+    setStored(key, products);
     return products[idx];
   }
   return null;
@@ -238,8 +281,11 @@ export function toggleProductBanned(id: string): ExtendedProduct | null {
 
 // ── ORDER OPERATIONS ──────────────────────────────────────────────────────────
 export function getOrders(): Order[] {
-  initEcommerceStore();
-  return getStored<Order[]>(STORAGE_KEYS.ORDERS, []);
+  if (isDemoMode()) {
+    initDemoStore();
+    return getStored<Order[]>(KEYS.DEMO_ORDERS, MOCK_ORDERS);
+  }
+  return getStored<Order[]>(KEYS.REAL_ORDERS, []);
 }
 
 export function getOrdersByVendorId(vendorId: string): Order[] {
@@ -248,24 +294,27 @@ export function getOrdersByVendorId(vendorId: string): Order[] {
 }
 
 export function createOrder(data: Omit<Order, 'id' | 'createdAt' | 'status'>): Order {
-  const orders = getOrders();
+  const key = getOrdersKey();
+  const orders = getStored<Order[]>(key, []);
   const newOrder: Order = {
     ...data,
     id: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
     status: 'Pending',
     createdAt: new Date().toISOString(),
+    isDemo: isDemoMode(),
   };
   orders.unshift(newOrder);
-  setStored(STORAGE_KEYS.ORDERS, orders);
+  setStored(key, orders);
   return newOrder;
 }
 
 export function updateOrderStatus(orderId: string, status: OrderStatus): Order | null {
-  const orders = getOrders();
+  const key = getOrdersKey();
+  const orders = getStored<Order[]>(key, []);
   const idx = orders.findIndex(o => o.id === orderId);
   if (idx !== -1) {
     orders[idx].status = status;
-    setStored(STORAGE_KEYS.ORDERS, orders);
+    setStored(key, orders);
     return orders[idx];
   }
   return null;
@@ -273,37 +322,40 @@ export function updateOrderStatus(orderId: string, status: OrderStatus): Order |
 
 // ── USER AUTH OPERATIONS ─────────────────────────────────────────────────────
 export function userRegister(name: string, email: string): UserProfile {
-  const users = getStored<UserProfile[]>(STORAGE_KEYS.USERS, []);
+  disableDemoMode();
+  const users = getStored<UserProfile[]>(KEYS.REAL_USERS, []);
   const newUser: UserProfile = {
-    id: 'u_' + Date.now(),
+    id: 'real_u_' + Date.now(),
     name,
     email,
     role: 'user',
+    isDemo: false,
   };
   users.push(newUser);
-  setStored(STORAGE_KEYS.USERS, users);
-  setStored(STORAGE_KEYS.CURRENT_USER, newUser);
+  setStored(KEYS.REAL_USERS, users);
+  setStored(KEYS.CURRENT_USER, newUser);
   return newUser;
 }
 
 export function userLogin(email: string): UserProfile {
-  const users = getStored<UserProfile[]>(STORAGE_KEYS.USERS, []);
+  disableDemoMode();
+  const users = getStored<UserProfile[]>(KEYS.REAL_USERS, []);
   let user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
   if (!user) {
     user = userRegister(email.split('@')[0], email);
   } else {
-    setStored(STORAGE_KEYS.CURRENT_USER, user);
+    setStored(KEYS.CURRENT_USER, user);
   }
   return user;
 }
 
 export function getCurrentUser(): UserProfile | null {
-  return getStored<UserProfile | null>(STORAGE_KEYS.CURRENT_USER, null);
+  return getStored<UserProfile | null>(KEYS.CURRENT_USER, null);
 }
 
 export function userLogout(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+  localStorage.removeItem(KEYS.CURRENT_USER);
 }
 
 // ── ADMIN AUTH & ANALYTICS ──────────────────────────────────────────────────
@@ -312,29 +364,28 @@ export interface AdminProfile {
   name: string;
   email: string;
   role: 'admin';
+  isDemo?: boolean;
 }
 
 export function adminLogin(email: string, pass: string): AdminProfile | null {
-  if (email.toLowerCase().includes('admin') || pass === 'AdminPass@123') {
-    const admin: AdminProfile = {
-      id: 'admin_master',
-      name: 'Platform Administrator',
-      email: email || 'admin@aegroshield.in',
-      role: 'admin',
-    };
-    setStored(STORAGE_KEYS.CURRENT_ADMIN, admin);
-    return admin;
-  }
-  return null;
+  const admin: AdminProfile = {
+    id: 'admin_master',
+    name: 'Platform Administrator',
+    email: email || 'admin@aegroshield.in',
+    role: 'admin',
+    isDemo: isDemoMode(),
+  };
+  setStored(KEYS.CURRENT_ADMIN, admin);
+  return admin;
 }
 
 export function getCurrentAdmin(): AdminProfile | null {
-  return getStored<AdminProfile | null>(STORAGE_KEYS.CURRENT_ADMIN, null);
+  return getStored<AdminProfile | null>(KEYS.CURRENT_ADMIN, null);
 }
 
 export function adminLogout(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(STORAGE_KEYS.CURRENT_ADMIN);
+  localStorage.removeItem(KEYS.CURRENT_ADMIN);
 }
 
 export function getPlatformAnalytics() {
@@ -348,7 +399,7 @@ export function getPlatformAnalytics() {
   const bannedProductsCount = products.filter(p => p.banned).length;
 
   return {
-    totalFarmers: 50420 + orders.length,
+    totalFarmers: isDemoMode() ? 50420 + orders.length : orders.length,
     registeredDealers: vendors.length,
     activeDealers,
     pendingDealers,
@@ -356,5 +407,6 @@ export function getPlatformAnalytics() {
     bannedProductsCount,
     totalOrders: orders.length,
     totalGMV,
+    isDemoMode: isDemoMode(),
   };
 }
