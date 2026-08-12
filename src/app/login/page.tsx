@@ -51,8 +51,7 @@ function LoginPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user && selectedRole === 'user') {
-        disableDemoMode();
-        userLogin(user.email || 'user@aegroshield.in');
+        userLogin(user.email || 'user@aegroshield.in', false);
         router.push(farmerTarget);
       }
     });
@@ -62,19 +61,18 @@ function LoginPage() {
   const showMessage = (text: string, type = "error") => setMsg({ text, type });
   const hideMessage = () => setMsg({ text: "", type: "error" });
 
-  // ── FARMER / USER HANDLERS (Real Account -> STRICTLY /farmer/home) ──
+  // ── FARMER / USER HANDLERS (Real Account -> /farmer/home) ──
   const handleFarmerSignIn = async () => {
     hideMessage();
     if (!email || !password) return showMessage("Please fill in all fields.");
     setLoading(true);
-    disableDemoMode(); // Real database session
     try {
       await signInWithEmail(email, password);
-      userLogin(email);
+      userLogin(email, false); // Real login (isDemo = false)
       showMessage("✅ Signed in! Opening Farmer Dashboard…", "success");
       setTimeout(() => router.push(farmerTarget), 500);
     } catch (err: any) {
-      userLogin(email);
+      userLogin(email, false); // Real login (isDemo = false)
       showMessage("✅ Real Farmer Session Started! Opening Farmer Dashboard…", "success");
       setTimeout(() => router.push(farmerTarget), 500);
     }
@@ -84,7 +82,6 @@ function LoginPage() {
     hideMessage();
     if (!name || !email || !password) return showMessage("Please fill in all required fields.");
     setLoading(true);
-    disableDemoMode(); // Real database session
     try {
       await signUpWithEmail(name, email, password);
       userRegister(name, email);
@@ -97,14 +94,13 @@ function LoginPage() {
     }
   };
 
-  // ── SELLER HANDLERS (Real Store Registration -> STRICTLY /vendor/dashboard) ──
+  // ── SELLER HANDLERS (Real Store Registration -> /vendor/dashboard) ──
   const handleSellerSubmit = () => {
     hideMessage();
     if (tab === 'signin') {
       if (!phone || !license) return showMessage("Please enter your Phone and License Number.");
       setLoading(true);
-      disableDemoMode(); // Real session
-      const vendor = vendorLogin(phone, license);
+      const vendor = vendorLogin(phone, license, false); // Real login (isDemo = false)
       if (vendor) {
         showMessage("🏪 Welcome back, Seller! Opening Vendor Dashboard…", "success");
         setTimeout(() => router.push("/vendor/dashboard"), 500);
@@ -115,7 +111,6 @@ function LoginPage() {
     } else {
       if (!name || !phone || !license) return showMessage("Please fill in all store details.");
       setLoading(true);
-      disableDemoMode(); // Real Registration -> Pristine empty database dashboard!
       registerVendor({
         name,
         ownerName: name,
@@ -129,13 +124,12 @@ function LoginPage() {
     }
   };
 
-  // ── ADMIN HANDLER (Admin Auth -> STRICTLY /admin/dashboard) ──
+  // ── ADMIN HANDLER (Admin Auth -> /admin/dashboard) ──
   const handleAdminSubmit = () => {
     hideMessage();
     if (!email || !password) return showMessage("Please enter Admin Email and Master Key.");
     setLoading(true);
-    disableDemoMode();
-    const admin = adminLogin(email, password);
+    const admin = adminLogin(email, password, false); // Real login (isDemo = false)
     if (admin) {
       showMessage("🛡️ Admin Authenticated! Opening Master Control Panel…", "success");
       setTimeout(() => router.push("/admin/dashboard"), 500);
@@ -145,28 +139,25 @@ function LoginPage() {
     }
   };
 
-  // ── DEMO FAST LOGIN HANDLERS (Enables isDemoMode = true) ──
+  // ── DEMO FAST LOGIN HANDLERS (EXPLICITLY ENABLES DEMO MODE WITH MOCK DATA) ──
   const triggerDemoFarmer = () => {
-    enableDemoMode();
-    userLogin("demo@aegroshield.in");
-    showMessage("🌾 Demo Farmer Mode Enabled! Opening Farmer Dashboard…", "success");
+    userLogin("demo@aegroshield.in", true); // Demo login (isDemo = true)
+    showMessage("🌾 Evaluation Demo Mode Active! Opening Farmer Dashboard with Mock Data…", "success");
     setTimeout(() => router.push(farmerTarget), 500);
   };
 
   const triggerDemoSeller = () => {
-    enableDemoMode();
-    const v = vendorLogin("9876543210", "UP-AGR-2021-1421");
+    const v = vendorLogin("9876543210", "UP-AGR-2021-1421", true); // Demo login (isDemo = true)
     if (v) {
-      showMessage("🏪 Demo Seller Mode Enabled! Opening Sample Vendor Dashboard…", "success");
+      showMessage("🏪 Evaluation Demo Mode Active! Opening Sample Vendor Dashboard with Mock Data…", "success");
       setTimeout(() => router.push("/vendor/dashboard"), 500);
     }
   };
 
   const triggerDemoAdmin = () => {
-    enableDemoMode();
-    const a = adminLogin("admin@aegroshield.in", "AdminPass@123");
+    const a = adminLogin("admin@aegroshield.in", "AdminPass@123", true); // Demo login (isDemo = true)
     if (a) {
-      showMessage("🛡️ Demo Admin Mode Enabled! Opening Sample Admin Control Panel…", "success");
+      showMessage("🛡️ Evaluation Demo Mode Active! Opening Sample Admin Panel with Mock Metrics…", "success");
       setTimeout(() => router.push("/admin/dashboard"), 500);
     }
   };

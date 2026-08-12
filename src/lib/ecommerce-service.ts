@@ -148,7 +148,7 @@ export function getVendorById(id: string): ExtendedVendor | undefined {
 }
 
 export function registerVendor(data: Omit<Vendor, 'id' | 'rating' | 'verified'>): ExtendedVendor {
-  disableDemoMode(); // Real registration always creates a real account!
+  disableDemoMode(); // Real registration creates a real account in real collection!
   const vendors = getStored<ExtendedVendor[]>(KEYS.REAL_VENDORS, []);
   const newVendor: ExtendedVendor = {
     ...data,
@@ -165,8 +165,16 @@ export function registerVendor(data: Omit<Vendor, 'id' | 'rating' | 'verified'>)
   return newVendor;
 }
 
-export function vendorLogin(phone: string, license: string): ExtendedVendor | null {
-  const vendors = getVendors();
+export function vendorLogin(phone: string, license: string, isDemoCall = false): ExtendedVendor | null {
+  if (isDemoCall) {
+    enableDemoMode();
+    const demoVendor = MOCK_VENDORS[0]; // Kisan Seva Kendra
+    setCurrentVendor(demoVendor);
+    return demoVendor;
+  }
+
+  disableDemoMode(); // Standard login operates on real DB
+  const vendors = getStored<ExtendedVendor[]>(KEYS.REAL_VENDORS, []);
   const cleanPhone = phone.replace(/\D/g, '');
   const vendor = vendors.find(v => {
     const vPhone = v.phone.replace(/\D/g, '');
@@ -174,11 +182,6 @@ export function vendorLogin(phone: string, license: string): ExtendedVendor | nu
   });
 
   if (vendor) {
-    if (vendor.isDemo) {
-      enableDemoMode();
-    } else {
-      disableDemoMode();
-    }
     setCurrentVendor(vendor);
     return vendor;
   }
@@ -337,8 +340,22 @@ export function userRegister(name: string, email: string): UserProfile {
   return newUser;
 }
 
-export function userLogin(email: string): UserProfile {
-  disableDemoMode();
+export function userLogin(email: string, isDemoCall = false): UserProfile {
+  if (isDemoCall) {
+    enableDemoMode();
+    const demoUser: UserProfile = {
+      id: 'u_demo',
+      name: 'Demo Farmer',
+      email: 'demo@aegroshield.in',
+      role: 'user',
+      district: 'Meerut',
+      isDemo: true,
+    };
+    setStored(KEYS.CURRENT_USER, demoUser);
+    return demoUser;
+  }
+
+  disableDemoMode(); // Real user sign in
   const users = getStored<UserProfile[]>(KEYS.REAL_USERS, []);
   let user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
   if (!user) {
@@ -367,7 +384,13 @@ export interface AdminProfile {
   isDemo?: boolean;
 }
 
-export function adminLogin(email: string, pass: string): AdminProfile | null {
+export function adminLogin(email: string, pass: string, isDemoCall = false): AdminProfile | null {
+  if (isDemoCall) {
+    enableDemoMode();
+  } else {
+    disableDemoMode();
+  }
+  
   const admin: AdminProfile = {
     id: 'admin_master',
     name: 'Platform Administrator',
