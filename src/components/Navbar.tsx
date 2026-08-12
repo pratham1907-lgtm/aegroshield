@@ -6,7 +6,6 @@ export default function Navbar() {
       <div className="nav-brand">🌿 Aegroshield</div>
       <div className="nav-links">
         <Link href="/">Home</Link>
-        <Link href="/predict">Diagnose Crop</Link>
         <Link href="/machinery">Machinery</Link>
         <Link href="/labour">Labour</Link>
         <Link href="/market">Market Price</Link>
