@@ -11,10 +11,10 @@ const LANGUAGE_NAMES = {
 };
 
 const WELCOME_MESSAGES = {
-  'en': "👋 Hello! I'm Aegroshield Assistant.\n\nI can help you with:\n🚜 Machinery booking\n👥 Labour finding\n📈 Market prices\n🧪 Fertilizer & pesticide calculations\n\nWhat would you like help with?",
-  'hi': "👋 नमस्ते! मैं Aegroshield सहायक हूँ।\n\nमैं आपकी मदद कर सकता हूँ:\n🚜 मशीन किराया\n👥 मजदूर खोजना\n📈 बाजार भाव\n🧪 खाद और कीटनाशक की गणना\n\nआप किसमें मदद चाहते हैं?",
-  'pa': "👋 ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ Aegroshield ਸਹਾਇਕ ਹਾਂ।\n\nਮੈਂ ਤੁਹਾਡੀ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ:\n🚜 ਮਸ਼ੀਨ ਕਿਰਾਇਆ\n👥 ਮਜ਼ਦੂਰ ਢੂੰਢਣਾ\n📈 ਬਾਜ਼ਾਰ ਭਾਅ\n🧪 ਖਾਦ ਅਤੇ ਕੀਟਨਾਸ਼ਕ ਦੀ ਗਣਨਾ\n\nਤੁਸੀਂ ਕਿਸ ਵਿੱਚ ਮਦਦ ਚਾਹੁੰਦੇ ਹੋ?",
-  'hi-en': "👋 Hey! Mein Aegroshield Assistant hoon.\n\nMain aapki madad kar sakta hoon:\n🚜 Machinery booking\n👥 Majdoor dhundna\n📈 Market prices\n🧪 Fertilizer & pesticide calculation\n\nKya main aapki madad kar sakta hoon?"
+  'en': "👋 Hello! I'm Aegroshield Assistant.\n\nI can help you with:\n🛒 Buy fertilizers, seeds & pesticides\n🚜 Machinery booking\n👥 Labour finding\n📈 Market prices\n🧪 Input calculations\n\nWhat would you like help with?",
+  'hi': "👋 नमस्ते! मैं Aegroshield सहायक हूँ।\n\nमैं आपकी मदद कर सकता हूँ:\n🛒 खाद, बीज और दवाई खरीदना\n🚜 मशीन किराया\n👥 मजदूर खोजना\n📈 बाजार भाव\n🧪 खाद और कीटनाशक की गणना\n\nआप किसमें मदद चाहते हैं?",
+  'pa': "👋 ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ Aegroshield ਸਹਾਇਕ ਹਾਂ।\n\nਮੈਂ ਤੁਹਾਡੀ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ:\n🛒 ਖਾਦ, ਬੀਜ ਅਤੇ ਦਵਾਈ ਖਰੀਦਣੀ\n🚜 ਮਸ਼ੀਨ ਕਿਰਾਇਆ\n👥 ਮਜ਼ਦੂਰ ਢੂੰਢਣਾ\n📈 ਬਾਜ਼ਾਰ ਭਾਅ\n🧪 ਖਾਦ ਅਤੇ ਕੀਟਨਾਸ਼ਕ ਦੀ ਗਣਨਾ\n\nਤੁਸੀਂ ਕਿਸ ਵਿੱਚ ਮਦਦ ਚਾਹੁੰਦੇ ਹੋ?",
+  'hi-en': "👋 Hey! Mein Aegroshield Assistant hoon.\n\nMain aapki madad kar sakta hoon:\n🛒 Fertilizer, beej aur pesticide khareedna\n🚜 Machinery booking\n👥 Majdoor dhundna\n📈 Market prices\n🧪 Fertilizer & pesticide calculation\n\nKya main aapki madad kar sakta hoon?"
 };
 
 const INPUT_PLACEHOLDERS = {
