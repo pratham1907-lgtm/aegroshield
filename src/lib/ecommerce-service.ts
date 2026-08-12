@@ -99,6 +99,14 @@ export function isDemoMode(): boolean {
   return getStored<boolean>(KEYS.IS_DEMO, false);
 }
 
+export function isDemoSessionActive(): boolean {
+  if (!isDemoMode()) return false;
+  const user = getCurrentUser();
+  const vendor = getCurrentVendor();
+  const admin = getCurrentAdmin();
+  return !!(user || vendor || admin);
+}
+
 export function enableDemoMode(): void {
   setStored(KEYS.IS_DEMO, true);
   initDemoStore();
@@ -199,6 +207,7 @@ export function setCurrentVendor(vendor: ExtendedVendor | null): void {
 export function vendorLogout(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(KEYS.CURRENT_VENDOR);
+  disableDemoMode();
 }
 
 export function toggleVendorVerification(vendorId: string): ExtendedVendor | null {
@@ -373,6 +382,7 @@ export function getCurrentUser(): UserProfile | null {
 export function userLogout(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(KEYS.CURRENT_USER);
+  disableDemoMode();
 }
 
 // ── ADMIN AUTH & ANALYTICS ──────────────────────────────────────────────────
@@ -409,6 +419,7 @@ export function getCurrentAdmin(): AdminProfile | null {
 export function adminLogout(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(KEYS.CURRENT_ADMIN);
+  disableDemoMode();
 }
 
 export function getPlatformAnalytics() {

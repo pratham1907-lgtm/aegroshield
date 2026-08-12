@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { isDemoMode } from '@/lib/ecommerce-service';
+import { isDemoSessionActive } from '@/lib/ecommerce-service';
 import { Sparkles } from 'lucide-react';
 
 export default function DemoBanner() {
@@ -12,8 +12,8 @@ export default function DemoBanner() {
 
   useEffect(() => {
     setMounted(true);
-    // Banner MUST ONLY show when in Demo Mode
-    setDemoActive(isDemoMode());
+    // Banner MUST ONLY show when an active Demo Session exists (logged into demo account)
+    setDemoActive(isDemoSessionActive());
   }, [pathname]);
 
   if (!mounted || !demoActive) return null;
