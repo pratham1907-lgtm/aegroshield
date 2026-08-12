@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLanguage, type Language } from '@/lib/language-context';
 import { useCart } from '@/lib/cart-context';
-import { ShoppingBag, Store } from 'lucide-react';
+import { getCurrentAdmin, getCurrentVendor, getCurrentUser } from '@/lib/ecommerce-service';
+import { ShoppingBag, Store, Shield } from 'lucide-react';
 
 const LANG_OPTIONS: { value: Language; label: string }[] = [
   { value: 'en',    label: '🇬🇧 English' },
@@ -14,6 +16,11 @@ const LANG_OPTIONS: { value: Language; label: string }[] = [
 export default function Navbar() {
   const { lang, setLang, t } = useLanguage();
   const { cartCount } = useCart();
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setIsAdminLoggedIn(!!getCurrentAdmin());
+  }, []);
 
   return (
     <nav className="navbar">
@@ -38,6 +45,14 @@ export default function Navbar() {
           <Store size={16} />
           <span>Seller Portal</span>
         </Link>
+
+        {/* ── Admin Link (if logged in or accessible) ── */}
+        {isAdminLoggedIn && (
+          <Link href="/admin/dashboard" className="nav-admin-btn" title="Admin Control Panel">
+            <Shield size={16} />
+            <span>Admin</span>
+          </Link>
+        )}
 
         {/* ── Language Toggle ── */}
         <div className="lang-toggle-wrap">

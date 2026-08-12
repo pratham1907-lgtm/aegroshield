@@ -6,10 +6,10 @@ import Link from 'next/link';
 import {
   getCurrentVendor, vendorLogout, getProductsByVendorId, getOrdersByVendorId,
   addProduct, updateProduct, deleteProduct, updateOrderStatus,
-  type Order, type OrderStatus
+  type Order, type OrderStatus, type ExtendedProduct
 } from '@/lib/ecommerce-service';
-import type { Product, Category, Vendor } from '@/lib/marketplace-data';
-import { Store, Package, ShoppingBag, Plus, Trash2, Edit, LogOut, CheckCircle, Clock, Truck, ShieldCheck, Eye } from 'lucide-react';
+import type { Category, Vendor } from '@/lib/marketplace-data';
+import { Store, Package, ShoppingBag, Plus, Trash2, Edit, LogOut, ShieldCheck, Clock, Eye, ToggleLeft, ToggleRight, Image as ImageIcon } from 'lucide-react';
 
 const CATEGORIES: Category[] = ['Fertilizer', 'Pesticide', 'Seed', 'Equipment'];
 
@@ -19,9 +19,9 @@ export default function VendorDashboardPage() {
   const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'profile'>('products');
   
   // Products state
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ExtendedProduct[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<ExtendedProduct | null>(null);
   
   // Product Form State
   const [pForm, setPForm] = useState({
@@ -34,6 +34,7 @@ export default function VendorDashboardPage() {
     brand: '',
     description: '',
     forCrops: 'Wheat, Rice',
+    imageUrl: '',
   });
 
   // Orders State
@@ -56,7 +57,14 @@ export default function VendorDashboardPage() {
 
   const handleLogout = () => {
     vendorLogout();
-    router.push('/vendor/login');
+    router.push('/login');
+  };
+
+  // Quick Stock Toggle
+  const handleToggleStock = (product: ExtendedProduct) => {
+    const nextStock = product.stock === 'In Stock' ? 'Out of Stock' : 'In Stock';
+    updateProduct(product.id, { stock: nextStock });
+    if (vendor) loadVendorData(vendor.id);
   };
 
   // Add / Edit Product Submit
@@ -77,6 +85,7 @@ export default function VendorDashboardPage() {
         brand: pForm.brand,
         description: pForm.description,
         forCrops: cropsArray,
+        imageUrl: pForm.imageUrl,
       });
     } else {
       addProduct({
@@ -90,6 +99,8 @@ export default function VendorDashboardPage() {
         brand: pForm.brand,
         description: pForm.description,
         forCrops: cropsArray,
+        imageUrl: pForm.imageUrl,
+        banned: false,
       });
     }
 
@@ -110,10 +121,11 @@ export default function VendorDashboardPage() {
       brand: '',
       description: '',
       forCrops: 'Wheat, Rice',
+      imageUrl: '',
     });
   };
 
-  const handleEditClick = (product: Product) => {
+  const handleEditClick = (product: ExtendedProduct) => {
     setEditingProduct(product);
     setPForm({
       name: product.name,
@@ -125,6 +137,7 @@ export default function VendorDashboardPage() {
       brand: product.brand,
       description: product.description,
       forCrops: product.forCrops.join(', '),
+      imageUrl: product.imageUrl || '',
     });
     setShowAddModal(true);
   };
@@ -241,24 +254,31 @@ export default function VendorDashboardPage() {
                       <th>Product</th>
                       <th>Category</th>
                       <th>Price & Unit</th>
-                      <th>Stock</th>
+                      <th>Stock Toggle</th>
                       <th>Brand</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {products.map(p => (
-                      <tr key={p.id}>
+                      <tr key={p.id} style={{ opacity: p.banned ? 0.5 : 1 }}>
                         <td>
                           <strong>{p.name}</strong>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>{p.nameHi}</div>
+                          {p.banned && <span className="banned-tag">❌ Flagged / Banned by Admin</span>}
                         </td>
                         <td><span className="cat-pill">{p.category}</span></td>
                         <td><strong>₹{p.price}</strong> <span style={{ fontSize: '0.8rem', color: '#666' }}>{p.unit}</span></td>
                         <td>
-                          <span className={`stock-pill ${p.stock.toLowerCase().replace(/\s+/g, '-')}`}>
-                            {p.stock}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStock(p)}
+                            className={`stock-toggle-btn ${p.stock === 'In Stock' ? 'on' : 'off'}`}
+                            title="Click to toggle In Stock / Out of Stock"
+                          >
+                            {p.stock === 'In Stock' ? <ToggleRight size={22} color="#22c55e" /> : <ToggleLeft size={22} color="#94a3b8" />}
+                            <span>{p.stock}</span>
+                          </button>
                         </td>
                         <td>{p.brand}</td>
                         <td>
@@ -280,11 +300,11 @@ export default function VendorDashboardPage() {
           </div>
         )}
 
-        {/* ── TAB 2: Orders ── */}
+        {/* ── TAB 2: Orders Queue ── */}
         {activeTab === 'orders' && (
           <div className="vd-tab-content">
             <div className="vd-section-header">
-              <h3>Incoming Customer Orders</h3>
+              <h3>Live Order Management Queue</h3>
               <span className="orders-count">{orders.length} Total Orders</span>
             </div>
 
@@ -304,16 +324,16 @@ export default function VendorDashboardPage() {
                         <span className="order-date">{new Date(order.createdAt).toLocaleDateString()}</span>
                       </div>
                       <div className="order-status-selector">
-                        <label>Status:</label>
+                        <label>Update Status:</label>
                         <select
                           value={order.status}
                           onChange={e => handleStatusChange(order.id, e.target.value as OrderStatus)}
                           className={`status-select ${order.status.toLowerCase().replace(/\s+/g, '-')}`}
                         >
-                          <option value="Pending">Pending</option>
-                          <option value="Accepted">Accepted</option>
-                          <option value="Out for Delivery">Out for Delivery</option>
-                          <option value="Delivered">Delivered</option>
+                          <option value="Pending">Pending (New)</option>
+                          <option value="Accepted">Accepted & Packing</option>
+                          <option value="Out for Delivery">Out for Delivery / Ready</option>
+                          <option value="Delivered">Delivered (Completed)</option>
                           <option value="Cancelled">Cancelled</option>
                         </select>
                       </div>
@@ -323,7 +343,7 @@ export default function VendorDashboardPage() {
                       <div className="customer-info">
                         <strong>👤 {order.customerName}</strong>
                         <div>📞 Phone: <code>{order.customerPhone}</code></div>
-                        <div>📍 Address: {order.deliveryAddress}, {order.district} - {order.pincode}</div>
+                        <div>📍 Delivery Address: {order.deliveryAddress}, {order.district} - {order.pincode}</div>
                         <div>💳 Payment: <strong>{order.paymentMethod}</strong></div>
                       </div>
 
@@ -352,7 +372,7 @@ export default function VendorDashboardPage() {
         {activeTab === 'profile' && (
           <div className="vd-tab-content">
             <div className="profile-card">
-              <h3>Store Profile Details</h3>
+              <h3>Store Profile & Verification</h3>
               <div className="profile-grid">
                 <div><strong>Store Name:</strong> {vendor.name}</div>
                 <div><strong>Owner Name:</strong> {vendor.ownerName}</div>
@@ -360,7 +380,12 @@ export default function VendorDashboardPage() {
                 <div><strong>Address:</strong> {vendor.address}</div>
                 <div><strong>Contact Phone:</strong> {vendor.phone}</div>
                 <div><strong>License Number:</strong> <code>{vendor.license}</code></div>
-                <div><strong>Verification Status:</strong> <span className="verified-badge">✅ Verified Seller</span></div>
+                <div>
+                  <strong>Accreditation:</strong>{' '}
+                  <span className="verified-badge">
+                    ✅ Official Platform Verified Dealer
+                  </span>
+                </div>
                 <div><strong>Store Rating:</strong> ⭐ {vendor.rating} / 5.0</div>
               </div>
             </div>
@@ -457,6 +482,16 @@ export default function VendorDashboardPage() {
                   value={pForm.brand}
                   onChange={e => setPForm({ ...pForm, brand: e.target.value })}
                   required
+                />
+              </div>
+
+              <div className="form-group">
+                <label><ImageIcon size={14} /> Product Image URL (Optional)</label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/image.jpg"
+                  value={pForm.imageUrl}
+                  onChange={e => setPForm({ ...pForm, imageUrl: e.target.value })}
                 />
               </div>
 

@@ -5,11 +5,11 @@ import Link from 'next/link';
 import { useLanguage } from '@/lib/language-context';
 import { useCart } from '@/lib/cart-context';
 import {
-  PRODUCTS, ALL_DISTRICTS,
-  getProductsFiltered, getVendorById,
-  type Category, type Product
+  ALL_DISTRICTS,
+  getVendorById, type Category, type Product
 } from '@/lib/marketplace-data';
-import { ShoppingBag, Store, Check, Search, MapPin } from 'lucide-react';
+import { getVendors, getProducts, getActiveProducts } from '@/lib/ecommerce-service';
+import { ShoppingBag, Store, Check, Search, MapPin, ShieldCheck } from 'lucide-react';
 
 const CATEGORIES = ['All', 'Fertilizer', 'Pesticide', 'Seed', 'Equipment'] as const;
 type CategoryFilter = typeof CATEGORIES[number];
@@ -36,19 +36,36 @@ export default function MarketplacePage() {
   const [search, setSearch] = useState('');
   const [addedIds, setAddedIds] = useState<Record<string, boolean>>({});
 
+  const allActiveProducts = useMemo(() => {
+    return getProducts().filter(p => !p.banned);
+  }, []);
+
+  const allVendors = useMemo(() => {
+    return getVendors();
+  }, []);
+
   const filtered = useMemo(() => {
-    let results = getProductsFiltered(district, category === 'All' ? 'All' : category);
+    let districtVendorIds = district === 'All'
+      ? allVendors.map(v => v.id)
+      : allVendors.filter(v => v.district === district).map(v => v.id);
+
+    let results = allActiveProducts.filter(p => {
+      const matchDistrict = districtVendorIds.includes(p.vendorId);
+      const matchCategory = category === 'All' || p.category === category;
+      return matchDistrict && matchCategory;
+    });
+
     if (search.trim()) {
       const q = search.toLowerCase();
       results = results.filter(p =>
         p.name.toLowerCase().includes(q) ||
-        p.nameHi.includes(q) ||
+        p.nameHi?.includes(q) ||
         p.brand.toLowerCase().includes(q) ||
         p.forCrops.some(c => c.toLowerCase().includes(q))
       );
     }
     return results;
-  }, [district, category, search]);
+  }, [district, category, search, allActiveProducts, allVendors]);
 
   const handleAddToCart = (product: Product) => {
     addToCart(product);
@@ -135,7 +152,7 @@ export default function MarketplacePage() {
         ) : (
           <div className="mp-product-grid">
             {filtered.map(product => {
-              const vendor = getVendorById(product.vendorId);
+              const vendor = allVendors.find(v => v.id === product.vendorId);
               const isAdded = addedIds[product.id];
               const isHindi = lang === 'hi';
               return (
@@ -171,7 +188,9 @@ export default function MarketplacePage() {
                     <div className="mp-vendor-row">
                       <Store size={18} color="var(--primary)" />
                       <div className="mp-vendor-info">
-                        <span className="mp-vendor-name">{vendor.name}</span>
+                        <span className="mp-vendor-name">
+                          {vendor.name} {vendor.accreditationStatus === 'Verified' && <ShieldCheck size={14} color="#22c55e" style={{ display: 'inline' }} />}
+                        </span>
                         <span className="mp-vendor-loc">📍 {vendor.district}</span>
                       </div>
                       <Link href={`/store/${vendor.id}`} className="view-store-link">
