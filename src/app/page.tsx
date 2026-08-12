@@ -4,17 +4,34 @@ import { User, Store, Shield, ArrowRight, CheckCircle2, ChevronRight } from "luc
 export default function MasterGatewayPage() {
   return (
     <main className="gateway-page">
-      {/* ── Top Gateway Header ── */}
+      {/* ── Top Gateway Navbar / Header ── */}
+      <header className="gateway-navbar">
+        <div className="container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px" }}>
+          <div className="nav-brand" style={{ fontSize: "1.5rem", fontWeight: "800", color: "var(--primary)" }}>
+            🌿 Aegroshield
+          </div>
+          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+            <span style={{ fontSize: "0.85rem", color: "var(--text-mid)", fontWeight: "600" }}>
+              Smart Agriculture Platform 🇮🇳
+            </span>
+            <Link href="/login" className="btn btn-outline btn-sm">
+              Sign In / Login
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Top Gateway Hero Header ── */}
       <section className="gateway-hero">
         <div className="container" style={{ maxWidth: "1000px", textAlign: "center" }}>
           <div className="hero-tag" style={{ margin: "0 auto 16px", display: "inline-flex" }}>
-            <span></span> Smart Agriculture Ecosystem 🇮🇳
+            <span></span> Select Your Ecosystem Portal 🇮🇳
           </div>
           <h1 className="gateway-title">
             Welcome to <em>Aegroshield</em>
           </h1>
           <p className="gateway-subtitle">
-            The unified platform connecting Indian Farmers, Local Agricultural Sellers, and Regional Authorities. Select your portal to continue:
+            The unified smart agriculture platform connecting Indian Farmers, Local Dealers, and Regional Authorities. Choose your role to enter:
           </p>
         </div>
       </section>
@@ -28,9 +45,9 @@ export default function MasterGatewayPage() {
             <div className="portal-card farmer-card">
               <div className="portal-card-header">
                 <div className="portal-icon green">🌾</div>
-                <span className="portal-tag green">For Farmers & Buyers</span>
+                <span className="portal-tag green">Farmer / User Portal</span>
               </div>
-              <h2 className="portal-title">Farmer & Store Portal</h2>
+              <h2 className="portal-title">Farmer & Buyer Hub</h2>
               <p className="portal-desc">
                 Buy fertilizers, pesticides, seeds, and equipment with Cash on Delivery. Book machinery, find farm labour, and check live mandi rates.
               </p>
@@ -55,9 +72,9 @@ export default function MasterGatewayPage() {
             <div className="portal-card seller-card">
               <div className="portal-card-header">
                 <div className="portal-icon orange">🏬</div>
-                <span className="portal-tag orange">For Local Dealers</span>
+                <span className="portal-tag orange">Local Seller Portal</span>
               </div>
-              <h2 className="portal-title">Local Seller Portal</h2>
+              <h2 className="portal-title">Agri-Input Dealer Hub</h2>
               <p className="portal-desc">
                 Register your shop on Aegroshield, list your product catalog, update real-time stock/prices, and fulfill local farmer orders.
               </p>

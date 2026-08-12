@@ -3846,8 +3846,13 @@ footer a:hover {
   min-height: 100vh;
   background: linear-gradient(180deg, #e8f5d6 0%, #fafafa 100%);
 }
+.gateway-navbar {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #e5e7eb;
+}
 .gateway-hero {
-  padding: 60px 0 36px;
+  padding: 50px 0 36px;
 }
 .gateway-title {
   font-size: clamp(2.2rem, 5vw, 3.4rem);

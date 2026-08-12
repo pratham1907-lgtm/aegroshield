@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useLanguage, type Language } from '@/lib/language-context';
 import { useCart } from '@/lib/cart-context';
 import { ShoppingBag } from 'lucide-react';
@@ -12,8 +13,14 @@ const LANG_OPTIONS: { value: Language; label: string }[] = [
 ];
 
 export default function Navbar() {
+  const pathname = usePathname();
   const { lang, setLang, t } = useLanguage();
   const { cartCount } = useCart();
+
+  // Hide farmer navbar on vendor/admin dashboards and on Gateway Landing page (/)
+  if (pathname === '/' || pathname.startsWith('/vendor/') || pathname.startsWith('/admin/')) {
+    return null;
+  }
 
   return (
     <nav className="navbar">
