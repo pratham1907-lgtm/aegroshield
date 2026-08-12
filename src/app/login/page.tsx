@@ -22,13 +22,21 @@ export default function LoginPageWrapper() {
 function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextRoute = searchParams.get("next") || "/";
+  const nextRoute = searchParams.get("next") || "/farmer/home";
+  const roleParam = searchParams.get("role") as Role;
 
-  // Role Selection State
-  const [selectedRole, setSelectedRole] = useState<Role>('user');
+  // Role Selection State (initialized from URL if present)
+  const [selectedRole, setSelectedRole] = useState<Role>(roleParam || 'user');
   const [tab, setTab] = useState<'signin' | 'signup'>('signin');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ text: "", type: "error" });
+
+  // Sync role if URL query changes
+  useEffect(() => {
+    if (roleParam && ['user', 'vendor', 'admin'].includes(roleParam)) {
+      setSelectedRole(roleParam);
+    }
+  }, [roleParam]);
 
   // Form State
   const [email, setEmail] = useState("");
@@ -52,7 +60,7 @@ function LoginPage() {
   const showMessage = (text: string, type = "error") => setMsg({ text, type });
   const hideMessage = () => setMsg({ text: "", type: "error" });
 
-  // ── FARMER / USER HANDLERS (Real Account) ──
+  // ── FARMER / USER HANDLERS (Real Account -> /farmer/home) ──
   const handleFarmerSignIn = async () => {
     hideMessage();
     if (!email || !password) return showMessage("Please fill in all fields.");
@@ -61,11 +69,11 @@ function LoginPage() {
     try {
       await signInWithEmail(email, password);
       userLogin(email);
-      showMessage("✅ Signed in! Redirecting…", "success");
+      showMessage("✅ Signed in! Opening Farmer Portal…", "success");
       setTimeout(() => router.push(nextRoute), 600);
     } catch (err: any) {
       userLogin(email);
-      showMessage("✅ Real User Session Started! Redirecting…", "success");
+      showMessage("✅ Real User Session Started! Opening Farmer Portal…", "success");
       setTimeout(() => router.push(nextRoute), 600);
     }
   };
@@ -78,16 +86,16 @@ function LoginPage() {
     try {
       await signUpWithEmail(name, email, password);
       userRegister(name, email);
-      showMessage("🎉 Real Account created! Redirecting…", "success");
+      showMessage("🎉 Real Account created! Opening Farmer Portal…", "success");
       setTimeout(() => router.push(nextRoute), 600);
     } catch (err: any) {
       userRegister(name, email);
-      showMessage("🎉 Real Account Created! Redirecting…", "success");
+      showMessage("🎉 Real Account Created! Opening Farmer Portal…", "success");
       setTimeout(() => router.push(nextRoute), 600);
     }
   };
 
-  // ── SELLER HANDLERS (Real Store Registration) ──
+  // ── SELLER HANDLERS (Real Store Registration -> /vendor/dashboard) ──
   const handleSellerSubmit = () => {
     hideMessage();
     if (tab === 'signin') {
@@ -119,7 +127,7 @@ function LoginPage() {
     }
   };
 
-  // ── ADMIN HANDLER ──
+  // ── ADMIN HANDLER (Admin Auth -> /admin/dashboard) ──
   const handleAdminSubmit = () => {
     hideMessage();
     if (!email || !password) return showMessage("Please enter Admin Email and Master Key.");
@@ -139,15 +147,15 @@ function LoginPage() {
   const triggerDemoFarmer = () => {
     enableDemoMode();
     userLogin("demo@aegroshield.in");
-    showMessage("🌾 Demo Farmer Mode Enabled! Redirecting…", "success");
-    setTimeout(() => router.push(nextRoute), 600);
+    showMessage("🌾 Demo Farmer Mode Enabled! Opening Farmer Portal…", "success");
+    setTimeout(() => router.push("/farmer/home"), 600);
   };
 
   const triggerDemoSeller = () => {
     enableDemoMode();
     const v = vendorLogin("9876543210", "UP-AGR-2021-1421");
     if (v) {
-      showMessage("🏪 Demo Seller Mode Enabled! Opening Sample Dashboard…", "success");
+      showMessage("🏪 Demo Seller Mode Enabled! Opening Sample Vendor Dashboard…", "success");
       setTimeout(() => router.push("/vendor/dashboard"), 600);
     }
   };
@@ -156,7 +164,7 @@ function LoginPage() {
     enableDemoMode();
     const a = adminLogin("admin@aegroshield.in", "AdminPass@123");
     if (a) {
-      showMessage("🛡️ Demo Admin Mode Enabled! Opening Sample Control Panel…", "success");
+      showMessage("🛡️ Demo Admin Mode Enabled! Opening Sample Admin Control Panel…", "success");
       setTimeout(() => router.push("/admin/dashboard"), 600);
     }
   };
@@ -329,7 +337,7 @@ function LoginPage() {
           )}
 
           <div className="back-link">
-            <Link href="/">← Back to Aegroshield Home</Link>
+            <Link href="/">← Back to Aegroshield Gateway</Link>
           </div>
         </div>
       </div>
