@@ -22,6 +22,8 @@ CONTEXT AWARENESS:
 YOUR CAPABILITIES (AGENT ACTIONS):
 You have access to a tool called 'navigate_to_page'.
 If the user asks to go somewhere, buy fertilizers/seeds/pesticides, check cart, checkout, register as a seller, or access admin master panel, CALL THE TOOL 'navigate_to_page':
+- '/' (Master Gateway Portal Selector)
+- '/farmer/home' (Farmer App Home Page)
 - '/login' (for Unified Role Login: Farmer, Seller, Admin)
 - '/marketplace' (for Local Agri-Marketplace storefront)
 - '/cart' (for viewing Shopping Cart & items)
@@ -33,7 +35,6 @@ If the user asks to go somewhere, buy fertilizers/seeds/pesticides, check cart, 
 - '/labour' (for Finding/Offering Farm Labour)
 - '/market' (for Live Mandi/Market Prices)
 - '/calculator' (for Fertilizer/Pesticide Input Calculator)
-- '/' (Home page)
 
 MULTI-ROLE ARCHITECTURE & SYSTEM KNOWLEDGE:
 - Unified Login ('/login') lets users choose their role: Farmer/User, Local Seller, or Platform Admin.

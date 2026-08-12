@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLanguage, type Language } from '@/lib/language-context';
 import { useCart } from '@/lib/cart-context';
-import { getCurrentAdmin, getCurrentVendor, getCurrentUser } from '@/lib/ecommerce-service';
-import { ShoppingBag, Store, Shield } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 
 const LANG_OPTIONS: { value: Language; label: string }[] = [
   { value: 'en',    label: '🇬🇧 English' },
@@ -16,17 +14,12 @@ const LANG_OPTIONS: { value: Language; label: string }[] = [
 export default function Navbar() {
   const { lang, setLang, t } = useLanguage();
   const { cartCount } = useCart();
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-
-  useEffect(() => {
-    setIsAdminLoggedIn(!!getCurrentAdmin());
-  }, []);
 
   return (
     <nav className="navbar">
       <Link href="/" className="nav-brand">🌿 Aegroshield</Link>
       <div className="nav-links">
-        <Link href="/">{t('nav.home')}</Link>
+        <Link href="/farmer/home">{t('nav.home')}</Link>
         <Link href="/marketplace">{t('nav.store')}</Link>
         <Link href="/machinery">{t('nav.machinery')}</Link>
         <Link href="/labour">{t('nav.labour')}</Link>
@@ -39,20 +32,6 @@ export default function Navbar() {
           <span>Cart</span>
           {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
         </Link>
-
-        {/* ── Seller Portal Link ── */}
-        <Link href="/vendor/login" className="nav-seller-btn" title="Seller Portal">
-          <Store size={16} />
-          <span>Seller Portal</span>
-        </Link>
-
-        {/* ── Admin Link (if logged in or accessible) ── */}
-        {isAdminLoggedIn && (
-          <Link href="/admin/dashboard" className="nav-admin-btn" title="Admin Control Panel">
-            <Shield size={16} />
-            <span>Admin</span>
-          </Link>
-        )}
 
         {/* ── Language Toggle ── */}
         <div className="lang-toggle-wrap">
