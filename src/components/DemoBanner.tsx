@@ -12,6 +12,7 @@ export default function DemoBanner() {
 
   useEffect(() => {
     setMounted(true);
+    // Banner MUST ONLY show when in Demo Mode
     setDemoActive(isDemoMode());
   }, [pathname]);
 
@@ -22,7 +23,7 @@ export default function DemoBanner() {
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
         <Sparkles size={16} />
         <span>
-          <strong>Demo Account Active</strong> — Viewing Sample Evaluation Data. (Real Sign-Ups create clean database accounts).
+          <strong>Demo Account Active</strong> — Viewing Sample Evaluation Data.
         </span>
       </div>
     </div>

@@ -160,13 +160,6 @@ export default function VendorDashboardPage() {
 
   return (
     <main className="vendor-dashboard-page">
-      {/* ── Demo Mode Indicator Banner ── */}
-      {demoActive && (
-        <div className="demo-mode-indicator-bar">
-          <Sparkles size={16} /> Viewing Evaluation Demo Data (Sample Store) — Real registrations create clean database stores.
-        </div>
-      )}
-
       {/* ── Dashboard Top Header ── */}
       <header className="vd-header">
         <div className="container vd-header-inner">
