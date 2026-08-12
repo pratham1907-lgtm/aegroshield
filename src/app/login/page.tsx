@@ -6,10 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signInWithEmail, signUpWithEmail, auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import {
-  userLogin, userRegister, vendorLogin, registerVendor, adminLogin,
+  userLogin, userRegister, vendorLogin, registerVendor,
   enableDemoMode, disableDemoMode, type Role
 } from "@/lib/ecommerce-service";
-import { User, Store, Shield } from "lucide-react";
+import { User, Store } from "lucide-react";
 
 export default function LoginPageWrapper() {
   return (
@@ -23,17 +23,22 @@ function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const roleParam = searchParams.get("role") as Role;
-  const secretKeyParam = searchParams.get("secret_key");
+  const secretKeyParam = searchParams.get("secret_key") || searchParams.get("key");
 
-  const SECRET_KEY = process.env.NEXT_PUBLIC_ADMIN_SECRET_KEY || "aegroshield_admin_1907";
-  const isAdminUnlocked = secretKeyParam === SECRET_KEY;
+  // Redirect to dedicated Admin Login page if secret key is present or role is admin
+  useEffect(() => {
+    if (secretKeyParam || roleParam === 'admin') {
+      const key = secretKeyParam || process.env.NEXT_PUBLIC_ADMIN_SECRET_KEY || "aegroshield_admin_1907";
+      router.push(`/admin/login?secret_key=${key}`);
+    }
+  }, [secretKeyParam, roleParam, router]);
 
   // Strict Farmer Redirect Target: ALWAYS /farmer/home (Farmer Dashboard)
   const farmerTarget = "/farmer/home";
 
-  // Role Selection State (initialized from URL if present and authorized)
-  const [selectedRole, setSelectedRole] = useState<Role>(
-    roleParam === 'admin' && !isAdminUnlocked ? 'user' : (roleParam || (isAdminUnlocked ? 'admin' : 'user'))
+  // Role Selection State (Farmers & Sellers ONLY)
+  const [selectedRole, setSelectedRole] = useState<'user' | 'vendor'>(
+    roleParam === 'vendor' ? 'vendor' : 'user'
   );
   const [tab, setTab] = useState<'signin' | 'signup'>('signin');
   const [loading, setLoading] = useState(false);
@@ -41,12 +46,9 @@ function LoginPage() {
 
   // Sync role if URL query changes
   useEffect(() => {
-    if (roleParam && ['user', 'vendor'].includes(roleParam)) {
-      setSelectedRole(roleParam);
-    } else if (roleParam === 'admin' && isAdminUnlocked) {
-      setSelectedRole('admin');
-    }
-  }, [roleParam, isAdminUnlocked]);
+    if (roleParam === 'vendor') setSelectedRole('vendor');
+    if (roleParam === 'user') setSelectedRole('user');
+  }, [roleParam]);
 
   // Form State
   const [email, setEmail] = useState("");
@@ -132,21 +134,6 @@ function LoginPage() {
     }
   };
 
-  // ── ADMIN HANDLER (Admin Auth -> STRICTLY /admin/dashboard) ──
-  const handleAdminSubmit = () => {
-    hideMessage();
-    if (!email || !password) return showMessage("Please enter Admin Email and Master Key.");
-    setLoading(true);
-    const admin = adminLogin(email, password, false); // Real login (isDemo = false)
-    if (admin) {
-      showMessage("🛡️ Admin Authenticated! Opening Master Control Panel…", "success");
-      setTimeout(() => router.push(`/admin/dashboard?secret_key=${SECRET_KEY}`), 500);
-    } else {
-      showMessage("❌ Invalid Admin Credentials.");
-      setLoading(false);
-    }
-  };
-
   // ── DEMO FAST LOGIN HANDLERS (EXPLICITLY ENABLES DEMO MODE WITH MOCK DATA) ──
   const triggerDemoFarmer = () => {
     userLogin("demo@aegroshield.in", true); // Demo login (isDemo = true)
@@ -159,14 +146,6 @@ function LoginPage() {
     if (v) {
       showMessage("🏪 Evaluation Demo Mode Active! Opening Sample Vendor Dashboard with Mock Data…", "success");
       setTimeout(() => router.push("/vendor/dashboard"), 500);
-    }
-  };
-
-  const triggerDemoAdmin = () => {
-    const a = adminLogin("admin@aegroshield.in", "AdminPass@123", true); // Demo login (isDemo = true)
-    if (a) {
-      showMessage("🛡️ Evaluation Demo Mode Active! Opening Sample Admin Panel with Mock Metrics…", "success");
-      setTimeout(() => router.push(`/admin/dashboard?secret_key=${SECRET_KEY}`), 500);
     }
   };
 
@@ -183,10 +162,10 @@ function LoginPage() {
           <div className="brand-sub">Unified Smart Farming Portal</div>
         </div>
 
-        {/* ── Role Selector Tabs (Admin tab ONLY visible if secret_key matches) ── */}
+        {/* ── Role Selector Tabs (Farmers & Sellers ONLY) ── */}
         <div className="role-selector-box">
           <label className="role-label">Select Account Role:</label>
-          <div className="role-pills" style={{ gridTemplateColumns: isAdminUnlocked ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)' }}>
+          <div className="role-pills" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
             <button
               type="button"
               className={`role-pill${selectedRole === 'user' ? ' active' : ''}`}
@@ -201,30 +180,19 @@ function LoginPage() {
             >
               <Store size={16} /> Local Seller
             </button>
-            {isAdminUnlocked && (
-              <button
-                type="button"
-                className={`role-pill${selectedRole === 'admin' ? ' active' : ''}`}
-                onClick={() => { setSelectedRole('admin'); hideMessage(); }}
-              >
-                <Shield size={16} /> Admin
-              </button>
-            )}
           </div>
         </div>
 
         <div className="auth-body">
           {/* Sign in / Sign Up Sub-tabs */}
-          {selectedRole !== 'admin' && (
-            <div className="auth-tabs">
-              <button className={`auth-tab ${tab === 'signin' ? 'active' : ''}`} onClick={() => { setTab('signin'); hideMessage(); }}>
-                Sign In
-              </button>
-              <button className={`auth-tab ${tab === 'signup' ? 'active' : ''}`} onClick={() => { setTab('signup'); hideMessage(); }}>
-                {selectedRole === 'vendor' ? 'Register Store' : 'Create Account'}
-              </button>
-            </div>
-          )}
+          <div className="auth-tabs">
+            <button className={`auth-tab ${tab === 'signin' ? 'active' : ''}`} onClick={() => { setTab('signin'); hideMessage(); }}>
+              Sign In
+            </button>
+            <button className={`auth-tab ${tab === 'signup' ? 'active' : ''}`} onClick={() => { setTab('signup'); hideMessage(); }}>
+              {selectedRole === 'vendor' ? 'Register Store' : 'Create Account'}
+            </button>
+          </div>
 
           {msg.text && (
             <div className={`auth-msg ${msg.type}`}>
@@ -314,27 +282,6 @@ function LoginPage() {
 
               <button className="btn-auth btn-demo" onClick={triggerDemoSeller} style={{ marginTop: '14px' }}>
                 🏪 Evaluation Demo Sign In (Sample Store)
-              </button>
-            </div>
-          )}
-
-          {/* ── ROLE 3: PLATFORM ADMIN (UNLOCKED ONLY VIA SECRET KEY) ── */}
-          {selectedRole === 'admin' && isAdminUnlocked && (
-            <div className="auth-form active">
-              <div className="form-group">
-                <label className="form-label">Admin Email</label>
-                <input type="email" className="form-input" placeholder="admin@aegroshield.in" value={email} onChange={(e) => setEmail(e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Admin Master Key</label>
-                <input type="password" className="form-input" placeholder="AdminPass@123" value={password} onChange={(e) => setPassword(e.target.value)} />
-              </div>
-              <button className="btn-auth btn-primary-auth" onClick={handleAdminSubmit} disabled={loading} style={{ background: '#1e293b' }}>
-                {loading ? <span className="spinner"></span> : "Access Admin Master Panel"}
-              </button>
-
-              <button className="btn-auth btn-demo" onClick={triggerDemoAdmin} style={{ marginTop: '14px' }}>
-                🛡️ Evaluation Demo Sign In (Sample Admin Metrics)
               </button>
             </div>
           )}
