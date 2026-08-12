@@ -42,8 +42,8 @@ export default function Home() {
           </div>
           <div className="step-content">
             <div className="step-label">Step 1</div>
-            <h4 className="step-title">Apna Ilaka Chunein</h4>
-            <p className="step-desc">District select karke paas ke dukaan ke products dekhein.</p>
+            <h4 className="step-title">Select Your Area</h4>
+            <p className="step-desc">Choose your district to see products from nearby stores.</p>
           </div>
           <div className="step-arrow">
             <svg xmlns="http://www.w3.org/2000/svg" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
@@ -56,8 +56,8 @@ export default function Home() {
           </div>
           <div className="step-content">
             <div className="step-label">Step 2</div>
-            <h4 className="step-title">Product Chunein</h4>
-            <p className="step-desc">Fertilizer, pesticide, beej ya equipment — sab milega.</p>
+            <h4 className="step-title">Choose Your Product</h4>
+            <p className="step-desc">Fertilizer, pesticide, seed or equipment — it&#39;s all here.</p>
           </div>
           <div className="step-arrow">
             <svg xmlns="http://www.w3.org/2000/svg" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
@@ -70,8 +70,8 @@ export default function Home() {
           </div>
           <div className="step-content">
             <div className="step-label orange">Step 3</div>
-            <h4 className="step-title">WhatsApp par Order!</h4>
-            <p className="step-desc">Button dabao — order seedha dukandaar ke WhatsApp par chala jaata hai.</p>
+            <h4 className="step-title">Order on WhatsApp!</h4>
+            <p className="step-desc">One tap sends a pre-filled order message directly to the seller&#39;s WhatsApp.</p>
           </div>
           <div className="step-arrow orange">
             <svg xmlns="http://www.w3.org/2000/svg" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
@@ -111,12 +111,12 @@ export default function Home() {
         <p className="page-hero-badge" style={{"background":"#fff7e6","color":"#d97706","display":"inline-flex","marginBottom":"14px"}}>
           🛒 NEW — Local Agri-Marketplace
         </p>
-        <h2 className="section-title">Fertilizer, Beej, Pesticide —<br />Seedha Apne Gaon Ki Dukaan Se</h2>
+        <h2 className="section-title">Buy Agri-Inputs —<br />Directly from Your Local Store</h2>
         <p className="section-sub" style={{"marginBottom":"28px"}}>
-          Ab ek click mein apne district ke naazdiki seller se koi bhi agri-input order karein — sirf WhatsApp par!
+          Order fertilizers, seeds, pesticides and equipment from trusted sellers in your district — all via WhatsApp!
         </p>
         <div style={{"display":"flex","gap":"12px","flexWrap":"wrap"}}>
-          <a href="/marketplace" className="btn btn-primary">🛒 Marketplace Kholein →</a>
+          <a href="/marketplace" className="btn btn-primary">🛒 Open Marketplace →</a>
           <a href="/marketplace?cat=Fertilizer" className="btn btn-outline">🌱 Fertilizers</a>
           <a href="/marketplace?cat=Seed" className="btn btn-outline">🌾 Seeds</a>
           <a href="/marketplace?cat=Pesticide" className="btn btn-outline">🧪 Pesticides</a>

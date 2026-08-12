@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo } from 'react';
+import { useLanguage } from '@/lib/language-context';
 import {
-  PRODUCTS, VENDORS, ALL_DISTRICTS,
+  PRODUCTS, ALL_DISTRICTS,
   getProductsFiltered, getVendorById,
   type Category, type Product
 } from '@/lib/marketplace-data';
@@ -24,15 +25,16 @@ const STOCK_COLORS: Record<string, string> = {
   'Out of Stock': '#ef4444',
 };
 
-function buildWhatsAppLink(product: Product, vendor: ReturnType<typeof getVendorById>, district: string) {
+function buildWhatsAppLink(product: Product, vendor: ReturnType<typeof getVendorById>, district: string, t: (k: string) => string) {
   if (!vendor) return '#';
   const text = encodeURIComponent(
-    `🌾 Aegroshield Order Request\n\nNamaste ${vendor.ownerName} ji,\n\nMujhe ye product chahiye:\n📦 Product: ${product.name}\n💰 Price: ₹${product.price} ${product.unit}\n📍 My District: ${district === 'All' ? 'Not specified' : district}\n\nKripya stock aur availability confirm karein.\n\n– Aegroshield Farmer App`
+    `🌾 Aegroshield Order Request\n\n${t('mp.wa.greeting')} ${vendor.ownerName} ji,\n\n${t('mp.wa.want')}\n📦 Product: ${product.name}\n💰 Price: ₹${product.price} ${product.unit}\n📍 District: ${district === 'All' ? 'Not specified' : district}\n\n${t('mp.wa.confirm')}\n\n– Aegroshield Farmer App`
   );
   return `https://wa.me/${vendor.phone}?text=${text}`;
 }
 
 export default function MarketplacePage() {
+  const { t, lang } = useLanguage();
   const [district, setDistrict] = useState('All');
   const [category, setCategory] = useState<CategoryFilter>('All');
   const [search, setSearch] = useState('');
@@ -57,12 +59,12 @@ export default function MarketplacePage() {
       <section className="mp-hero">
         <div className="container">
           <p className="page-hero-badge" style={{ background: '#e8f5d6', color: 'var(--primary)', display: 'inline-flex', marginBottom: '14px' }}>
-            🛒 Local Agri-Marketplace
+            {t('mp.badge')}
           </p>
-          <h1 className="mp-title">Apne Khetibaari ki<br /><em>Zaroori Cheezein</em> Khareedein</h1>
-          <p className="mp-subtitle">
-            Fertilizers, pesticides, seeds aur equipment — seedhe apne naazdiki dukaan se, WhatsApp par order karein.
-          </p>
+          <h1 className="mp-title">
+            {t('mp.title1')}<br /><em>{t('mp.title2')}</em>
+          </h1>
+          <p className="mp-subtitle">{t('mp.subtitle')}</p>
 
           {/* ── Search Bar ── */}
           <div className="mp-search-bar">
@@ -70,7 +72,7 @@ export default function MarketplacePage() {
             <input
               type="text"
               className="mp-search-input"
-              placeholder="Search product, crop, brand..."
+              placeholder={t('mp.search')}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -81,15 +83,14 @@ export default function MarketplacePage() {
       <div className="container">
         {/* ── Filters ── */}
         <div className="mp-filters">
-          {/* District Filter */}
           <div className="mp-filter-group">
-            <label className="mp-filter-label">📍 District</label>
+            <label className="mp-filter-label">{t('mp.district.label')}</label>
             <select
               className="mp-select"
               value={district}
               onChange={e => setDistrict(e.target.value)}
             >
-              <option value="All">All Districts (UP)</option>
+              <option value="All">{t('mp.district.all')}</option>
               {ALL_DISTRICTS.map(d => (
                 <option key={d} value={d}>{d}</option>
               ))}
@@ -112,8 +113,8 @@ export default function MarketplacePage() {
 
         {/* ── Results count ── */}
         <div className="mp-results-info">
-          <strong>{filtered.length}</strong> products found
-          {district !== 'All' && <span> in <strong>{district}</strong></span>}
+          <strong>{filtered.length}</strong> {t('mp.results')}
+          {district !== 'All' && <span> {t('mp.results.in')} <strong>{district}</strong></span>}
           {category !== 'All' && <span> › <strong>{category}</strong></span>}
         </div>
 
@@ -121,31 +122,29 @@ export default function MarketplacePage() {
         {filtered.length === 0 ? (
           <div className="mp-empty">
             <span style={{ fontSize: '3rem' }}>📭</span>
-            <h3>No products found</h3>
-            <p>Try selecting a different district or category.</p>
+            <h3>{t('mp.empty.title')}</h3>
+            <p>{t('mp.empty.sub')}</p>
           </div>
         ) : (
           <div className="mp-product-grid">
             {filtered.map(product => {
               const vendor = getVendorById(product.vendorId);
-              const waLink = buildWhatsAppLink(product, vendor, district);
+              const waLink = buildWhatsAppLink(product, vendor, district, t);
+              const isHindi = lang === 'hi';
               return (
                 <div key={product.id} className="mp-product-card">
                   {/* Category badge */}
                   <div className="mp-card-header">
                     <span className="mp-cat-badge">{CATEGORY_ICONS[product.category]} {product.category}</span>
-                    <span
-                      className="mp-stock-badge"
-                      style={{ color: STOCK_COLORS[product.stock] }}
-                    >
-                      ● {product.stock}
+                    <span className="mp-stock-badge" style={{ color: STOCK_COLORS[product.stock] }}>
+                      ● {product.stock === 'Out of Stock' ? t('mp.out_of_stock') : product.stock}
                     </span>
                   </div>
 
                   {/* Product Info */}
-                  <h3 className="mp-product-name">{product.name}</h3>
-                  <p className="mp-product-name-hi">{product.nameHi}</p>
-                  <p className="mp-product-brand">Brand: {product.brand}</p>
+                  <h3 className="mp-product-name">{isHindi ? product.nameHi : product.name}</h3>
+                  {isHindi && <p className="mp-product-name-sub">{product.name}</p>}
+                  <p className="mp-product-brand">{t('mp.brand')} {product.brand}</p>
                   <p className="mp-product-desc">{product.description}</p>
 
                   {/* Crops */}
@@ -184,7 +183,7 @@ export default function MarketplacePage() {
                     onClick={e => product.stock === 'Out of Stock' && e.preventDefault()}
                   >
                     <span>📲</span>
-                    {product.stock === 'Out of Stock' ? 'Out of Stock' : 'Order on WhatsApp'}
+                    {product.stock === 'Out of Stock' ? t('mp.out_of_stock') : t('mp.order.wa')}
                   </a>
                 </div>
               );
@@ -196,25 +195,25 @@ export default function MarketplacePage() {
       {/* ── How it works ── */}
       <section className="mp-how" id="how-it-works">
         <div className="container">
-          <h2 className="section-title" style={{ textAlign: 'center' }}>Order Karna Hai Aasaan!</h2>
+          <h2 className="section-title" style={{ textAlign: 'center' }}>{t('mp.how.title')}</h2>
           <p className="section-sub" style={{ textAlign: 'center', marginBottom: '40px' }}>
-            Sirf 3 steps mein apne khetibaari ki zaroori cheezein mangwayein
+            {t('mp.how.sub')}
           </p>
           <div className="mp-how-grid">
             <div className="mp-how-card">
               <div className="mp-how-num">1</div>
-              <h4>District & Item Chunein</h4>
-              <p>Apna district select karein aur zarurat ki cheez dhundein — fertilizer, beej ya pesticide.</p>
+              <h4>{t('mp.how.1.title')}</h4>
+              <p>{t('mp.how.1.body')}</p>
             </div>
             <div className="mp-how-card">
               <div className="mp-how-num">2</div>
-              <h4>"Order on WhatsApp" Dabayein</h4>
-              <p>Button dabate hi ek ready-made order message ban jaata hai — seedha dukandaar ke WhatsApp par.</p>
+              <h4>{t('mp.how.2.title')}</h4>
+              <p>{t('mp.how.2.body')}</p>
             </div>
             <div className="mp-how-card">
               <div className="mp-how-num">3</div>
-              <h4>Seedha Delivery ya Pickup</h4>
-              <p>Dukandaar se baat karo, price confirm karo, aur apne khet par delivery ya khud le aao.</p>
+              <h4>{t('mp.how.3.title')}</h4>
+              <p>{t('mp.how.3.body')}</p>
             </div>
           </div>
         </div>

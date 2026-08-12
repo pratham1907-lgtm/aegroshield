@@ -3061,6 +3061,42 @@ footer a:hover {
 .login-page-container { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 64px); padding: 20px; position: relative; overflow: hidden; background: var(--ivory); }
 
 /* ============================================================
+   LANGUAGE TOGGLE — Navbar
+   ============================================================ */
+.lang-toggle-wrap {
+  display: flex;
+  align-items: center;
+}
+.lang-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(45,95,63,0.1);
+  border: 1.5px solid rgba(45,95,63,0.3);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  min-width: 90px;
+}
+.lang-select:hover {
+  border-color: var(--primary);
+  background: rgba(45,95,63,0.15);
+}
+.lang-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+/* Dark navbar variant */
+.navbar.dark .lang-select {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.3);
+  color: #fff;
+}
+
+/* ============================================================
    MARKETPLACE — Local Agri-Store
    ============================================================ */
 
