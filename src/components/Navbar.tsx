@@ -20,9 +20,9 @@ export default function Navbar() {
       <Link href="/" className="nav-brand">🌿 Aegroshield</Link>
       <div className="nav-links">
         <Link href="/">{t('nav.home')}</Link>
+        <Link href="/marketplace">{t('nav.store')}</Link>
         <Link href="/machinery">{t('nav.machinery')}</Link>
         <Link href="/labour">{t('nav.labour')}</Link>
-        <Link href="/marketplace">{t('nav.store')}</Link>
         <Link href="/market">{t('nav.market')}</Link>
         <Link href="/calculator">{t('nav.calculator')}</Link>
 
