@@ -23,22 +23,30 @@ function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const roleParam = searchParams.get("role") as Role;
+  const secretKeyParam = searchParams.get("secret_key");
+
+  const SECRET_KEY = process.env.NEXT_PUBLIC_ADMIN_SECRET_KEY || "aegroshield_admin_1907";
+  const isAdminUnlocked = secretKeyParam === SECRET_KEY;
 
   // Strict Farmer Redirect Target: ALWAYS /farmer/home (Farmer Dashboard)
   const farmerTarget = "/farmer/home";
 
-  // Role Selection State (initialized from URL if present)
-  const [selectedRole, setSelectedRole] = useState<Role>(roleParam || 'user');
+  // Role Selection State (initialized from URL if present and authorized)
+  const [selectedRole, setSelectedRole] = useState<Role>(
+    roleParam === 'admin' && !isAdminUnlocked ? 'user' : (roleParam || (isAdminUnlocked ? 'admin' : 'user'))
+  );
   const [tab, setTab] = useState<'signin' | 'signup'>('signin');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ text: "", type: "error" });
 
   // Sync role if URL query changes
   useEffect(() => {
-    if (roleParam && ['user', 'vendor', 'admin'].includes(roleParam)) {
+    if (roleParam && ['user', 'vendor'].includes(roleParam)) {
       setSelectedRole(roleParam);
+    } else if (roleParam === 'admin' && isAdminUnlocked) {
+      setSelectedRole('admin');
     }
-  }, [roleParam]);
+  }, [roleParam, isAdminUnlocked]);
 
   // Form State
   const [email, setEmail] = useState("");
@@ -61,7 +69,7 @@ function LoginPage() {
   const showMessage = (text: string, type = "error") => setMsg({ text, type });
   const hideMessage = () => setMsg({ text: "", type: "error" });
 
-  // ── FARMER / USER HANDLERS (Real Account -> /farmer/home) ──
+  // ── FARMER / USER HANDLERS (Real Account -> STRICTLY /farmer/home) ──
   const handleFarmerSignIn = async () => {
     hideMessage();
     if (!email || !password) return showMessage("Please fill in all fields.");
@@ -94,7 +102,7 @@ function LoginPage() {
     }
   };
 
-  // ── SELLER HANDLERS (Real Store Registration -> /vendor/dashboard) ──
+  // ── SELLER HANDLERS (Real Store Registration -> STRICTLY /vendor/dashboard) ──
   const handleSellerSubmit = () => {
     hideMessage();
     if (tab === 'signin') {
@@ -124,7 +132,7 @@ function LoginPage() {
     }
   };
 
-  // ── ADMIN HANDLER (Admin Auth -> /admin/dashboard) ──
+  // ── ADMIN HANDLER (Admin Auth -> STRICTLY /admin/dashboard) ──
   const handleAdminSubmit = () => {
     hideMessage();
     if (!email || !password) return showMessage("Please enter Admin Email and Master Key.");
@@ -132,7 +140,7 @@ function LoginPage() {
     const admin = adminLogin(email, password, false); // Real login (isDemo = false)
     if (admin) {
       showMessage("🛡️ Admin Authenticated! Opening Master Control Panel…", "success");
-      setTimeout(() => router.push("/admin/dashboard"), 500);
+      setTimeout(() => router.push(`/admin/dashboard?secret_key=${SECRET_KEY}`), 500);
     } else {
       showMessage("❌ Invalid Admin Credentials.");
       setLoading(false);
@@ -158,7 +166,7 @@ function LoginPage() {
     const a = adminLogin("admin@aegroshield.in", "AdminPass@123", true); // Demo login (isDemo = true)
     if (a) {
       showMessage("🛡️ Evaluation Demo Mode Active! Opening Sample Admin Panel with Mock Metrics…", "success");
-      setTimeout(() => router.push("/admin/dashboard"), 500);
+      setTimeout(() => router.push(`/admin/dashboard?secret_key=${SECRET_KEY}`), 500);
     }
   };
 
@@ -175,10 +183,10 @@ function LoginPage() {
           <div className="brand-sub">Unified Smart Farming Portal</div>
         </div>
 
-        {/* ── Role Selector Tabs ── */}
+        {/* ── Role Selector Tabs (Admin tab ONLY visible if secret_key matches) ── */}
         <div className="role-selector-box">
           <label className="role-label">Select Account Role:</label>
-          <div className="role-pills">
+          <div className="role-pills" style={{ gridTemplateColumns: isAdminUnlocked ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)' }}>
             <button
               type="button"
               className={`role-pill${selectedRole === 'user' ? ' active' : ''}`}
@@ -193,13 +201,15 @@ function LoginPage() {
             >
               <Store size={16} /> Local Seller
             </button>
-            <button
-              type="button"
-              className={`role-pill${selectedRole === 'admin' ? ' active' : ''}`}
-              onClick={() => { setSelectedRole('admin'); hideMessage(); }}
-            >
-              <Shield size={16} /> Admin
-            </button>
+            {isAdminUnlocked && (
+              <button
+                type="button"
+                className={`role-pill${selectedRole === 'admin' ? ' active' : ''}`}
+                onClick={() => { setSelectedRole('admin'); hideMessage(); }}
+              >
+                <Shield size={16} /> Admin
+              </button>
+            )}
           </div>
         </div>
 
@@ -308,8 +318,8 @@ function LoginPage() {
             </div>
           )}
 
-          {/* ── ROLE 3: PLATFORM ADMIN ── */}
-          {selectedRole === 'admin' && (
+          {/* ── ROLE 3: PLATFORM ADMIN (UNLOCKED ONLY VIA SECRET KEY) ── */}
+          {selectedRole === 'admin' && isAdminUnlocked && (
             <div className="auth-form active">
               <div className="form-group">
                 <label className="form-label">Admin Email</label>

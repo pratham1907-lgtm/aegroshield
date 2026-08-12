@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { User, Store, Shield, ArrowRight, CheckCircle2 } from "lucide-react";
+import { User, Store, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default function MasterGatewayPage() {
   return (
@@ -31,15 +31,15 @@ export default function MasterGatewayPage() {
             Welcome to <em>Aegroshield</em>
           </h1>
           <p className="gateway-subtitle">
-            The unified smart agriculture platform connecting Indian Farmers, Local Dealers, and Regional Authorities. Choose your portal below to sign in or access demo mode:
+            The unified smart agriculture platform connecting Indian Farmers and Local Agri-Dealers. Choose your portal below to get started:
           </p>
         </div>
       </section>
 
-      {/* ── 3 Portal Selector Cards ── */}
+      {/* ── 2 Portal Selector Cards (Farmers & Local Sellers) ── */}
       <section className="gateway-portals-section">
-        <div className="container" style={{ maxWidth: "1100px" }}>
-          <div className="gateway-grid">
+        <div className="container" style={{ maxWidth: "900px" }}>
+          <div className="gateway-grid gateway-grid-two">
             
             {/* PORTAL 1: FARMER & BUYER */}
             <div className="portal-card farmer-card">
@@ -91,33 +91,6 @@ export default function MasterGatewayPage() {
                 </Link>
                 <Link href="/vendor/register" className="portal-sublink" style={{ color: "#ea580c" }}>
                   Register New Agri-Store →
-                </Link>
-              </div>
-            </div>
-
-            {/* PORTAL 3: PLATFORM ADMINISTRATOR */}
-            <div className="portal-card admin-card">
-              <div className="portal-card-header">
-                <div className="portal-icon dark">🛡️</div>
-                <span className="portal-tag dark">Platform Control</span>
-              </div>
-              <h2 className="portal-title">Admin Master Panel</h2>
-              <p className="portal-desc">
-                Inspect shopkeeper license certificates, grant platform accreditation, audit listed products, and monitor regional analytics.
-              </p>
-
-              <ul className="portal-features">
-                <li><CheckCircle2 size={16} color="#38bdf8" /> Dealer Verification & License Inspection</li>
-                <li><CheckCircle2 size={16} color="#38bdf8" /> Banned Chemical & Quality Moderation</li>
-                <li><CheckCircle2 size={16} color="#38bdf8" /> Regional Engagement & GMV Analytics</li>
-              </ul>
-
-              <div className="portal-action-box">
-                <Link href="/login?role=admin" className="btn btn-primary btn-full btn-lg" style={{ background: "#0f172a", borderColor: "#0f172a" }}>
-                  Admin Master Login <ArrowRight size={18} />
-                </Link>
-                <Link href="/login?role=admin" className="portal-sublink" style={{ color: "#475569" }}>
-                  Access Demo Admin Control Panel →
                 </Link>
               </div>
             </div>
