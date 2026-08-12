@@ -1,20 +1,20 @@
 import Link from "next/link";
-import { User, Store, Shield, ArrowRight, CheckCircle2, ChevronRight } from "lucide-react";
+import { User, Store, Shield, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default function MasterGatewayPage() {
   return (
     <main className="gateway-page">
-      {/* ── Top Gateway Navbar / Header ── */}
+      {/* ── Top Gateway Navbar / Header (Strictly Brand & Sign In only) ── */}
       <header className="gateway-navbar">
         <div className="container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px" }}>
-          <div className="nav-brand" style={{ fontSize: "1.5rem", fontWeight: "800", color: "var(--primary)" }}>
+          <div className="nav-brand" style={{ fontSize: "1.5rem", fontWeight: "800", color: "var(--primary)", display: "flex", alignItems: "center", gap: "8px" }}>
             🌿 Aegroshield
           </div>
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
             <span style={{ fontSize: "0.85rem", color: "var(--text-mid)", fontWeight: "600" }}>
               Smart Agriculture Platform 🇮🇳
             </span>
-            <Link href="/login" className="btn btn-outline btn-sm">
+            <Link href="/login" className="btn btn-primary btn-sm">
               Sign In / Login
             </Link>
           </div>
@@ -25,13 +25,13 @@ export default function MasterGatewayPage() {
       <section className="gateway-hero">
         <div className="container" style={{ maxWidth: "1000px", textAlign: "center" }}>
           <div className="hero-tag" style={{ margin: "0 auto 16px", display: "inline-flex" }}>
-            <span></span> Select Your Ecosystem Portal 🇮🇳
+            <span></span> Select Your Portal to Continue 🇮🇳
           </div>
           <h1 className="gateway-title">
             Welcome to <em>Aegroshield</em>
           </h1>
           <p className="gateway-subtitle">
-            The unified smart agriculture platform connecting Indian Farmers, Local Dealers, and Regional Authorities. Choose your role to enter:
+            The unified smart agriculture platform connecting Indian Farmers, Local Dealers, and Regional Authorities. Choose your portal below to sign in or access demo mode:
           </p>
         </div>
       </section>
@@ -59,11 +59,11 @@ export default function MasterGatewayPage() {
               </ul>
 
               <div className="portal-action-box">
-                <Link href="/farmer/home" className="btn btn-primary btn-full btn-lg">
-                  Enter Farmer Portal <ArrowRight size={18} />
+                <Link href="/login?role=user" className="btn btn-primary btn-full btn-lg">
+                  Farmer Sign In / Account <ArrowRight size={18} />
                 </Link>
-                <Link href="/marketplace" className="portal-sublink">
-                  Browse Marketplace directly →
+                <Link href="/farmer/home" className="portal-sublink">
+                  Or explore Farmer App directly →
                 </Link>
               </div>
             </div>
@@ -87,7 +87,7 @@ export default function MasterGatewayPage() {
 
               <div className="portal-action-box">
                 <Link href="/login?role=vendor" className="btn btn-primary btn-full btn-lg" style={{ background: "#ea580c", borderColor: "#ea580c" }}>
-                  Seller Login / Portal <ArrowRight size={18} />
+                  Seller Sign In / Portal <ArrowRight size={18} />
                 </Link>
                 <Link href="/vendor/register" className="portal-sublink" style={{ color: "#ea580c" }}>
                   Register New Agri-Store →

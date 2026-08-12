@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage, type Language } from '@/lib/language-context';
@@ -16,9 +17,20 @@ export default function Navbar() {
   const pathname = usePathname();
   const { lang, setLang, t } = useLanguage();
   const { cartCount } = useCart();
+  const [mounted, setMounted] = useState(false);
 
-  // Hide farmer navbar on vendor/admin dashboards and on Gateway Landing page (/)
-  if (pathname === '/' || pathname.startsWith('/vendor/') || pathname.startsWith('/admin/')) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Hide farmer navbar on Gateway Landing page (/), Login (/login), Vendor pages (/vendor/...), and Admin pages (/admin/...)
+  if (
+    !mounted ||
+    pathname === '/' ||
+    pathname === '/login' ||
+    pathname.startsWith('/vendor') ||
+    pathname.startsWith('/admin')
+  ) {
     return null;
   }
 
