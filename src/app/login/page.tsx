@@ -22,8 +22,10 @@ export default function LoginPageWrapper() {
 function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextRoute = searchParams.get("next") || "/farmer/home";
   const roleParam = searchParams.get("role") as Role;
+
+  // Strict Farmer Redirect Target: ALWAYS /farmer/home (Farmer Dashboard)
+  const farmerTarget = "/farmer/home";
 
   // Role Selection State (initialized from URL if present)
   const [selectedRole, setSelectedRole] = useState<Role>(roleParam || 'user');
@@ -51,16 +53,16 @@ function LoginPage() {
       if (user && selectedRole === 'user') {
         disableDemoMode();
         userLogin(user.email || 'user@aegroshield.in');
-        router.push(nextRoute);
+        router.push(farmerTarget);
       }
     });
     return () => unsubscribe();
-  }, [router, nextRoute, selectedRole]);
+  }, [router, selectedRole]);
 
   const showMessage = (text: string, type = "error") => setMsg({ text, type });
   const hideMessage = () => setMsg({ text: "", type: "error" });
 
-  // ── FARMER / USER HANDLERS (Real Account -> /farmer/home) ──
+  // ── FARMER / USER HANDLERS (Real Account -> STRICTLY /farmer/home) ──
   const handleFarmerSignIn = async () => {
     hideMessage();
     if (!email || !password) return showMessage("Please fill in all fields.");
@@ -69,12 +71,12 @@ function LoginPage() {
     try {
       await signInWithEmail(email, password);
       userLogin(email);
-      showMessage("✅ Signed in! Opening Farmer Portal…", "success");
-      setTimeout(() => router.push(nextRoute), 600);
+      showMessage("✅ Signed in! Opening Farmer Dashboard…", "success");
+      setTimeout(() => router.push(farmerTarget), 500);
     } catch (err: any) {
       userLogin(email);
-      showMessage("✅ Real User Session Started! Opening Farmer Portal…", "success");
-      setTimeout(() => router.push(nextRoute), 600);
+      showMessage("✅ Real Farmer Session Started! Opening Farmer Dashboard…", "success");
+      setTimeout(() => router.push(farmerTarget), 500);
     }
   };
 
@@ -86,16 +88,16 @@ function LoginPage() {
     try {
       await signUpWithEmail(name, email, password);
       userRegister(name, email);
-      showMessage("🎉 Real Account created! Opening Farmer Portal…", "success");
-      setTimeout(() => router.push(nextRoute), 600);
+      showMessage("🎉 Real Account created! Opening Farmer Dashboard…", "success");
+      setTimeout(() => router.push(farmerTarget), 500);
     } catch (err: any) {
       userRegister(name, email);
-      showMessage("🎉 Real Account Created! Opening Farmer Portal…", "success");
-      setTimeout(() => router.push(nextRoute), 600);
+      showMessage("🎉 Real Farmer Account Created! Opening Farmer Dashboard…", "success");
+      setTimeout(() => router.push(farmerTarget), 500);
     }
   };
 
-  // ── SELLER HANDLERS (Real Store Registration -> /vendor/dashboard) ──
+  // ── SELLER HANDLERS (Real Store Registration -> STRICTLY /vendor/dashboard) ──
   const handleSellerSubmit = () => {
     hideMessage();
     if (tab === 'signin') {
@@ -105,7 +107,7 @@ function LoginPage() {
       const vendor = vendorLogin(phone, license);
       if (vendor) {
         showMessage("🏪 Welcome back, Seller! Opening Vendor Dashboard…", "success");
-        setTimeout(() => router.push("/vendor/dashboard"), 600);
+        setTimeout(() => router.push("/vendor/dashboard"), 500);
       } else {
         showMessage("❌ No store found with these details. Please Register your Store.");
         setLoading(false);
@@ -123,11 +125,11 @@ function LoginPage() {
         license,
       });
       showMessage("🎉 Store registered! Opening clean Vendor Dashboard…", "success");
-      setTimeout(() => router.push("/vendor/dashboard"), 600);
+      setTimeout(() => router.push("/vendor/dashboard"), 500);
     }
   };
 
-  // ── ADMIN HANDLER (Admin Auth -> /admin/dashboard) ──
+  // ── ADMIN HANDLER (Admin Auth -> STRICTLY /admin/dashboard) ──
   const handleAdminSubmit = () => {
     hideMessage();
     if (!email || !password) return showMessage("Please enter Admin Email and Master Key.");
@@ -136,7 +138,7 @@ function LoginPage() {
     const admin = adminLogin(email, password);
     if (admin) {
       showMessage("🛡️ Admin Authenticated! Opening Master Control Panel…", "success");
-      setTimeout(() => router.push("/admin/dashboard"), 600);
+      setTimeout(() => router.push("/admin/dashboard"), 500);
     } else {
       showMessage("❌ Invalid Admin Credentials.");
       setLoading(false);
@@ -147,8 +149,8 @@ function LoginPage() {
   const triggerDemoFarmer = () => {
     enableDemoMode();
     userLogin("demo@aegroshield.in");
-    showMessage("🌾 Demo Farmer Mode Enabled! Opening Farmer Portal…", "success");
-    setTimeout(() => router.push("/farmer/home"), 600);
+    showMessage("🌾 Demo Farmer Mode Enabled! Opening Farmer Dashboard…", "success");
+    setTimeout(() => router.push(farmerTarget), 500);
   };
 
   const triggerDemoSeller = () => {
@@ -156,7 +158,7 @@ function LoginPage() {
     const v = vendorLogin("9876543210", "UP-AGR-2021-1421");
     if (v) {
       showMessage("🏪 Demo Seller Mode Enabled! Opening Sample Vendor Dashboard…", "success");
-      setTimeout(() => router.push("/vendor/dashboard"), 600);
+      setTimeout(() => router.push("/vendor/dashboard"), 500);
     }
   };
 
@@ -165,7 +167,7 @@ function LoginPage() {
     const a = adminLogin("admin@aegroshield.in", "AdminPass@123");
     if (a) {
       showMessage("🛡️ Demo Admin Mode Enabled! Opening Sample Admin Control Panel…", "success");
-      setTimeout(() => router.push("/admin/dashboard"), 600);
+      setTimeout(() => router.push("/admin/dashboard"), 500);
     }
   };
 
