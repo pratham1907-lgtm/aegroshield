@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Store, ArrowRight, ShieldCheck, ShoppingBag } from "lucide-react";
 
 export default function FarmerHomePage() {
   return (
@@ -182,6 +183,41 @@ export default function FarmerHomePage() {
   </div>
 </section>
 
+{/* ── SELLER REGISTRATION CALL-TO-ACTION BANNER ──────────────────── */}
+<section style={{ padding: '60px 0', background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', borderTop: '1px solid #fed7aa', borderBottom: '1px solid #fed7aa' }}>
+  <div className="container" style={{ maxWidth: '1000px' }}>
+    <div style={{ background: '#fff', borderRadius: '24px', padding: '36px 32px', boxShadow: '0 10px 30px rgba(234,88,12,0.08)', border: '1px solid #ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '30px', flexWrap: 'wrap' }}>
+      <div style={{ flex: '1', minWidth: '280px' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#ffedd5', color: '#c2410c', padding: '6px 14px', borderRadius: '30px', fontSize: '0.82rem', fontWeight: '700', marginBottom: '12px' }}>
+          <Store size={16} /> Local Dealer Partnership 🏬
+        </div>
+        <h2 style={{ fontSize: 'clamp(1.6rem, 3vw, 2.2rem)', fontWeight: '800', color: '#7c2d12', lineHeight: '1.2', marginBottom: '10px' }}>
+          Are You a Local Agri-Input Dealer or Shopkeeper?
+        </h2>
+        <p style={{ fontSize: '1rem', color: '#9a3412', lineHeight: '1.6', margin: 0 }}>
+          Expand your reach! Register your shop on Aegroshield to showcase your inventory of fertilizers, seeds, and pesticides to thousands of farmers in your district.
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '240px' }}>
+        <Link
+          href="/vendor/login?tab=signup"
+          className="btn btn-primary"
+          style={{ background: '#ea580c', borderColor: '#ea580c', color: '#fff', padding: '14px 24px', fontSize: '1rem', fontWeight: '700', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 14px rgba(234,88,12,0.3)' }}
+        >
+          <Store size={18} /> Register Store as Seller <ArrowRight size={18} />
+        </Link>
+        <Link
+          href="/vendor/login"
+          style={{ textAlign: 'center', fontSize: '0.88rem', fontWeight: '600', color: '#c2410c', textDecoration: 'none' }}
+        >
+          Already registered? Login to Seller Portal →
+        </Link>
+      </div>
+    </div>
+  </div>
+</section>
+
 {/* ── How It Works Section ──────────────────────────────────────── */}
 <section className="mp-how" style={{"padding":"60px 0","background":"#f8fafc"}}>
   <div className="container">
@@ -220,6 +256,7 @@ export default function FarmerHomePage() {
         <Link href="/labour">Labour</Link>
         <Link href="/market">Market Price</Link>
         <Link href="/calculator">Calculator</Link>
+        <Link href="/vendor/login" style={{ color: '#ea580c', fontWeight: '700' }}>Seller Portal 🏬</Link>
       </div>
       <p className="footer-copy">&copy; 2026 Aegroshield. All rights reserved.</p>
     </div>

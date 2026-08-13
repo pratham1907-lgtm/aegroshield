@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { vendorLogin, registerVendor, disableDemoMode, enableDemoMode } from '@/lib/ecommerce-service';
 import { ALL_DISTRICTS } from '@/lib/marketplace-data';
-import { Store, ShieldCheck, ArrowRight, CheckCircle2, Sparkles } from 'lucide-react';
+import { Store, ShieldCheck, ArrowRight, User } from 'lucide-react';
 
 export default function VendorLoginPageWrapper() {
   return (
@@ -275,7 +275,29 @@ function VendorLoginPage() {
             </div>
           )}
 
-          <div className="back-link" style={{ marginTop: '20px', textAlign: 'center' }}>
+          {/* ── REDIRECTION LINK TO FARMER LOGIN PAGE ── */}
+          <div className="farmer-redirect-box" style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', textAlign: 'center' }}>
+            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>
+              Are you a farmer or buyer?
+            </p>
+            <Link
+              href="/login"
+              style={{
+                fontSize: '0.88rem',
+                fontWeight: '600',
+                color: '#16a34a',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginTop: '4px'
+              }}
+            >
+              <User size={15} /> Login / Sign Up as a Farmer →
+            </Link>
+          </div>
+
+          <div className="back-link" style={{ marginTop: '14px', textAlign: 'center' }}>
             <Link href="/" style={{ color: '#64748b', fontSize: '0.85rem', textDecoration: 'none' }}>
               ← Return to Aegroshield Home
             </Link>
