@@ -30,14 +30,15 @@ export default function FarmerHomePage() {
       </div>
     </div>
 
-    {/* ── Hero Visual: Multi-Tool Quick Hub Widget ── */}
+    {/* ── Hero Visual: Multi-Tool Quick Hub Widget (With Machinery & Labour Included) ── */}
     <div className="hero-visual">
-      <div className="hero-card-main pipeline-card" style={{ display: "flex", flexDirection: "column", gap: "14px", maxWidth: "420px", width: "100%" }}>
+      <div className="hero-card-main pipeline-card" style={{ display: "flex", flexDirection: "column", gap: "12px", maxWidth: "420px", width: "100%" }}>
         <div style={{ fontWeight: "800", color: "var(--primary)", fontSize: "1.1rem", borderBottom: "1.5px solid var(--gray-100)", paddingBottom: "10px", marginBottom: "2px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span>🌾 Aegroshield Smart Hub</span>
           <span style={{ fontSize: "0.75rem", background: "#e8f5d6", color: "var(--primary)", padding: "3px 8px", borderRadius: "6px", fontWeight: "700" }}>5 Tools Included</span>
         </div>
 
+        {/* TOOL 1: AGRI-STORE */}
         <Link href="/marketplace" className="pipeline-step highlighted" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="step-icon-box green">
             <ShoppingBag size={18} />
@@ -50,6 +51,7 @@ export default function FarmerHomePage() {
           <div className="step-arrow green">→</div>
         </Link>
 
+        {/* TOOL 2: MACHINERY RENTALS */}
         <Link href="/machinery" className="pipeline-step" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="step-icon-box green">
             <Tractor size={18} />
@@ -62,6 +64,20 @@ export default function FarmerHomePage() {
           <div className="step-arrow">→</div>
         </Link>
 
+        {/* TOOL 3: LABOUR BOARD */}
+        <Link href="/labour" className="pipeline-step" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <div className="step-icon-box green">
+            <Users size={18} />
+          </div>
+          <div className="step-content">
+            <div className="step-label">Hiring</div>
+            <h4 className="step-title">Farm Labour Board</h4>
+            <p className="step-desc">Hire skilled farm workers & teams</p>
+          </div>
+          <div className="step-arrow">→</div>
+        </Link>
+
+        {/* TOOL 4: MANDI RATES */}
         <Link href="/market" className="pipeline-step" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="step-icon-box green">
             <TrendingUp size={18} />
@@ -74,7 +90,7 @@ export default function FarmerHomePage() {
           <div className="step-arrow">→</div>
         </Link>
       </div>
-      <div className="hero-badge-float hbf-1">✅ 100% Verified Local Inputs</div>
+      <div className="hero-badge-float hbf-1">✅ Verified Inputs & CHCs</div>
     </div>
   </div>
 </section>
