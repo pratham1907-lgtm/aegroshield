@@ -4,21 +4,24 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  getCurrentAdmin, adminLogout, getVendors, getProducts, getOrders,
-  toggleVendorVerification, toggleProductBanned, updateOrderStatus, getPlatformAnalytics,
-  type ExtendedVendor, type ExtendedProduct, type Order, type OrderStatus
+  getCurrentAdmin, adminLogout, getVendors, getProducts, getOrders, getMachineryListings, getLabourListings,
+  toggleVendorVerification, toggleProductBanned, updateOrderStatus, toggleMachineryAvailability, toggleLabourAvailability,
+  getPlatformAnalytics, type ExtendedVendor, type ExtendedProduct, type Order, type OrderStatus
 } from '@/lib/ecommerce-service';
-import { Shield, Users, Store, Package, ShoppingBag, TrendingUp, CheckCircle2, AlertTriangle, Ban, LogOut, Check, X, Search, RefreshCw } from 'lucide-react';
+import type { MockMachinery, MockLabour } from '@/lib/mockData';
+import { Shield, Users, Store, Package, ShoppingBag, TrendingUp, CheckCircle2, AlertTriangle, Ban, LogOut, Check, X, Search, RefreshCw, Tractor, UserCheck } from 'lucide-react';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [admin, setAdmin] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<'analytics' | 'dealers' | 'products' | 'orders'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'dealers' | 'products' | 'machinery' | 'labour' | 'orders'>('analytics');
 
   const [analytics, setAnalytics] = useState<any | null>(null);
   const [vendors, setVendors] = useState<ExtendedVendor[]>([]);
   const [products, setProducts] = useState<ExtendedProduct[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [machinery, setMachinery] = useState<MockMachinery[]>([]);
+  const [labour, setLabour] = useState<MockLabour[]>([]);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -36,6 +39,8 @@ export default function AdminDashboardPage() {
     setVendors(getVendors());
     setProducts(getProducts());
     setOrders(getOrders());
+    setMachinery(getMachineryListings());
+    setLabour(getLabourListings());
   };
 
   const handleLogout = () => {
@@ -55,6 +60,16 @@ export default function AdminDashboardPage() {
 
   const handleOrderStatusChange = (orderId: string, status: OrderStatus) => {
     updateOrderStatus(orderId, status);
+    refreshData();
+  };
+
+  const handleToggleMachinery = (machId: string) => {
+    toggleMachineryAvailability(machId);
+    refreshData();
+  };
+
+  const handleToggleLabour = (labId: string) => {
+    toggleLabourAvailability(labId);
     refreshData();
   };
 
@@ -78,6 +93,18 @@ export default function AdminDashboardPage() {
     o.district.toLowerCase().includes(search.toLowerCase())
   );
 
+  const filteredMachinery = machinery.filter(m =>
+    m.chcName.toLowerCase().includes(search.toLowerCase()) ||
+    m.equipmentType.toLowerCase().includes(search.toLowerCase()) ||
+    m.district.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const filteredLabour = labour.filter(l =>
+    l.teamLeaderName.toLowerCase().includes(search.toLowerCase()) ||
+    l.specialization.toLowerCase().includes(search.toLowerCase()) ||
+    l.district.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <main className="admin-dashboard-page">
       {/* ── Admin Header ── */}
@@ -89,7 +116,7 @@ export default function AdminDashboardPage() {
             </div>
             <div>
               <h2>Platform Admin Master Panel</h2>
-              <p>Statewide Accreditation, Product Quality Audit & Regional Pipeline Control</p>
+              <p>Statewide Accreditation, CHC Machinery, Labour Board & Regional Pipeline Control</p>
             </div>
           </div>
 
@@ -105,45 +132,61 @@ export default function AdminDashboardPage() {
       </header>
 
       <div className="container" style={{ padding: '30px 20px 80px' }}>
-        {/* ── Metric Summary Overview Cards ── */}
+        {/* ── Metric Summary Overview Cards (6 METRICS) ── */}
         {analytics && (
-          <div className="admin-metrics-grid">
+          <div className="admin-metrics-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
             <div className="admin-metric-card">
-              <div className="am-icon blue"><Users size={24} /></div>
+              <div className="am-icon blue"><Users size={22} /></div>
               <div>
                 <div className="am-val">{analytics.totalFarmers.toLocaleString()}</div>
-                <div className="am-lbl">Total Registered Farmers</div>
+                <div className="am-lbl">Total Farmers</div>
               </div>
             </div>
 
             <div className="admin-metric-card">
-              <div className="am-icon green"><Store size={24} /></div>
+              <div className="am-icon green"><Store size={22} /></div>
               <div>
                 <div className="am-val">{analytics.activeDealers} / {analytics.registeredDealers}</div>
-                <div className="am-lbl">Accredited Local Dealers</div>
+                <div className="am-lbl">Accredited Dealers</div>
               </div>
             </div>
 
             <div className="admin-metric-card">
-              <div className="am-icon orange"><ShoppingBag size={24} /></div>
+              <div className="am-icon orange"><ShoppingBag size={22} /></div>
               <div>
                 <div className="am-val">{analytics.totalOrders.toLocaleString()}</div>
-                <div className="am-lbl">Regional Platform Orders</div>
+                <div className="am-lbl">Regional Orders</div>
               </div>
             </div>
 
             <div className="admin-metric-card">
-              <div className="am-icon purple"><TrendingUp size={24} /></div>
+              <div className="am-icon blue"><Tractor size={22} /></div>
+              <div>
+                <div className="am-val">{analytics.totalMachinery.toLocaleString()}</div>
+                <div className="am-lbl">CHC Machinery</div>
+              </div>
+            </div>
+
+            <div className="admin-metric-card">
+              <div className="am-icon green"><UserCheck size={22} /></div>
+              <div>
+                <div className="am-val">{analytics.totalLabour.toLocaleString()}</div>
+                <div className="am-lbl">Labour Teams</div>
+              </div>
+            </div>
+
+            <div className="admin-metric-card">
+              <div className="am-icon purple"><TrendingUp size={22} /></div>
               <div>
                 <div className="am-val">₹{analytics.totalGMV.toLocaleString()}</div>
-                <div className="am-lbl">Platform Gross Volume</div>
+                <div className="am-lbl">Platform Volume</div>
               </div>
             </div>
           </div>
         )}
 
         {/* ── Navigation Tabs ── */}
-        <div className="admin-tabs">
+        <div className="admin-tabs" style={{ flexWrap: 'wrap' }}>
           <button
             className={`admin-tab-btn${activeTab === 'analytics' ? ' active' : ''}`}
             onClick={() => setActiveTab('analytics')}
@@ -161,6 +204,18 @@ export default function AdminDashboardPage() {
             onClick={() => setActiveTab('products')}
           >
             <Package size={18} /> Catalog Moderation ({products.length})
+          </button>
+          <button
+            className={`admin-tab-btn${activeTab === 'machinery' ? ' active' : ''}`}
+            onClick={() => setActiveTab('machinery')}
+          >
+            <Tractor size={18} /> Machinery Supervision ({machinery.length})
+          </button>
+          <button
+            className={`admin-tab-btn${activeTab === 'labour' ? ' active' : ''}`}
+            onClick={() => setActiveTab('labour')}
+          >
+            <UserCheck size={18} /> Labour Moderation ({labour.length})
           </button>
           <button
             className={`admin-tab-btn${activeTab === 'orders' ? ' active' : ''}`}
@@ -181,6 +236,7 @@ export default function AdminDashboardPage() {
                 <div className="dist-name">📍 Meerut District</div>
                 <div className="dist-meta">
                   <span>Dealers: <strong>3 Active</strong></span>
+                  <span>Machinery: <strong>2 CHCs</strong></span>
                   <span>Volume: <strong>₹1,45,200</strong></span>
                   <span>Farmers: <strong>14,200</strong></span>
                 </div>
@@ -190,6 +246,7 @@ export default function AdminDashboardPage() {
                 <div className="dist-name">📍 Agra District</div>
                 <div className="dist-meta">
                   <span>Dealers: <strong>2 Active</strong></span>
+                  <span>Machinery: <strong>1 CHC</strong></span>
                   <span>Volume: <strong>₹98,500</strong></span>
                   <span>Farmers: <strong>11,400</strong></span>
                 </div>
@@ -199,6 +256,7 @@ export default function AdminDashboardPage() {
                 <div className="dist-name">📍 Lucknow District</div>
                 <div className="dist-meta">
                   <span>Dealers: <strong>2 Active</strong></span>
+                  <span>Machinery: <strong>1 CHC</strong></span>
                   <span>Volume: <strong>₹1,12,000</strong></span>
                   <span>Farmers: <strong>12,800</strong></span>
                 </div>
@@ -208,6 +266,7 @@ export default function AdminDashboardPage() {
                 <div className="dist-name">📍 Kanpur District</div>
                 <div className="dist-meta">
                   <span>Dealers: <strong>1 Pending</strong></span>
+                  <span>Machinery: <strong>1 CHC</strong></span>
                   <span>Volume: <strong>₹64,300</strong></span>
                   <span>Farmers: <strong>8,900</strong></span>
                 </div>
@@ -339,7 +398,150 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* ── TAB 4: Order Supervision ── */}
+        {/* ── TAB 4: Machinery Supervision (NEW!) ── */}
+        {activeTab === 'machinery' && (
+          <div>
+            <div className="admin-section-header">
+              <h3>Custom Hiring Centre (CHC) Machinery Supervision</h3>
+              <div className="admin-search-wrap">
+                <Search size={16} color="#94a3b8" />
+                <input
+                  type="text"
+                  placeholder="Search CHC, tractor, or district..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="admin-table-card">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>CHC Centre Name</th>
+                    <th>Equipment Type & Model</th>
+                    <th>District & Location</th>
+                    <th>Rate / Hour</th>
+                    <th>Availability</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMachinery.map(m => (
+                    <tr key={m.id}>
+                      <td>
+                        <strong style={{ color: '#f8fafc' }}>{m.chcName}</strong>
+                        <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>📞 {m.contactPhone}</div>
+                      </td>
+                      <td>
+                        <strong style={{ color: '#38bdf8' }}>{m.equipmentType}</strong>
+                        <div style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>Model: {m.model}</div>
+                      </td>
+                      <td>📍 {m.district} ({m.location})</td>
+                      <td><strong>₹{m.ratePerHour}</strong> <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>/ hour</span></td>
+                      <td>
+                        {m.available ? (
+                          <span className="accreditation-tag verified"><CheckCircle2 size={13} /> Active & Ready</span>
+                        ) : (
+                          <span className="accreditation-tag rejected"><Ban size={13} /> Booked / Unavailable</span>
+                        )}
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => handleToggleMachinery(m.id)}
+                          className={`btn btn-sm ${m.available ? 'btn-danger' : 'btn-success'}`}
+                          style={{ fontSize: '0.8rem', padding: '4px 10px' }}
+                        >
+                          {m.available ? 'Mark Unavailable' : 'Mark Available'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredMachinery.length === 0 && (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
+                        No machinery listings found in database.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB 5: Labour Board Moderation (NEW!) ── */}
+        {activeTab === 'labour' && (
+          <div>
+            <div className="admin-section-header">
+              <h3>Farm Labour Board Supervision & Moderation</h3>
+              <div className="admin-search-wrap">
+                <Search size={16} color="#94a3b8" />
+                <input
+                  type="text"
+                  placeholder="Search team leader, crop or district..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="admin-table-card">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Team Leader & Group Name</th>
+                    <th>Team Size</th>
+                    <th>Specialization</th>
+                    <th>District</th>
+                    <th>Daily Rate / Worker</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLabour.map(l => (
+                    <tr key={l.id}>
+                      <td>
+                        <strong style={{ color: '#f8fafc' }}>{l.teamLeaderName}</strong>
+                        <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>📞 {l.contactPhone}</div>
+                      </td>
+                      <td><strong>{l.teamSize} Workers</strong></td>
+                      <td><span className="cat-pill" style={{ background: '#334155', color: '#38bdf8' }}>{l.specialization}</span></td>
+                      <td>📍 {l.district}</td>
+                      <td><strong>₹{l.dailyRatePerWorker}</strong> <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>/ day</span></td>
+                      <td>
+                        {l.available ? (
+                          <span className="accreditation-tag verified"><CheckCircle2 size={13} /> Available</span>
+                        ) : (
+                          <span className="accreditation-tag rejected"><Ban size={13} /> Hired / Hidden</span>
+                        )}
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => handleToggleLabour(l.id)}
+                          className={`btn btn-sm ${l.available ? 'btn-danger' : 'btn-success'}`}
+                          style={{ fontSize: '0.8rem', padding: '4px 10px' }}
+                        >
+                          {l.available ? 'Hide Post' : 'Approve Post'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredLabour.length === 0 && (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
+                        No labour postings found in database.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB 6: Order Supervision ── */}
         {activeTab === 'orders' && (
           <div>
             <div className="admin-section-header">

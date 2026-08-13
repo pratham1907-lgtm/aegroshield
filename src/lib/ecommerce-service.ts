@@ -368,6 +368,18 @@ export function addMachineryListing(data: Omit<MockMachinery, 'id' | 'isDemo'>):
   return newMachinery;
 }
 
+export function toggleMachineryAvailability(id: string): MockMachinery | null {
+  const key = isDemoMode() ? KEYS.DEMO_MACHINERY : KEYS.REAL_MACHINERY;
+  const list = getStored<MockMachinery[]>(key, []);
+  const idx = list.findIndex(m => m.id === id);
+  if (idx !== -1) {
+    list[idx].available = !list[idx].available;
+    setStored(key, list);
+    return list[idx];
+  }
+  return null;
+}
+
 // ── LABOUR OPERATIONS ────────────────────────────────────────────────────────
 export function getLabourListings(): MockLabour[] {
   if (isDemoMode()) {
@@ -388,6 +400,18 @@ export function addLabourListing(data: Omit<MockLabour, 'id' | 'isDemo'>): MockL
   list.unshift(newLabour);
   setStored(key, list);
   return newLabour;
+}
+
+export function toggleLabourAvailability(id: string): MockLabour | null {
+  const key = isDemoMode() ? KEYS.DEMO_LABOUR : KEYS.REAL_LABOUR;
+  const list = getStored<MockLabour[]>(key, []);
+  const idx = list.findIndex(l => l.id === id);
+  if (idx !== -1) {
+    list[idx].available = !list[idx].available;
+    setStored(key, list);
+    return list[idx];
+  }
+  return null;
 }
 
 // ── MARKET PRICES OPERATIONS ─────────────────────────────────────────────────
@@ -492,8 +516,13 @@ export function getPlatformAnalytics() {
   const vendors = getVendors();
   const products = getProducts();
   const orders = getOrders();
+  const machinery = getMachineryListings();
+  const labour = getLabourListings();
 
-  const totalGMV = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const marketplaceGMV = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const machineryGMV = machinery.reduce((sum, m) => sum + (m.ratePerHour * 8), 0); // 8-hr rental estimate
+  const totalGMV = marketplaceGMV + machineryGMV;
+
   const activeDealers = vendors.filter(v => v.accreditationStatus === 'Verified').length;
   const pendingDealers = vendors.filter(v => v.accreditationStatus === 'Pending').length;
   const bannedProductsCount = products.filter(p => p.banned).length;
@@ -506,6 +535,8 @@ export function getPlatformAnalytics() {
     totalProducts: products.length,
     bannedProductsCount,
     totalOrders: orders.length,
+    totalMachinery: machinery.length,
+    totalLabour: labour.length,
     totalGMV,
     isDemoMode: isDemoMode(),
   };
