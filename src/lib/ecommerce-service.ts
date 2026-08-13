@@ -135,10 +135,10 @@ export function initDemoStore(forceReset = false): void {
   if (forceReset || !localStorage.getItem(KEYS.DEMO_ORDERS)) {
     setStored(KEYS.DEMO_ORDERS, MOCK_ORDERS);
   }
-  if (forceReset || !localStorage.getItem(KEYS.DEMO_MACHINERY) || getStored<any[]>(KEYS.DEMO_MACHINERY, []).length === 0) {
+  if (forceReset || !localStorage.getItem(KEYS.DEMO_MACHINERY)) {
     setStored(KEYS.DEMO_MACHINERY, MOCK_MACHINERY);
   }
-  if (forceReset || !localStorage.getItem(KEYS.DEMO_LABOUR) || getStored<any[]>(KEYS.DEMO_LABOUR, []).length === 0) {
+  if (forceReset || !localStorage.getItem(KEYS.DEMO_LABOUR)) {
     setStored(KEYS.DEMO_LABOUR, MOCK_LABOUR);
   }
 }
@@ -226,7 +226,7 @@ export function vendorLogout(): void {
 
 export function toggleVendorVerification(vendorId: string): ExtendedVendor | null {
   const key = getVendorsKey();
-  const vendors = getStored<ExtendedVendor[]>(key, []);
+  const vendors = getStored<ExtendedVendor[]>(key, isDemoMode() ? MOCK_VENDORS : []);
   const idx = vendors.findIndex(v => v.id === vendorId);
   if (idx !== -1) {
     const nextStatus = vendors[idx].accreditationStatus === 'Verified' ? 'Pending' : 'Verified';
@@ -272,7 +272,7 @@ export function addProduct(data: Omit<ExtendedProduct, 'id'>): ExtendedProduct {
 
 export function updateProduct(id: string, updates: Partial<ExtendedProduct>): ExtendedProduct | null {
   const key = getProductsKey();
-  const products = getStored<ExtendedProduct[]>(key, []);
+  const products = getStored<ExtendedProduct[]>(key, isDemoMode() ? MOCK_PRODUCTS : []);
   const idx = products.findIndex(p => p.id === id);
   if (idx !== -1) {
     products[idx] = { ...products[idx], ...updates };
@@ -284,7 +284,7 @@ export function updateProduct(id: string, updates: Partial<ExtendedProduct>): Ex
 
 export function deleteProduct(id: string): boolean {
   const key = getProductsKey();
-  const products = getStored<ExtendedProduct[]>(key, []);
+  const products = getStored<ExtendedProduct[]>(key, isDemoMode() ? MOCK_PRODUCTS : []);
   const filtered = products.filter(p => p.id !== id);
   if (filtered.length !== products.length) {
     setStored(key, filtered);
@@ -295,7 +295,7 @@ export function deleteProduct(id: string): boolean {
 
 export function toggleProductBanned(id: string): ExtendedProduct | null {
   const key = getProductsKey();
-  const products = getStored<ExtendedProduct[]>(key, []);
+  const products = getStored<ExtendedProduct[]>(key, isDemoMode() ? MOCK_PRODUCTS : []);
   const idx = products.findIndex(p => p.id === id);
   if (idx !== -1) {
     products[idx].banned = !products[idx].banned;
@@ -336,7 +336,7 @@ export function createOrder(data: Omit<Order, 'id' | 'createdAt' | 'status'>): O
 
 export function updateOrderStatus(orderId: string, status: OrderStatus): Order | null {
   const key = getOrdersKey();
-  const orders = getStored<Order[]>(key, []);
+  const orders = getStored<Order[]>(key, isDemoMode() ? MOCK_ORDERS : []);
   const idx = orders.findIndex(o => o.id === orderId);
   if (idx !== -1) {
     orders[idx].status = status;
@@ -369,8 +369,9 @@ export function addMachineryListing(data: Omit<MockMachinery, 'id' | 'isDemo'>):
 }
 
 export function toggleMachineryAvailability(id: string): MockMachinery | null {
-  const key = isDemoMode() ? KEYS.DEMO_MACHINERY : KEYS.REAL_MACHINERY;
-  const list = getStored<MockMachinery[]>(key, []);
+  const isDemo = isDemoMode();
+  const key = isDemo ? KEYS.DEMO_MACHINERY : KEYS.REAL_MACHINERY;
+  const list = getStored<MockMachinery[]>(key, isDemo ? MOCK_MACHINERY : []);
   const idx = list.findIndex(m => m.id === id);
   if (idx !== -1) {
     list[idx].available = !list[idx].available;
@@ -403,8 +404,9 @@ export function addLabourListing(data: Omit<MockLabour, 'id' | 'isDemo'>): MockL
 }
 
 export function toggleLabourAvailability(id: string): MockLabour | null {
-  const key = isDemoMode() ? KEYS.DEMO_LABOUR : KEYS.REAL_LABOUR;
-  const list = getStored<MockLabour[]>(key, []);
+  const isDemo = isDemoMode();
+  const key = isDemo ? KEYS.DEMO_LABOUR : KEYS.REAL_LABOUR;
+  const list = getStored<MockLabour[]>(key, isDemo ? MOCK_LABOUR : []);
   const idx = list.findIndex(l => l.id === id);
   if (idx !== -1) {
     list[idx].available = !list[idx].available;
