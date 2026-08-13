@@ -514,7 +514,7 @@ export function adminLogout(): void {
 
 export function getPlatformAnalytics() {
   if (isDemoMode()) {
-    initDemoStore(true);
+    initDemoStore(false);
   }
   const vendors = getVendors();
   const products = getProducts();

@@ -36,7 +36,7 @@ export default function AdminDashboardPage() {
 
   const refreshData = () => {
     if (isDemoMode()) {
-      initDemoStore(true);
+      initDemoStore(false); // Do not force reset on state updates
     }
     setAnalytics(getPlatformAnalytics());
     setVendors(getVendors());
