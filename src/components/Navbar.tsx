@@ -19,8 +19,9 @@ export default function Navbar() {
 
   const pathname = rawPathname || '';
 
-  // Explicit Whitelist: Render Navbar ONLY on Farmer/User App pages!
+  // Render Navbar on Root (/) and Farmer/User App pages ONLY!
   const isFarmerRoute =
+    pathname === '/' ||
     pathname.startsWith('/farmer') ||
     pathname.startsWith('/marketplace') ||
     pathname.startsWith('/machinery') ||
@@ -30,15 +31,16 @@ export default function Navbar() {
     pathname.startsWith('/cart') ||
     pathname.startsWith('/store');
 
-  if (!isFarmerRoute) {
-    return null; // Completely hide Navbar on /, /login, /vendor/..., /admin/...
+  // Hide on login, vendor dashboard/login/register, and admin pages
+  if (!isFarmerRoute || pathname === '/login' || pathname.startsWith('/vendor') || pathname.startsWith('/admin')) {
+    return null;
   }
 
   return (
     <nav className="navbar">
       <Link href="/" className="nav-brand">🌿 Aegroshield</Link>
       <div className="nav-links">
-        <Link href="/farmer/home">{t('nav.home')}</Link>
+        <Link href="/">{t('nav.home')}</Link>
         <Link href="/marketplace">{t('nav.store')}</Link>
         <Link href="/machinery">{t('nav.machinery')}</Link>
         <Link href="/labour">{t('nav.labour')}</Link>
