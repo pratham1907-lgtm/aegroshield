@@ -115,30 +115,30 @@ export function isDemoSessionActive(): boolean {
   return !!(user || vendor || admin);
 }
 
-export function enableDemoMode(): void {
+export function enableDemoMode(forceReset = false): void {
   setStored(KEYS.IS_DEMO, true);
-  initDemoStore();
+  initDemoStore(forceReset);
 }
 
 export function disableDemoMode(): void {
   setStored(KEYS.IS_DEMO, false);
 }
 
-function initDemoStore(): void {
+export function initDemoStore(forceReset = false): void {
   if (typeof window === 'undefined') return;
-  if (!localStorage.getItem(KEYS.DEMO_VENDORS)) {
+  if (forceReset || !localStorage.getItem(KEYS.DEMO_VENDORS)) {
     setStored(KEYS.DEMO_VENDORS, MOCK_VENDORS);
   }
-  if (!localStorage.getItem(KEYS.DEMO_PRODUCTS)) {
+  if (forceReset || !localStorage.getItem(KEYS.DEMO_PRODUCTS)) {
     setStored(KEYS.DEMO_PRODUCTS, MOCK_PRODUCTS);
   }
-  if (!localStorage.getItem(KEYS.DEMO_ORDERS)) {
+  if (forceReset || !localStorage.getItem(KEYS.DEMO_ORDERS)) {
     setStored(KEYS.DEMO_ORDERS, MOCK_ORDERS);
   }
-  if (!localStorage.getItem(KEYS.DEMO_MACHINERY)) {
+  if (forceReset || !localStorage.getItem(KEYS.DEMO_MACHINERY) || getStored<any[]>(KEYS.DEMO_MACHINERY, []).length === 0) {
     setStored(KEYS.DEMO_MACHINERY, MOCK_MACHINERY);
   }
-  if (!localStorage.getItem(KEYS.DEMO_LABOUR)) {
+  if (forceReset || !localStorage.getItem(KEYS.DEMO_LABOUR) || getStored<any[]>(KEYS.DEMO_LABOUR, []).length === 0) {
     setStored(KEYS.DEMO_LABOUR, MOCK_LABOUR);
   }
 }
@@ -189,7 +189,7 @@ export function registerVendor(data: Omit<Vendor, 'id' | 'rating' | 'verified'>)
 
 export function vendorLogin(phone: string, license: string, isDemoCall = false): ExtendedVendor | null {
   if (isDemoCall) {
-    enableDemoMode();
+    enableDemoMode(true);
     const demoVendor = MOCK_VENDORS[0]; // Kisan Seva Kendra
     setCurrentVendor(demoVendor);
     return demoVendor;
@@ -441,7 +441,7 @@ export function userRegister(name: string, email: string): UserProfile {
 
 export function userLogin(email: string, isDemoCall = false): UserProfile {
   if (isDemoCall) {
-    enableDemoMode();
+    enableDemoMode(true);
     const demoUser: UserProfile = {
       id: 'u_demo',
       name: 'Demo Farmer',
@@ -486,7 +486,7 @@ export interface AdminProfile {
 
 export function adminLogin(email: string, pass: string, isDemoCall = false): AdminProfile | null {
   if (isDemoCall) {
-    enableDemoMode();
+    enableDemoMode(true);
   } else {
     disableDemoMode();
   }
@@ -513,6 +513,9 @@ export function adminLogout(): void {
 }
 
 export function getPlatformAnalytics() {
+  if (isDemoMode()) {
+    initDemoStore(true);
+  }
   const vendors = getVendors();
   const products = getProducts();
   const orders = getOrders();

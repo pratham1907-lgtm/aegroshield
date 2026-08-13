@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   getCurrentAdmin, adminLogout, getVendors, getProducts, getOrders, getMachineryListings, getLabourListings,
   toggleVendorVerification, toggleProductBanned, updateOrderStatus, toggleMachineryAvailability, toggleLabourAvailability,
-  getPlatformAnalytics, type ExtendedVendor, type ExtendedProduct, type Order, type OrderStatus
+  getPlatformAnalytics, isDemoMode, initDemoStore, type ExtendedVendor, type ExtendedProduct, type Order, type OrderStatus
 } from '@/lib/ecommerce-service';
 import type { MockMachinery, MockLabour } from '@/lib/mockData';
 import { Shield, Users, Store, Package, ShoppingBag, TrendingUp, CheckCircle2, AlertTriangle, Ban, LogOut, Check, X, Search, RefreshCw, Tractor, UserCheck } from 'lucide-react';
@@ -35,6 +35,9 @@ export default function AdminDashboardPage() {
   }, [router]);
 
   const refreshData = () => {
+    if (isDemoMode()) {
+      initDemoStore(true);
+    }
     setAnalytics(getPlatformAnalytics());
     setVendors(getVendors());
     setProducts(getProducts());
