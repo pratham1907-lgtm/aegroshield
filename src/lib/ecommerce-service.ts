@@ -1,8 +1,11 @@
 // ─── Aegroshield E-Commerce & Multi-Role Service ────────────────────────────
-// Manages Vendors, Products, Orders, User & Admin Auth, and Platform Analytics.
+// Manages Vendors, Products, Orders, Machinery, Labour, Mandi Rates, User & Admin Auth, and Platform Analytics.
 // SEPARATES Demo Mode (sample evaluation data) from Real Account Mode (isolated clean database storage).
 
-import { MOCK_VENDORS, MOCK_PRODUCTS, MOCK_ORDERS } from './mockData';
+import {
+  MOCK_VENDORS, MOCK_PRODUCTS, MOCK_ORDERS, MOCK_MACHINERY, MOCK_LABOUR, MOCK_MARKET_PRICES,
+  type MockMachinery, type MockLabour, type MockMarketPrice
+} from './mockData';
 import type { Category, Vendor, Product } from './marketplace-data';
 
 export type Role = 'user' | 'vendor' | 'admin';
@@ -61,11 +64,16 @@ const KEYS = {
   REAL_PRODUCTS: 'aegroshield_real_products',
   REAL_ORDERS: 'aegroshield_real_orders',
   REAL_USERS: 'aegroshield_real_users',
+  REAL_MACHINERY: 'aegroshield_real_machinery',
+  REAL_LABOUR: 'aegroshield_real_labour',
+  REAL_MARKET_PRICES: 'aegroshield_real_market_prices',
 
   // Demo Collections (Sample Evaluation DB)
   DEMO_VENDORS: 'aegroshield_demo_vendors',
   DEMO_PRODUCTS: 'aegroshield_demo_products',
   DEMO_ORDERS: 'aegroshield_demo_orders',
+  DEMO_MACHINERY: 'aegroshield_demo_machinery',
+  DEMO_LABOUR: 'aegroshield_demo_labour',
 
   // Sessions
   CURRENT_USER: 'aegroshield_current_user',
@@ -126,6 +134,12 @@ function initDemoStore(): void {
   }
   if (!localStorage.getItem(KEYS.DEMO_ORDERS)) {
     setStored(KEYS.DEMO_ORDERS, MOCK_ORDERS);
+  }
+  if (!localStorage.getItem(KEYS.DEMO_MACHINERY)) {
+    setStored(KEYS.DEMO_MACHINERY, MOCK_MACHINERY);
+  }
+  if (!localStorage.getItem(KEYS.DEMO_LABOUR)) {
+    setStored(KEYS.DEMO_LABOUR, MOCK_LABOUR);
   }
 }
 
@@ -330,6 +344,58 @@ export function updateOrderStatus(orderId: string, status: OrderStatus): Order |
     return orders[idx];
   }
   return null;
+}
+
+// ── MACHINERY OPERATIONS ─────────────────────────────────────────────────────
+export function getMachineryListings(): MockMachinery[] {
+  if (isDemoMode()) {
+    initDemoStore();
+    return getStored<MockMachinery[]>(KEYS.DEMO_MACHINERY, MOCK_MACHINERY);
+  }
+  return getStored<MockMachinery[]>(KEYS.REAL_MACHINERY, []);
+}
+
+export function addMachineryListing(data: Omit<MockMachinery, 'id' | 'isDemo'>): MockMachinery {
+  const key = isDemoMode() ? KEYS.DEMO_MACHINERY : KEYS.REAL_MACHINERY;
+  const list = getStored<MockMachinery[]>(key, []);
+  const newMachinery: MockMachinery = {
+    ...data,
+    id: 'mach_' + Date.now(),
+    isDemo: isDemoMode(),
+  };
+  list.unshift(newMachinery);
+  setStored(key, list);
+  return newMachinery;
+}
+
+// ── LABOUR OPERATIONS ────────────────────────────────────────────────────────
+export function getLabourListings(): MockLabour[] {
+  if (isDemoMode()) {
+    initDemoStore();
+    return getStored<MockLabour[]>(KEYS.DEMO_LABOUR, MOCK_LABOUR);
+  }
+  return getStored<MockLabour[]>(KEYS.REAL_LABOUR, []);
+}
+
+export function addLabourListing(data: Omit<MockLabour, 'id' | 'isDemo'>): MockLabour {
+  const key = isDemoMode() ? KEYS.DEMO_LABOUR : KEYS.REAL_LABOUR;
+  const list = getStored<MockLabour[]>(key, []);
+  const newLabour: MockLabour = {
+    ...data,
+    id: 'lab_' + Date.now(),
+    isDemo: isDemoMode(),
+  };
+  list.unshift(newLabour);
+  setStored(key, list);
+  return newLabour;
+}
+
+// ── MARKET PRICES OPERATIONS ─────────────────────────────────────────────────
+export function getMarketPrices(): MockMarketPrice[] {
+  if (isDemoMode()) {
+    return MOCK_MARKET_PRICES;
+  }
+  return getStored<MockMarketPrice[]>(KEYS.REAL_MARKET_PRICES, []);
 }
 
 // ── USER AUTH OPERATIONS ─────────────────────────────────────────────────────
