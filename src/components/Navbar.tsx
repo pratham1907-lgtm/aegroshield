@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage, type Language } from '@/lib/language-context';
 import { useCart } from '@/lib/cart-context';
-import { ShoppingBag } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { ShoppingBag, User, LogOut } from 'lucide-react';
 
 const LANG_OPTIONS: { value: Language; label: string }[] = [
   { value: 'en',    label: '🇬🇧 English' },
@@ -16,6 +17,7 @@ export default function Navbar() {
   const rawPathname = usePathname();
   const { lang, setLang, t } = useLanguage();
   const { cartCount } = useCart();
+  const { user, userData, isDemo, logout } = useAuth();
 
   const pathname = rawPathname || '';
 
@@ -35,6 +37,9 @@ export default function Navbar() {
   if (!isFarmerRoute || pathname === '/login' || pathname.startsWith('/vendor') || pathname.startsWith('/admin')) {
     return null;
   }
+
+  const isLoggedIn = Boolean(user || isDemo || userData);
+  const displayName = userData?.name || user?.displayName || (userData?.email ? userData.email.split('@')[0] : 'Farmer');
 
   return (
     <nav className="navbar">
@@ -69,8 +74,53 @@ export default function Navbar() {
           </select>
         </div>
 
-        <Link href="/login" className="nav-btn-signin">{t('nav.signin')}</Link>
+        {/* ── User Auth State ── */}
+        {isLoggedIn ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span
+              style={{
+                fontSize: '0.85rem',
+                fontWeight: '600',
+                color: 'var(--primary)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: '#f0fdf4',
+                padding: '5px 10px',
+                borderRadius: '20px',
+                border: '1px solid #bbf7d0',
+              }}
+            >
+              <User size={15} />
+              {displayName}
+              {isDemo && <span style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#b45309', padding: '1px 6px', borderRadius: '10px', fontWeight: 'bold' }}>Demo</span>}
+            </span>
+            <button
+              onClick={() => logout()}
+              style={{
+                background: 'transparent',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontSize: '0.85rem',
+                fontWeight: '500',
+                color: '#64748b',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                transition: 'all 0.2s ease',
+              }}
+              title="Sign Out"
+            >
+              <LogOut size={15} /> Logout
+            </button>
+          </div>
+        ) : (
+          <Link href="/login" className="nav-btn-signin">{t('nav.signin')}</Link>
+        )}
       </div>
     </nav>
   );
 }
+

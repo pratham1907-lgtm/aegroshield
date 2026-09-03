@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/language-context';
 import { useCart } from '@/lib/cart-context';
+import { useAuth } from '@/context/AuthContext';
+import { db } from '@/lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 import {
   ALL_DISTRICTS,
   getVendorById, type Category, type Product
 } from '@/lib/marketplace-data';
-import { getVendors, getProducts, getActiveProducts } from '@/lib/ecommerce-service';
+import { getVendors, getProducts, getActiveProducts, ExtendedProduct, ExtendedVendor } from '@/lib/ecommerce-service';
 import { ShoppingBag, Store, Check, Search, MapPin, ShieldCheck } from 'lucide-react';
 
 const CATEGORIES = ['All', 'Fertilizer', 'Pesticide', 'Seed', 'Equipment'] as const;
@@ -31,18 +34,53 @@ const STOCK_COLORS: Record<string, string> = {
 export default function MarketplacePage() {
   const { t, lang } = useLanguage();
   const { addToCart, cartCount } = useCart();
+  const { user, isDemo } = useAuth();
+
   const [district, setDistrict] = useState('All');
   const [category, setCategory] = useState<CategoryFilter>('All');
   const [search, setSearch] = useState('');
   const [addedIds, setAddedIds] = useState<Record<string, boolean>>({});
 
+  const [liveProducts, setLiveProducts] = useState<ExtendedProduct[] | null>(null);
+  const [liveVendors, setLiveVendors] = useState<ExtendedVendor[] | null>(null);
+
+  useEffect(() => {
+    if (user && !isDemo) {
+      const loadLiveStore = async () => {
+        try {
+          const prodSnap = await getDocs(collection(db, 'products'));
+          const prods: ExtendedProduct[] = [];
+          prodSnap.forEach(d => prods.push({ id: d.id, ...d.data() } as ExtendedProduct));
+          setLiveProducts(prods);
+
+          const vSnap = await getDocs(collection(db, 'vendors'));
+          const vens: ExtendedVendor[] = [];
+          vSnap.forEach(d => vens.push({ id: d.id, ...d.data() } as ExtendedVendor));
+          setLiveVendors(vens);
+        } catch (err) {
+          console.warn('[Marketplace] Firestore fetch error:', err);
+        }
+      };
+      loadLiveStore();
+    } else {
+      setLiveProducts(null);
+      setLiveVendors(null);
+    }
+  }, [user, isDemo]);
+
   const allActiveProducts = useMemo(() => {
+    if (user && !isDemo && liveProducts !== null) {
+      return liveProducts.filter(p => !p.banned);
+    }
     return getProducts().filter(p => !p.banned);
-  }, []);
+  }, [user, isDemo, liveProducts]);
 
   const allVendors = useMemo(() => {
+    if (user && !isDemo && liveVendors !== null) {
+      return liveVendors;
+    }
     return getVendors();
-  }, []);
+  }, [user, isDemo, liveVendors]);
 
   const filtered = useMemo(() => {
     let districtVendorIds = district === 'All'
@@ -50,7 +88,7 @@ export default function MarketplacePage() {
       : allVendors.filter(v => v.district === district).map(v => v.id);
 
     let results = allActiveProducts.filter(p => {
-      const matchDistrict = districtVendorIds.includes(p.vendorId);
+      const matchDistrict = districtVendorIds.length === 0 || districtVendorIds.includes(p.vendorId);
       const matchCategory = category === 'All' || p.category === category;
       return matchDistrict && matchCategory;
     });
@@ -66,6 +104,7 @@ export default function MarketplacePage() {
     }
     return results;
   }, [district, category, search, allActiveProducts, allVendors]);
+
 
   const handleAddToCart = (product: Product) => {
     addToCart(product);
