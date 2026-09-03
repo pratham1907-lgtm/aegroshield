@@ -329,9 +329,6 @@ export default function Page() {
         </div>
       </div>
     </div>{/*  .mandi-grid  */}
-      </>
-    )}
-
     {/*  Sell Suggestion Banner  */}
     <div id="sellSuggestion" className="suggest-sell">
       <div className="ss-icon">✅</div>
@@ -361,6 +358,8 @@ export default function Page() {
         Prices sourced from Agmarknet · Updated daily at 6 PM
       </p>
     </div>
+      </>
+    )}
 
   </div>{/*  #priceResults  */}
 

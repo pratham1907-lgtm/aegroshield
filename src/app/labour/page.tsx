@@ -188,7 +188,7 @@ export default function Page() {
         )
       ) : (
         <>
-          {/* Mock Labour Cards for Demo / Guest Sessions */}
+          {/* Mock Labour Cards for Demo / Guest Sessions ONLY */}
           <div className="labour-card" data-id="1">
             <div className="lc-avatar">RK</div>
             <div className="lc-body">
@@ -215,95 +215,94 @@ export default function Page() {
               </div>
             </div>
           </div>
+
+          {/* Card 2: Sita Devi & Team */}
+          <div className="labour-card" data-id="2">
+            <div className="lc-avatar" style={{"background":"linear-gradient(135deg,#BA7517,#e09020)"}}>SD</div>
+            <div className="lc-body">
+              <div className="lc-top">
+                <div>
+                  <div className="lc-name">Sita Devi & Team</div>
+                  <div className="lc-location">📍 Meerut, Uttar Pradesh</div>
+                </div>
+                <span className="lc-avail available">● Available 10–20 Jun</span>
+              </div>
+              <div className="lc-skills">
+                <span className="skill-pill">🌱 Transplanting</span>
+                <span className="skill-pill">📦 Packing</span>
+              </div>
+              <div className="lc-info">
+                <div className="lc-info-item">👥 Group of <span className="li-val">5</span> <span style={{"fontSize":".76rem","color":"var(--gray-400)"}}>(women workers)</span></div>
+                <div className="lc-info-item">💰 <span className="li-val">₹320</span>/day per person</div>
+                <div className="lc-info-item">⭐ <span className="li-val">4.5</span> (21 jobs done)</div>
+                <div className="lc-info-item">📍 <span className="li-val">6.4 km</span> away</div>
+              </div>
+              <div className="lc-actions">
+                <button className="btn-send-request" id="sendRequest-2" onClick={() => {}}>📩 Send Request</button>
+                <button className="btn-call">📞 Call</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Bajrang Labour Group */}
+          <div className="labour-card" data-id="3">
+            <div className="lc-avatar" style={{"background":"linear-gradient(135deg,#993C1D,#c04d28)"}}>BL</div>
+            <div className="lc-body">
+              <div className="lc-top">
+                <div>
+                  <div className="lc-name">Bajrang Labour Group</div>
+                  <div className="lc-location">📍 Hapur, Uttar Pradesh</div>
+                </div>
+                <span className="lc-avail available">● Available 8–25 Jun</span>
+              </div>
+              <div className="lc-skills">
+                <span className="skill-pill all-tasks">⚡ All Tasks</span>
+                <span className="skill-pill">🌾 Harvesting</span>
+                <span className="skill-pill">🌱 Sowing</span>
+                <span className="skill-pill">🪴 Weeding</span>
+              </div>
+              <div className="lc-info">
+                <div className="lc-info-item">👥 Group of <span className="li-val">12</span></div>
+                <div className="lc-info-item">💰 <span className="li-val">₹420</span>/day per person</div>
+                <div className="lc-info-item">⭐ <span className="li-val">4.7</span> (58 jobs done)</div>
+                <div className="lc-info-item">📍 <span className="li-val">18.2 km</span> away</div>
+              </div>
+              <div className="lc-actions">
+                <button className="btn-send-request" id="sendRequest-3" onClick={() => {}}>📩 Send Request</button>
+                <button className="btn-call">📞 Call</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4: Mohan Kumar */}
+          <div className="labour-card" data-id="4">
+            <div className="lc-avatar" style={{"background":"linear-gradient(135deg,#0066cc,#3399ff)"}}>MK</div>
+            <div className="lc-body">
+              <div className="lc-top">
+                <div>
+                  <div className="lc-name">Mohan Kumar</div>
+                  <div className="lc-location">📍 Ghaziabad, Uttar Pradesh</div>
+                </div>
+                <span className="lc-avail booked">⏳ Booked till 13 Jun</span>
+              </div>
+              <div className="lc-skills">
+                <span className="skill-pill">🧪 Spraying</span>
+                <span style={{"fontSize":".77rem","color":"var(--gray-400)","alignSelf":"center","marginLeft":"4px"}}>Specialist only</span>
+              </div>
+              <div className="lc-info">
+                <div className="lc-info-item">👤 <span className="li-val">1</span> skilled operator</div>
+                <div className="lc-info-item">💰 <span className="li-val">₹600</span>/day</div>
+                <div className="lc-info-item">⭐ <span className="li-val">4.9</span> (72 jobs done)</div>
+                <div className="lc-info-item">📍 <span className="li-val">31 km</span> away</div>
+              </div>
+              <div className="lc-actions">
+                <button className="btn-send-request" id="sendRequest-4" onClick={() => {}}>📩 Send Request</button>
+                <button className="btn-call">📞 Call</button>
+              </div>
+            </div>
+          </div>
         </>
       )}
-
-
-      {/*  Card 2: Sita Devi & Team  */}
-      <div className="labour-card" data-id="2">
-        <div className="lc-avatar" style={{"background":"linear-gradient(135deg,#BA7517,#e09020)"}}>SD</div>
-        <div className="lc-body">
-          <div className="lc-top">
-            <div>
-              <div className="lc-name">Sita Devi & Team</div>
-              <div className="lc-location">📍 Meerut, Uttar Pradesh</div>
-            </div>
-            <span className="lc-avail available">● Available 10–20 Jun</span>
-          </div>
-          <div className="lc-skills">
-            <span className="skill-pill">🌱 Transplanting</span>
-            <span className="skill-pill">📦 Packing</span>
-          </div>
-          <div className="lc-info">
-            <div className="lc-info-item">👥 Group of <span className="li-val">5</span> <span style={{"fontSize":".76rem","color":"var(--gray-400)"}}>(women workers)</span></div>
-            <div className="lc-info-item">💰 <span className="li-val">₹320</span>/day per person</div>
-            <div className="lc-info-item">⭐ <span className="li-val">4.5</span> (21 jobs done)</div>
-            <div className="lc-info-item">📍 <span className="li-val">6.4 km</span> away</div>
-          </div>
-          <div className="lc-actions">
-            <button className="btn-send-request" id="sendRequest-2" onClick={() => {}}>📩 Send Request</button>
-            <button className="btn-call">📞 Call</button>
-          </div>
-        </div>
-      </div>
-
-      {/*  Card 3: Bajrang Labour Group  */}
-      <div className="labour-card" data-id="3">
-        <div className="lc-avatar" style={{"background":"linear-gradient(135deg,#993C1D,#c04d28)"}}>BL</div>
-        <div className="lc-body">
-          <div className="lc-top">
-            <div>
-              <div className="lc-name">Bajrang Labour Group</div>
-              <div className="lc-location">📍 Hapur, Uttar Pradesh</div>
-            </div>
-            <span className="lc-avail available">● Available 8–25 Jun</span>
-          </div>
-          <div className="lc-skills">
-            <span className="skill-pill all-tasks">⚡ All Tasks</span>
-            <span className="skill-pill">🌾 Harvesting</span>
-            <span className="skill-pill">🌱 Sowing</span>
-            <span className="skill-pill">🪴 Weeding</span>
-          </div>
-          <div className="lc-info">
-            <div className="lc-info-item">👥 Group of <span className="li-val">12</span></div>
-            <div className="lc-info-item">💰 <span className="li-val">₹420</span>/day per person</div>
-            <div className="lc-info-item">⭐ <span className="li-val">4.7</span> (58 jobs done)</div>
-            <div className="lc-info-item">📍 <span className="li-val">18.2 km</span> away</div>
-          </div>
-          <div className="lc-actions">
-            <button className="btn-send-request" id="sendRequest-3" onClick={() => {}}>📩 Send Request</button>
-            <button className="btn-call">📞 Call</button>
-          </div>
-        </div>
-      </div>
-
-      {/*  Card 4: Mohan Kumar  */}
-      <div className="labour-card" data-id="4">
-        <div className="lc-avatar" style={{"background":"linear-gradient(135deg,#0066cc,#3399ff)"}}>MK</div>
-        <div className="lc-body">
-          <div className="lc-top">
-            <div>
-              <div className="lc-name">Mohan Kumar</div>
-              <div className="lc-location">📍 Ghaziabad, Uttar Pradesh</div>
-            </div>
-            <span className="lc-avail booked">⏳ Booked till 13 Jun</span>
-          </div>
-          <div className="lc-skills">
-            <span className="skill-pill">🧪 Spraying</span>
-            <span style={{"fontSize":".77rem","color":"var(--gray-400)","alignSelf":"center","marginLeft":"4px"}}>Specialist only</span>
-          </div>
-          <div className="lc-info">
-            <div className="lc-info-item">👤 <span className="li-val">1</span> skilled operator</div>
-            <div className="lc-info-item">💰 <span className="li-val">₹600</span>/day</div>
-            <div className="lc-info-item">⭐ <span className="li-val">4.9</span> (72 jobs done)</div>
-            <div className="lc-info-item">📍 <span className="li-val">31 km</span> away</div>
-          </div>
-          <div className="lc-actions">
-            <button className="btn-send-request" id="sendRequest-4" onClick={() => {}}>📩 Send Request</button>
-            <button className="btn-call">📞 Call</button>
-          </div>
-        </div>
-      </div>
 
     </div>{/*  #labourResults  */}
 
