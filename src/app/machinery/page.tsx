@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
+import { MOCK_MACHINERY } from "@/lib/mockData";
 
 export default function Page() {
   const { user, userData, isDemo } = useAuth();
@@ -36,6 +37,13 @@ export default function Page() {
 
   const isRealAccount = Boolean(user && !isDemo);
 
+  const displayMachinery = useMemo(() => {
+    if (isRealAccount) {
+      return liveMachinery || [];
+    }
+    return MOCK_MACHINERY;
+  }, [isRealAccount, liveMachinery]);
+
   return (
     <main>
 {/*  ── Navbar ────────────────────────────────────────────────  */}
@@ -63,11 +71,11 @@ export default function Page() {
   <div className="stats-strip">
     <div className="stat-card">
       <div className="stat-icon green">🚜</div>
-      <div><div className="stat-label">Available Now</div><div className="stat-value">{isRealAccount ? (liveMachinery?.length || 0) : 24}</div><div className="stat-sub">Equipment units</div></div>
+      <div><div className="stat-label">Available Now</div><div className="stat-value">{displayMachinery.length}</div><div className="stat-sub">Equipment units</div></div>
     </div>
     <div className="stat-card">
       <div className="stat-icon amber">🏭</div>
-      <div><div className="stat-label">CHC Centres</div><div className="stat-value">{isRealAccount ? (liveMachinery && liveMachinery.length > 0 ? '1' : '0') : 7}</div><div className="stat-sub">In your district</div></div>
+      <div><div className="stat-label">CHC Centres</div><div className="stat-value">{displayMachinery.length > 0 ? '7' : '0'}</div><div className="stat-sub">In your district</div></div>
     </div>
     <div className="stat-card">
       <div className="stat-icon blue">💰</div>
@@ -168,7 +176,7 @@ export default function Page() {
 
   {/*  ── Results Header ────────────────────────────────────────  */}
   <div className="results-header">
-    <div className="results-count">Showing <span id="resultsCount">{isRealAccount ? (liveMachinery?.length || 0) : 4}</span> results near Meerut, UP</div>
+    <div className="results-count">Showing <span id="resultsCount">{displayMachinery.length}</span> results near Meerut, UP</div>
     <select className="sort-select" id="sortSelect">
       <option>Sort: Nearest First</option>
       <option>Sort: Price: Low to High</option>
@@ -177,24 +185,24 @@ export default function Page() {
     </select>
   </div>
 
-  /* ── Machinery Results ───────────────────────────────────── */
+  {/*  ── Machinery Results ─────────────────────────────────────  */}
   <div id="machineryResults">
-    {liveMachinery && liveMachinery.length > 0 ? (
-      liveMachinery.map((item, idx) => (
+    {displayMachinery.length > 0 ? (
+      displayMachinery.map((item, idx) => (
         <div key={item.id || idx} className="machine-card" data-available="true">
           <div className="mc-icon-circle tractor">🚜</div>
           <div className="mc-body">
             <div className="mc-top">
               <div>
-                <div className="mc-name">{item.machineName || item.equipmentType || item.model || 'Farm Machine'}</div>
-                <div className="mc-provider">👤 <strong>{item.provider || item.chcName || 'Registered Provider'}</strong> — {item.district || 'Local District'}</div>
+                <div className="mc-name">{item.model || item.machineName || item.equipmentType || 'Farm Machine'}</div>
+                <div className="mc-provider">👤 <strong>{item.chcName || item.provider || 'CHC Centre'}</strong> — {item.location || item.district || 'Local District'}</div>
               </div>
               <span className="mc-badge available">● Available</span>
             </div>
             <div className="mc-pills">
-              <span className="mc-pill highlight">₹{item.hourlyRate || item.ratePerHour || 400}/hr</span>
-              {item.operator && <span className="mc-pill">👨‍🌾 Includes Operator</span>}
-              <span className="mc-pill">📍 {item.village || item.district || 'Nearby'}</span>
+              <span className="mc-pill highlight">₹{item.ratePerHour || item.hourlyRate || 400}/hr</span>
+              <span className="mc-pill">📍 {item.location || item.district || 'Nearby'}</span>
+              <span className="mc-pill">⭐ 4.8</span>
             </div>
             <div className="mc-actions" style={{ marginTop: '12px' }}>
               <button className="btn-book-now">🚜 Book Now</button>

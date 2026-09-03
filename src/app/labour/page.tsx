@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
+import { MOCK_LABOUR } from "@/lib/mockData";
 
 export default function Page() {
   const { user, userData, isDemo } = useAuth();
@@ -36,6 +37,13 @@ export default function Page() {
 
   const isRealAccount = Boolean(user && !isDemo);
 
+  const displayLabour = useMemo(() => {
+    if (isRealAccount) {
+      return liveLabour || [];
+    }
+    return MOCK_LABOUR;
+  }, [isRealAccount, liveLabour]);
+
   return (
     <main>
 {/*  ── Navbar ────────────────────────────────────────────────  */}
@@ -60,31 +68,31 @@ export default function Page() {
 <main className="labour-layout">
 
   {/*  Stats Strip  */}
-  <div className="grid-4" style={{"marginBottom":"28px"}}>
+  <div className="stats-strip" style={{"marginBottom":"28px"}}>
     <div className="stat-card">
-      <div className="stat-icon green">👷</div>
-      <div><div className="stat-label">Workers Available</div><div className="stat-value">{isRealAccount ? (liveLabour?.length || 0) : 186}</div><div className="stat-sub">In your area</div></div>
+      <div className="stat-icon green">👥</div>
+      <div><div className="stat-label">Available Workers</div><div className="stat-value">{displayLabour.length * 5}</div><div className="stat-sub">Across {displayLabour.length} teams</div></div>
     </div>
     <div className="stat-card">
-      <div className="stat-icon amber">📋</div>
-      <div><div className="stat-label">Active Requests</div><div className="stat-value">{isRealAccount ? (liveLabour && liveLabour.length > 0 ? '1' : '0') : 42}</div><div className="stat-sub">Posted today</div></div>
+      <div className="stat-icon amber">🌾</div>
+      <div><div className="stat-label">Active Groups</div><div className="stat-value">{displayLabour.length}</div><div className="stat-sub">In Meerut district</div></div>
     </div>
     <div className="stat-card">
       <div className="stat-icon blue">💰</div>
-      <div><div className="stat-label">Avg. Daily Wage</div><div className="stat-value">₹420</div><div className="stat-sub">Meerut district</div></div>
+      <div><div className="stat-label">Avg. Wage</div><div className="stat-value">₹400</div><div className="stat-sub">/day per worker</div></div>
     </div>
     <div className="stat-card">
-      <div className="stat-icon green">⚡</div>
-      <div><div className="stat-label">Response Time</div><div className="stat-value">&lt; 2 hrs</div><div className="stat-sub">Workers reply fast</div></div>
+      <div className="stat-icon green">⭐</div>
+      <div><div className="stat-label">Rating</div><div className="stat-value">4.7/5</div><div className="stat-sub">113 verified jobs</div></div>
     </div>
   </div>
 
   {/*  ── Tab Toggle ───────────────────────────────────────────  */}
   <div className="tab-bar">
-    <button className="tab-toggle active" id="findTab" onClick={() => {}}>
-      🔍 Find Labour
+    <button className="tab-toggle active" id="findLabourTab" onClick={() => {}}>
+      🔍 Find Workers
     </button>
-    <button className="tab-toggle" id="postTab" onClick={() => {}}>
+    <button className="tab-toggle" id="postLabourTab" onClick={() => {}}>
       📢 Post Availability
     </button>
   </div>
@@ -92,81 +100,95 @@ export default function Page() {
   {/*  ════════════════════════════════════════════════════════  */}
   {/*  TAB 1: FIND LABOUR                                        */}
   {/*  ════════════════════════════════════════════════════════  */}
-  <div className="tab-content active" id="findSection">
+  <div className="tab-content active" id="findLabourSection">
 
-    {/*  Search Filters  */}
+    {/*  Search Card  */}
     <div className="search-card">
-      <h3>🔍 Find Available Workers</h3>
-      <div className="search-row">
+      <h2>🔍 Search Available Labour Groups</h2>
+      <div className="search-grid">
         <div className="form-group">
-          <label className="form-label" htmlFor="labourDistrict">District</label>
-          <input type="text" className="form-control" id="labourDistrict" placeholder="e.g. Meerut, Hapur…" />
-        </div>
-        <div className="form-group">
-          <label className="form-label" htmlFor="taskType">Task Type</label>
+          <label className="form-label" htmlFor="taskType">Task Required</label>
           <select className="form-control" id="taskType">
             <option defaultValue="">All Tasks</option>
-            <option>Weeding</option>
-            <option>Harvesting</option>
-            <option>Spraying</option>
-            <option>Sowing</option>
-            <option>Transplanting</option>
-            <option>Packing</option>
-            <option>Land Preparation</option>
+            <option defaultValue="Harvesting">🌾 Harvesting</option>
+            <option defaultValue="Sowing">🌱 Sowing &amp; Planting</option>
+            <option defaultValue="Weeding">🪴 Weeding &amp; Hoeing</option>
+            <option defaultValue="Spraying">🧪 Pesticide Spraying</option>
+            <option defaultValue="Irrigation">💦 Irrigation Work</option>
+            <option defaultValue="Loading">📦 Loading / Packing</option>
           </select>
         </div>
         <div className="form-group">
-          <label className="form-label" htmlFor="labourDate">Date Needed</label>
-          <input type="date" className="form-control" id="labourDate" />
+          <label className="form-label" htmlFor="labourState">State</label>
+          <select className="form-control" id="labourState">
+            <option defaultValue="">Select State</option>
+            <option>Uttar Pradesh</option><option>Haryana</option>
+            <option>Punjab</option><option>Bihar</option>
+            <option>Madhya Pradesh</option><option>Rajasthan</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label className="form-label" htmlFor="labourDistrict">District</label>
+          <input type="text" className="form-control" id="labourDistrict" placeholder="e.g. Meerut, Hapur" />
+        </div>
+        <div className="form-group">
+          <label className="form-label" htmlFor="workDate">Work Start Date</label>
+          <input type="date" className="form-control" id="workDate" />
         </div>
         <div className="form-group">
           <label className="form-label" htmlFor="workersNeeded">Workers Needed</label>
-          <input type="number" className="form-control" id="workersNeeded"
-            placeholder="How many workers?" min="1" max="100" />
+          <input type="number" className="form-control" id="workersNeeded" placeholder="e.g. 5" min="1" max="50" defaultValue="4" />
         </div>
-        <div style={{"display":"flex","alignItems":"flex-end"}}>
-          <button className="btn btn-primary" id="searchLabour" style={{"whiteSpace":"nowrap","width":"100%"}}
-            onClick={() => {}}>
-            Find Available Workers
-          </button>
-        </div>
+      </div>
+      <div style={{"marginTop":"18px","display":"flex","justifyContent":"flex-end"}}>
+        <button className="btn btn-primary btn-lg" id="searchLabour">
+          🔍 Search Available Labour →
+        </button>
       </div>
     </div>
 
-    {/*  Results header  */}
-    <div style={{"display":"flex","alignItems":"center","justifyContent":"space-between","marginBottom":"16px","flexWrap":"wrap","gap":"10px"}}>
-      <div style={{"fontWeight":"800","fontSize":"1rem","color":"var(--gray-800)"}}>
-        Showing <span style={{"color":"var(--primary)"}} id="labourCount">{isRealAccount ? (liveLabour?.length || 0) : 4}</span> groups & workers near you
-      </div>
-      <select className="sort-select" style={{"padding":"7px 12px","borderRadius":"8px","border":"1.5px solid var(--gray-200)","fontSize":".86rem","background":"var(--white)","cursor":"pointer"}}>
+    {/*  Filter Pills  */}
+    <div className="filter-pills-bar">
+      <span className="filter-pills-label">Filter:</span>
+      <button className="filter-pill active" data-filter="all">All</button>
+      <button className="filter-pill" data-filter="available-today">✅ Available Now</button>
+      <button className="filter-pill" data-filter="under-400">💰 Under ₹400/day</button>
+      <button className="filter-pill" data-filter="harvesting">🌾 Harvesting</button>
+      <button className="filter-pill" data-filter="group">👥 Groups (5+)</button>
+    </div>
+
+    {/*  Results Header  */}
+    <div className="results-header">
+      <div className="results-count">Showing <span id="labourResultsCount">{displayLabour.length}</span> labour groups near Meerut, UP</div>
+      <select className="sort-select">
         <option>Sort: Nearest First</option>
         <option>Sort: Price: Low to High</option>
         <option>Sort: Highest Rated</option>
-        <option>Sort: Group Size: Largest</option>
+        <option>Sort: Group Size: Large to Small</option>
       </select>
     </div>
 
     {/*  Labour Results  */}
     <div id="labourResults">
-      {liveLabour && liveLabour.length > 0 ? (
-        liveLabour.map((item, idx) => (
+      {displayLabour.length > 0 ? (
+        displayLabour.map((item, idx) => (
           <div key={item.id || idx} className="labour-card">
-            <div className="lc-avatar">{(item.workerName || item.teamLeaderName || 'WK').slice(0, 2).toUpperCase()}</div>
+            <div className="lc-avatar">{(item.teamLeaderName || item.workerName || 'WK').slice(0, 2).toUpperCase()}</div>
             <div className="lc-body">
               <div className="lc-top">
                 <div>
-                  <div className="lc-name">{item.workerName || item.teamLeaderName || 'Work Group'}</div>
-                  <div className="lc-location">📍 {item.district || item.village || 'Nearby'}</div>
+                  <div className="lc-name">{item.teamLeaderName || item.workerName || 'Work Group'}</div>
+                  <div className="lc-location">📍 {item.district || 'Nearby'}</div>
                 </div>
                 <span className="lc-avail available">● Available</span>
               </div>
               <div className="lc-skills">
-                <span className="skill-pill">🌾 {item.tasks || item.specialization || 'Farm Work'}</span>
+                <span className="skill-pill">🌾 {item.specialization || item.tasks || 'Farm Work'}</span>
               </div>
               <div className="lc-info">
-                <div className="lc-info-item">👥 Group of <span className="li-val">{item.groupSize || item.teamSize || 1}</span></div>
-                <div className="lc-info-item">💰 <span className="li-val">₹{item.dailyRate || item.dailyRatePerWorker || 400}</span>/day</div>
-                <div className="lc-info-item">📞 <span className="li-val">{item.phone || item.contactPhone || 'Contact Provider'}</span></div>
+                <div className="lc-info-item">👥 Group of <span className="li-val">{item.teamSize || item.groupSize || 1}</span></div>
+                <div className="lc-info-item">💰 <span className="li-val">₹{item.dailyRatePerWorker || item.dailyRate || 400}</span>/day</div>
+                <div className="lc-info-item">📞 <span className="li-val">{item.contactPhone || item.phone || 'Contact Provider'}</span></div>
               </div>
               <div className="lc-actions" style={{ marginTop: '12px' }}>
                 <button className="btn-send-request">📩 Send Request</button>
@@ -184,11 +206,9 @@ export default function Page() {
           </p>
         </div>
       )}
-    </div>{/*  #labourResults  */}
+    </div>
 
-    {/*  ════════════════════════════════════════════════════  */}
-    {/*  MY BOOKINGS                                           */}
-    {/*  ════════════════════════════════════════════════════  */}
+    {/*  MY BOOKINGS  */}
     <div id="myBookings" className="my-bookings-section">
       <div className="section-header">
         <h2>📁 My Bookings</h2>

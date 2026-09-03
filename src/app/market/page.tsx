@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
+import { MOCK_MARKET_PRICES } from "@/lib/mockData";
 
 export default function Page() {
   const { user, userData, isDemo } = useAuth();
@@ -35,6 +36,13 @@ export default function Page() {
   }, [user, isDemo]);
 
   const isRealAccount = Boolean(user && !isDemo);
+
+  const displayMandiRates = useMemo(() => {
+    if (isRealAccount) {
+      return liveMandiRates || [];
+    }
+    return MOCK_MARKET_PRICES;
+  }, [isRealAccount, liveMandiRates]);
 
   return (
     <main>
@@ -138,9 +146,9 @@ export default function Page() {
 
   {/*  ── Price Results ─────────────────────────────────────────  */}
   <div id="priceResults">
-    {liveMandiRates && liveMandiRates.length > 0 ? (
+    {displayMandiRates.length > 0 ? (
       <div className="mandi-grid">
-        {liveMandiRates.map((item, idx) => (
+        {displayMandiRates.map((item, idx) => (
           <div key={item.id || idx} className="mandi-card">
             <div className="mandi-card-head">
               <div>
