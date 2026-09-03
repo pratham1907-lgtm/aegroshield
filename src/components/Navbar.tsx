@@ -81,39 +81,42 @@ export default function Navbar() {
               style={{
                 fontSize: '0.85rem',
                 fontWeight: '600',
-                color: 'var(--primary)',
+                color: '#14532d',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
-                background: '#f0fdf4',
-                padding: '5px 10px',
+                gap: '6px',
+                background: '#ffffff',
+                padding: '6px 12px',
                 borderRadius: '20px',
-                border: '1px solid #bbf7d0',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                border: '1px solid #dcfce7',
               }}
             >
-              <User size={15} />
+              <User size={15} color="#16a34a" />
               {displayName}
               {isDemo && <span style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#b45309', padding: '1px 6px', borderRadius: '10px', fontWeight: 'bold' }}>Demo</span>}
             </span>
             <button
               onClick={() => logout()}
               style={{
-                background: 'transparent',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                padding: '6px 12px',
+                background: 'rgba(255, 255, 255, 0.18)',
+                border: '1px solid rgba(255, 255, 255, 0.45)',
+                borderRadius: '20px',
+                padding: '6px 14px',
                 fontSize: '0.85rem',
-                fontWeight: '500',
-                color: '#64748b',
+                fontWeight: '600',
+                color: '#ffffff',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
+                gap: '6px',
+                backdropFilter: 'blur(4px)',
                 transition: 'all 0.2s ease',
               }}
+              className="hover:bg-red-600 hover:border-red-500"
               title="Sign Out"
             >
-              <LogOut size={15} /> Logout
+              <LogOut size={15} color="#ffffff" /> Logout
             </button>
           </div>
         ) : (

@@ -1,6 +1,41 @@
 "use client";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
+
 export default function Page() {
+  const { user, userData, isDemo } = useAuth();
+  const [liveMachinery, setLiveMachinery] = useState<any[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user && !isDemo) {
+      setLoading(true);
+      const fetchMachinery = async () => {
+        try {
+          const snap1 = await getDocs(collection(db, 'machinery'));
+          const snap2 = await getDocs(collection(db, 'machineListings'));
+          const items: any[] = [];
+          snap1.forEach(d => items.push({ id: d.id, ...d.data() }));
+          snap2.forEach(d => items.push({ id: d.id, ...d.data() }));
+          setLiveMachinery(items);
+        } catch (err) {
+          console.warn("[Machinery] Error fetching Firestore machinery:", err);
+          setLiveMachinery([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchMachinery();
+    } else {
+      setLiveMachinery(null);
+    }
+  }, [user, isDemo]);
+
+  const isRealAccount = Boolean(user && !isDemo);
+
   return (
     <main>
 {/*  ── Navbar ────────────────────────────────────────────────  */}
@@ -28,11 +63,11 @@ export default function Page() {
   <div className="stats-strip">
     <div className="stat-card">
       <div className="stat-icon green">🚜</div>
-      <div><div className="stat-label">Available Now</div><div className="stat-value">24</div><div className="stat-sub">Equipment units</div></div>
+      <div><div className="stat-label">Available Now</div><div className="stat-value">{isRealAccount ? (liveMachinery?.length || 0) : 24}</div><div className="stat-sub">Equipment units</div></div>
     </div>
     <div className="stat-card">
       <div className="stat-icon amber">🏭</div>
-      <div><div className="stat-label">CHC Centres</div><div className="stat-value">7</div><div className="stat-sub">In your district</div></div>
+      <div><div className="stat-label">CHC Centres</div><div className="stat-value">{isRealAccount ? (liveMachinery && liveMachinery.length > 0 ? '1' : '0') : 7}</div><div className="stat-sub">In your district</div></div>
     </div>
     <div className="stat-card">
       <div className="stat-icon blue">💰</div>
@@ -133,7 +168,7 @@ export default function Page() {
 
   {/*  ── Results Header ────────────────────────────────────────  */}
   <div className="results-header">
-    <div className="results-count">Showing <span id="resultsCount">4</span> results near Meerut, UP</div>
+    <div className="results-count">Showing <span id="resultsCount">{isRealAccount ? (liveMachinery?.length || 0) : 4}</span> results near Meerut, UP</div>
     <select className="sort-select" id="sortSelect">
       <option>Sort: Nearest First</option>
       <option>Sort: Price: Low to High</option>
@@ -145,37 +180,75 @@ export default function Page() {
   {/*  ── Machinery Results ─────────────────────────────────────  */}
   <div id="machineryResults">
 
-    {/*  Card 1: Mahindra 575 DI Tractor  */}
-    <div className="machine-card"
-         data-id="1"
-         data-available="true"
-         data-km="3.1"
-         data-rate="400"
-         data-operator="true"
-         data-filter-tags="available-today within-10km under-500 with-operator">
-      <div className="mc-icon-circle tractor">🚜</div>
-      <div className="mc-body">
-        <div className="mc-top">
-          <div>
-            <div className="mc-name">Mahindra 575 DI Tractor</div>
-            <div className="mc-provider">👤 <strong>Ramesh Kumar</strong> — CHC Meerut · Modipuram Branch</div>
+    {isRealAccount ? (
+      liveMachinery && liveMachinery.length > 0 ? (
+        liveMachinery.map((item, idx) => (
+          <div key={item.id || idx} className="machine-card" data-available="true">
+            <div className="mc-icon-circle tractor">🚜</div>
+            <div className="mc-body">
+              <div className="mc-top">
+                <div>
+                  <div className="mc-name">{item.machineName || item.equipmentType || item.model || 'Farm Machine'}</div>
+                  <div className="mc-provider">👤 <strong>{item.provider || item.chcName || 'Registered Provider'}</strong> — {item.district || 'Local District'}</div>
+                </div>
+                <span className="mc-badge available">● Available</span>
+              </div>
+              <div className="mc-pills">
+                <span className="mc-pill highlight">₹{item.hourlyRate || item.ratePerHour || 400}/hr</span>
+                {item.operator && <span className="mc-pill">👨‍🌾 Includes Operator</span>}
+                <span className="mc-pill">📍 {item.village || item.district || 'Nearby'}</span>
+              </div>
+              <div className="mc-actions" style={{ marginTop: '12px' }}>
+                <button className="btn-book-now">🚜 Book Now</button>
+              </div>
+            </div>
           </div>
-          <span className="mc-badge available">● Available</span>
+        ))
+      ) : (
+        <div style={{ padding: '48px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px dashed #cbd5e1', margin: '20px 0' }}>
+          <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>🚜</div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>No machinery available in your area yet</h3>
+          <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 16px' }}>
+            Be the first to list farm equipment or tractors for hire in your district using the Register Equipment tab.
+          </p>
         </div>
-        <div className="mc-pills">
-          <span className="mc-pill">📍 3.1 km away</span>
-          <span className="mc-pill highlight">₹400/hr</span>
-          <span className="mc-pill">⭐ 4.8 (41 reviews)</span>
-          <span className="mc-pill">🐎 47 HP</span>
-          <span className="mc-pill">📅 2023 model</span>
+      )
+    ) : (
+      <>
+        {/* Mock Machinery Cards for Demo / Guest Sessions */}
+        <div className="machine-card"
+             data-id="1"
+             data-available="true"
+             data-km="3.1"
+             data-rate="400"
+             data-operator="true"
+             data-filter-tags="available-today within-10km under-500 with-operator">
+          <div className="mc-icon-circle tractor">🚜</div>
+          <div className="mc-body">
+            <div className="mc-top">
+              <div>
+                <div className="mc-name">Mahindra 575 DI Tractor</div>
+                <div className="mc-provider">👤 <strong>Ramesh Kumar</strong> — CHC Meerut · Modipuram Branch</div>
+              </div>
+              <span className="mc-badge available">● Available</span>
+            </div>
+            <div className="mc-pills">
+              <span className="mc-pill">📍 3.1 km away</span>
+              <span className="mc-pill highlight">₹400/hr</span>
+              <span className="mc-pill">⭐ 4.8 (41 reviews)</span>
+              <span className="mc-pill">🐎 47 HP</span>
+              <span className="mc-pill">📅 2023 model</span>
+            </div>
+            <span className="mc-operator-tag">👨‍🌾 Includes operator</span>
+            <div className="mc-actions">
+              <button className="btn-view-slots" onClick={() => {}}>📅 View Slots</button>
+              <button className="btn-book-now" onClick={() => {}}>🚜 Book Now</button>
+            </div>
+          </div>
         </div>
-        <span className="mc-operator-tag">👨‍🌾 Includes operator</span>
-        <div className="mc-actions">
-          <button className="btn-view-slots" onClick={() => {}}>📅 View Slots</button>
-          <button className="btn-book-now" onClick={() => {}}>🚜 Book Now</button>
-        </div>
-      </div>
-    </div>
+      </>
+    )}
+
 
     {/*  Card 2: John Deere Harvester  */}
     <div className="machine-card"

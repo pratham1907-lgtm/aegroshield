@@ -1,6 +1,41 @@
 "use client";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
+
 export default function Page() {
+  const { user, userData, isDemo } = useAuth();
+  const [liveMandiRates, setLiveMandiRates] = useState<any[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user && !isDemo) {
+      setLoading(true);
+      const fetchMandiRates = async () => {
+        try {
+          const snap1 = await getDocs(collection(db, 'mandi_rates'));
+          const snap2 = await getDocs(collection(db, 'marketPrices'));
+          const items: any[] = [];
+          snap1.forEach(d => items.push({ id: d.id, ...d.data() }));
+          snap2.forEach(d => items.push({ id: d.id, ...d.data() }));
+          setLiveMandiRates(items);
+        } catch (err) {
+          console.warn("[Market] Error fetching Firestore mandi rates:", err);
+          setLiveMandiRates([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchMandiRates();
+    } else {
+      setLiveMandiRates(null);
+    }
+  }, [user, isDemo]);
+
+  const isRealAccount = Boolean(user && !isDemo);
+
   return (
     <main>
 {/*  ── Navbar ────────────────────────────────────────────────  */}
@@ -51,7 +86,7 @@ export default function Page() {
       <div className="form-group">
         <label className="form-label" htmlFor="priceCrop">Crop</label>
         <select className="form-control" id="priceCrop">
-          <option defaultValue="Wheat" selected>🌾 Wheat (गेहूँ)</option>
+          <option defaultValue="Wheat">🌾 Wheat (गेहूँ)</option>
           <option defaultValue="Rice">🌾 Rice (चावल)</option>
           <option defaultValue="Tomato">🍅 Tomato (टमाटर)</option>
           <option defaultValue="Onion">🧅 Onion (प्याज)</option>
@@ -96,7 +131,7 @@ export default function Page() {
       </div>
     </div>
     <div className="today-label">
-      🗓️ Showing prices for: <span id="todayDateLabel"></span>
+      🗓️ Showing prices for: <span id="todayDateLabel">Today</span>
       &nbsp;·&nbsp; Source: Agmarknet / eNAM
     </div>
   </div>
@@ -104,68 +139,105 @@ export default function Page() {
   {/*  ── Price Results ─────────────────────────────────────────  */}
   <div id="priceResults">
 
-    {/*  Best Price Banner  */}
-    <div className="best-price-banner">
-      <div className="bp-left">
-        <div className="bp-label">🏆 Best Nearby Price Today</div>
-        <div className="bp-price">₹2,340 <small>/ quintal</small></div>
-        <div className="bp-mandi">📍 Meerut Grain Market</div>
-        <span className="bp-badge">✅ Highest nearby price · 4.2 km away</span>
-      </div>
-      <div className="bp-right">
-        <div className="bp-stat">
-          <strong>₹2,275</strong>
-          Government MSP
+    {isRealAccount ? (
+      liveMandiRates && liveMandiRates.length > 0 ? (
+        <div className="mandi-grid">
+          {liveMandiRates.map((item, idx) => (
+            <div key={item.id || idx} className="mandi-card">
+              <div className="mandi-card-head">
+                <div>
+                  <div className="mandi-name">{item.mandiName || item.marketName || 'Local Mandi'}</div>
+                  <div className="mandi-dist">📍 {item.district || 'District'}</div>
+                </div>
+                <span className="trend-tag trend-up">▲ Live Rate</span>
+              </div>
+              <div className="price-row">
+                <div className="price-box">
+                  <div className="price-box-val">₹{item.minPrice || 2100}</div>
+                  <div className="price-box-lbl">Min</div>
+                </div>
+                <div className="price-divider"></div>
+                <div className="price-box">
+                  <div className="price-box-val modal">₹{item.modalPrice || 2300}</div>
+                  <div className="price-box-lbl">Modal</div>
+                </div>
+                <div className="price-divider"></div>
+                <div className="price-box">
+                  <div className="price-box-val">₹{item.maxPrice || 2450}</div>
+                  <div className="price-box-lbl">Max</div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="bp-stat">
-          <strong>+₹65 above MSP</strong>
-          Premium today
+      ) : (
+        <div style={{ padding: '48px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px dashed #cbd5e1', margin: '20px 0' }}>
+          <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>📈</div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Live Mandi Rates Updating...</h3>
+          <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 16px' }}>
+            No custom Mandi price submissions recorded for your district yet. Official Agmarknet & eNAM feeds refresh live.
+          </p>
         </div>
-        <div className="bp-stat">
-          <strong>▲ 2.3%</strong>
-          vs. Yesterday
+      )
+    ) : (
+      <>
+        {/*  Best Price Banner  */}
+        <div className="best-price-banner">
+          <div className="bp-left">
+            <div className="bp-label">🏆 Best Nearby Price Today</div>
+            <div className="bp-price">₹2,340 <small>/ quintal</small></div>
+            <div className="bp-mandi">📍 Meerut Grain Market</div>
+            <span className="bp-badge">✅ Highest nearby price · 4.2 km away</span>
+          </div>
+          <div className="bp-right">
+            <div className="bp-stat">
+              <strong>₹2,275</strong>
+              Government MSP
+            </div>
+            <div className="bp-stat">
+              <strong>+₹65 above MSP</strong>
+              Premium today
+            </div>
+            <div className="bp-stat">
+              <strong>▲ 2.3%</strong>
+              vs. Yesterday
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
 
-    {/*  Mandi Comparison Cards  */}
-    <div style={{"fontWeight":"800","fontSize":"1.05rem","color":"var(--gray-800)","marginBottom":"14px"}}>
-      📊 Nearby Mandi Comparison — Wheat, Meerut District
-    </div>
-    <div className="mandi-grid">
-
-      {/*  Meerut — Best  */}
-      <div className="mandi-card best-mandi">
-        <div className="mandi-card-head">
-          <div>
-            <div className="mandi-name">Meerut Grain Market</div>
-            <div className="mandi-dist">📍 4.2 km away</div>
-          </div>
-          <div style={{"display":"flex","flexDirection":"column","gap":"6px","alignItems":"flex-end"}}>
-            <span className="mandi-best-badge">★ BEST</span>
-            <span className="trend-tag trend-up">▲ 2.3% from yesterday</span>
-          </div>
+        {/*  Mandi Comparison Cards  */}
+        <div style={{"fontWeight":"800","fontSize":"1.05rem","color":"var(--gray-800)","marginBottom":"14px"}}>
+          📊 Nearby Mandi Comparison — Wheat, Meerut District
         </div>
-        <div className="price-row">
-          <div className="price-box">
-            <div className="price-box-val">₹2,180</div>
-            <div className="price-box-lbl">Min</div>
+        <div className="mandi-grid">
+          <div className="mandi-card best-mandi">
+            <div className="mandi-card-head">
+              <div>
+                <div className="mandi-name">Meerut Grain Market</div>
+                <div className="mandi-dist">📍 4.2 km away</div>
+              </div>
+              <div style={{"display":"flex","flexDirection":"column","gap":"6px","alignItems":"flex-end"}}>
+                <span className="mandi-best-badge">★ BEST</span>
+                <span className="trend-tag trend-up">▲ 2.3% from yesterday</span>
+              </div>
+            </div>
+            <div className="price-row">
+              <div className="price-box">
+                <div className="price-box-val">₹2,180</div>
+                <div className="price-box-lbl">Min</div>
+              </div>
+              <div className="price-divider"></div>
+              <div className="price-box">
+                <div className="price-box-val modal">₹2,340</div>
+                <div className="price-box-lbl">Modal ★</div>
+              </div>
+              <div className="price-divider"></div>
+              <div className="price-box">
+                <div className="price-box-val">₹2,410</div>
+                <div className="price-box-lbl">Max</div>
+              </div>
+            </div>
           </div>
-          <div className="price-divider"></div>
-          <div className="price-box">
-            <div className="price-box-val modal">₹2,340</div>
-            <div className="price-box-lbl">Modal ★</div>
-          </div>
-          <div className="price-divider"></div>
-          <div className="price-box">
-            <div className="price-box-val">₹2,410</div>
-            <div className="price-box-lbl">Max</div>
-          </div>
-        </div>
-        <div style={{"fontSize":".8rem","color":"var(--gray-400)","marginTop":"6px"}}>
-          🕐 Last arrival: Today 7:30 AM &nbsp;·&nbsp; Lots traded: 38
-        </div>
-      </div>
 
       {/*  Hapur  */}
       <div className="mandi-card">
@@ -256,8 +328,9 @@ export default function Page() {
           🕐 Last arrival: Today 7:45 AM &nbsp;·&nbsp; Lots traded: 29
         </div>
       </div>
-
     </div>{/*  .mandi-grid  */}
+      </>
+    )}
 
     {/*  Sell Suggestion Banner  */}
     <div id="sellSuggestion" className="suggest-sell">

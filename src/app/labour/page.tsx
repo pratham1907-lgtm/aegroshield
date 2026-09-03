@@ -1,6 +1,41 @@
 "use client";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
+
 export default function Page() {
+  const { user, userData, isDemo } = useAuth();
+  const [liveLabour, setLiveLabour] = useState<any[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user && !isDemo) {
+      setLoading(true);
+      const fetchLabour = async () => {
+        try {
+          const snap1 = await getDocs(collection(db, 'labour'));
+          const snap2 = await getDocs(collection(db, 'workerListings'));
+          const items: any[] = [];
+          snap1.forEach(d => items.push({ id: d.id, ...d.data() }));
+          snap2.forEach(d => items.push({ id: d.id, ...d.data() }));
+          setLiveLabour(items);
+        } catch (err) {
+          console.warn("[Labour] Error fetching Firestore labour:", err);
+          setLiveLabour([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchLabour();
+    } else {
+      setLiveLabour(null);
+    }
+  }, [user, isDemo]);
+
+  const isRealAccount = Boolean(user && !isDemo);
+
   return (
     <main>
 {/*  ── Navbar ────────────────────────────────────────────────  */}
@@ -28,11 +63,11 @@ export default function Page() {
   <div className="grid-4" style={{"marginBottom":"28px"}}>
     <div className="stat-card">
       <div className="stat-icon green">👷</div>
-      <div><div className="stat-label">Workers Available</div><div className="stat-value">186</div><div className="stat-sub">In your area</div></div>
+      <div><div className="stat-label">Workers Available</div><div className="stat-value">{isRealAccount ? (liveLabour?.length || 0) : 186}</div><div className="stat-sub">In your area</div></div>
     </div>
     <div className="stat-card">
       <div className="stat-icon amber">📋</div>
-      <div><div className="stat-label">Active Requests</div><div className="stat-value">42</div><div className="stat-sub">Posted today</div></div>
+      <div><div className="stat-label">Active Requests</div><div className="stat-value">{isRealAccount ? (liveLabour && liveLabour.length > 0 ? '1' : '0') : 42}</div><div className="stat-sub">Posted today</div></div>
     </div>
     <div className="stat-card">
       <div className="stat-icon blue">💰</div>
@@ -101,7 +136,7 @@ export default function Page() {
     {/*  Results header  */}
     <div style={{"display":"flex","alignItems":"center","justifyContent":"space-between","marginBottom":"16px","flexWrap":"wrap","gap":"10px"}}>
       <div style={{"fontWeight":"800","fontSize":"1rem","color":"var(--gray-800)"}}>
-        Showing <span style={{"color":"var(--primary)"}} id="labourCount">4</span> groups & workers near you
+        Showing <span style={{"color":"var(--primary)"}} id="labourCount">{isRealAccount ? (liveLabour?.length || 0) : 4}</span> groups & workers near you
       </div>
       <select className="sort-select" style={{"padding":"7px 12px","borderRadius":"8px","border":"1.5px solid var(--gray-200)","fontSize":".86rem","background":"var(--white)","cursor":"pointer"}}>
         <option>Sort: Nearest First</option>
@@ -114,33 +149,75 @@ export default function Page() {
     {/*  Labour Results  */}
     <div id="labourResults">
 
-      {/*  Card 1: Ramswaroop Group  */}
-      <div className="labour-card" data-id="1">
-        <div className="lc-avatar">RK</div>
-        <div className="lc-body">
-          <div className="lc-top">
-            <div>
-              <div className="lc-name">Ramswaroop Group</div>
-              <div className="lc-location">📍 Muzaffarnagar, Uttar Pradesh</div>
+      {isRealAccount ? (
+        liveLabour && liveLabour.length > 0 ? (
+          liveLabour.map((item, idx) => (
+            <div key={item.id || idx} className="labour-card">
+              <div className="lc-avatar">{(item.workerName || item.teamLeaderName || 'WK').slice(0, 2).toUpperCase()}</div>
+              <div className="lc-body">
+                <div className="lc-top">
+                  <div>
+                    <div className="lc-name">{item.workerName || item.teamLeaderName || 'Work Group'}</div>
+                    <div className="lc-location">📍 {item.district || item.village || 'Nearby'}</div>
+                  </div>
+                  <span className="lc-avail available">● Available</span>
+                </div>
+                <div className="lc-skills">
+                  <span className="skill-pill">🌾 {item.tasks || item.specialization || 'Farm Work'}</span>
+                </div>
+                <div className="lc-info">
+                  <div className="lc-info-item">👥 Group of <span className="li-val">{item.groupSize || item.teamSize || 1}</span></div>
+                  <div className="lc-info-item">💰 <span className="li-val">₹{item.dailyRate || item.dailyRatePerWorker || 400}</span>/day</div>
+                  <div className="lc-info-item">📞 <span className="li-val">{item.phone || item.contactPhone || 'Contact Provider'}</span></div>
+                </div>
+                <div className="lc-actions" style={{ marginTop: '12px' }}>
+                  <button className="btn-send-request">📩 Send Request</button>
+                  <button className="btn-call">📞 Call</button>
+                </div>
+              </div>
             </div>
-            <span className="lc-avail available">● Available 12–18 Jun</span>
+          ))
+        ) : (
+          <div style={{ padding: '48px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px dashed #cbd5e1', margin: '20px 0' }}>
+            <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>👥</div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>No labour postings available in your area yet</h3>
+            <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 16px' }}>
+              Post your availability or request workers for harvesting, weeding, or sowing using the Post Availability tab.
+            </p>
           </div>
-          <div className="lc-skills">
-            <span className="skill-pill">🌾 Harvesting</span>
-            <span className="skill-pill">🪴 Weeding</span>
+        )
+      ) : (
+        <>
+          {/* Mock Labour Cards for Demo / Guest Sessions */}
+          <div className="labour-card" data-id="1">
+            <div className="lc-avatar">RK</div>
+            <div className="lc-body">
+              <div className="lc-top">
+                <div>
+                  <div className="lc-name">Ramswaroop Group</div>
+                  <div className="lc-location">📍 Muzaffarnagar, Uttar Pradesh</div>
+                </div>
+                <span className="lc-avail available">● Available 12–18 Jun</span>
+              </div>
+              <div className="lc-skills">
+                <span className="skill-pill">🌾 Harvesting</span>
+                <span className="skill-pill">🪴 Weeding</span>
+              </div>
+              <div className="lc-info">
+                <div className="lc-info-item">👥 Group of <span className="li-val">8</span></div>
+                <div className="lc-info-item">💰 <span className="li-val">₹380</span>/day per person</div>
+                <div className="lc-info-item">⭐ <span className="li-val">4.8</span> (34 jobs done)</div>
+                <div className="lc-info-item">📍 <span className="li-val">22 km</span> away</div>
+              </div>
+              <div className="lc-actions">
+                <button className="btn-send-request" id="sendRequest-1" onClick={() => {}}>📩 Send Request</button>
+                <button className="btn-call">📞 Call</button>
+              </div>
+            </div>
           </div>
-          <div className="lc-info">
-            <div className="lc-info-item">👥 Group of <span className="li-val">8</span></div>
-            <div className="lc-info-item">💰 <span className="li-val">₹380</span>/day per person</div>
-            <div className="lc-info-item">⭐ <span className="li-val">4.8</span> (34 jobs done)</div>
-            <div className="lc-info-item">📍 <span className="li-val">22 km</span> away</div>
-          </div>
-          <div className="lc-actions">
-            <button className="btn-send-request" id="sendRequest-1" onClick={() => {}}>📩 Send Request</button>
-            <button className="btn-call">📞 Call</button>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
+
 
       {/*  Card 2: Sita Devi & Team  */}
       <div className="labour-card" data-id="2">
