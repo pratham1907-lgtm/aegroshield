@@ -138,229 +138,45 @@ export default function Page() {
 
   {/*  ── Price Results ─────────────────────────────────────────  */}
   <div id="priceResults">
-
-    {isRealAccount ? (
-      liveMandiRates && liveMandiRates.length > 0 ? (
-        <div className="mandi-grid">
-          {liveMandiRates.map((item, idx) => (
-            <div key={item.id || idx} className="mandi-card">
-              <div className="mandi-card-head">
-                <div>
-                  <div className="mandi-name">{item.mandiName || item.marketName || 'Local Mandi'}</div>
-                  <div className="mandi-dist">📍 {item.district || 'District'}</div>
-                </div>
-                <span className="trend-tag trend-up">▲ Live Rate</span>
-              </div>
-              <div className="price-row">
-                <div className="price-box">
-                  <div className="price-box-val">₹{item.minPrice || 2100}</div>
-                  <div className="price-box-lbl">Min</div>
-                </div>
-                <div className="price-divider"></div>
-                <div className="price-box">
-                  <div className="price-box-val modal">₹{item.modalPrice || 2300}</div>
-                  <div className="price-box-lbl">Modal</div>
-                </div>
-                <div className="price-divider"></div>
-                <div className="price-box">
-                  <div className="price-box-val">₹{item.maxPrice || 2450}</div>
-                  <div className="price-box-lbl">Max</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ padding: '48px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px dashed #cbd5e1', margin: '20px 0' }}>
-          <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>📈</div>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Live Mandi Rates Updating...</h3>
-          <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 16px' }}>
-            No custom Mandi price submissions recorded for your district yet. Official Agmarknet & eNAM feeds refresh live.
-          </p>
-        </div>
-      )
-    ) : (
-      <>
-        {/*  Best Price Banner  */}
-        <div className="best-price-banner">
-          <div className="bp-left">
-            <div className="bp-label">🏆 Best Nearby Price Today</div>
-            <div className="bp-price">₹2,340 <small>/ quintal</small></div>
-            <div className="bp-mandi">📍 Meerut Grain Market</div>
-            <span className="bp-badge">✅ Highest nearby price · 4.2 km away</span>
-          </div>
-          <div className="bp-right">
-            <div className="bp-stat">
-              <strong>₹2,275</strong>
-              Government MSP
-            </div>
-            <div className="bp-stat">
-              <strong>+₹65 above MSP</strong>
-              Premium today
-            </div>
-            <div className="bp-stat">
-              <strong>▲ 2.3%</strong>
-              vs. Yesterday
-            </div>
-          </div>
-        </div>
-
-        {/*  Mandi Comparison Cards  */}
-        <div style={{"fontWeight":"800","fontSize":"1.05rem","color":"var(--gray-800)","marginBottom":"14px"}}>
-          📊 Nearby Mandi Comparison — Wheat, Meerut District
-        </div>
-        <div className="mandi-grid">
-          <div className="mandi-card best-mandi">
+    {liveMandiRates && liveMandiRates.length > 0 ? (
+      <div className="mandi-grid">
+        {liveMandiRates.map((item, idx) => (
+          <div key={item.id || idx} className="mandi-card">
             <div className="mandi-card-head">
               <div>
-                <div className="mandi-name">Meerut Grain Market</div>
-                <div className="mandi-dist">📍 4.2 km away</div>
+                <div className="mandi-name">{item.mandiName || item.marketName || 'Local Mandi'}</div>
+                <div className="mandi-dist">📍 {item.district || 'District'}</div>
               </div>
-              <div style={{"display":"flex","flexDirection":"column","gap":"6px","alignItems":"flex-end"}}>
-                <span className="mandi-best-badge">★ BEST</span>
-                <span className="trend-tag trend-up">▲ 2.3% from yesterday</span>
-              </div>
+              <span className="trend-tag trend-up">▲ Live Rate</span>
             </div>
             <div className="price-row">
               <div className="price-box">
-                <div className="price-box-val">₹2,180</div>
+                <div className="price-box-val">₹{item.minPrice || 2100}</div>
                 <div className="price-box-lbl">Min</div>
               </div>
               <div className="price-divider"></div>
               <div className="price-box">
-                <div className="price-box-val modal">₹2,340</div>
-                <div className="price-box-lbl">Modal ★</div>
+                <div className="price-box-val modal">₹{item.modalPrice || 2300}</div>
+                <div className="price-box-lbl">Modal</div>
               </div>
               <div className="price-divider"></div>
               <div className="price-box">
-                <div className="price-box-val">₹2,410</div>
+                <div className="price-box-val">₹{item.maxPrice || 2450}</div>
                 <div className="price-box-lbl">Max</div>
               </div>
             </div>
           </div>
-
-      {/*  Hapur  */}
-      <div className="mandi-card">
-        <div className="mandi-card-head">
-          <div>
-            <div className="mandi-name">Hapur Mandi</div>
-            <div className="mandi-dist">📍 18 km away</div>
-          </div>
-          <span className="trend-tag trend-up">▲ 1.1% from yesterday</span>
-        </div>
-        <div className="price-row">
-          <div className="price-box">
-            <div className="price-box-val">₹2,100</div>
-            <div className="price-box-lbl">Min</div>
-          </div>
-          <div className="price-divider"></div>
-          <div className="price-box">
-            <div className="price-box-val modal">₹2,240</div>
-            <div className="price-box-lbl">Modal</div>
-          </div>
-          <div className="price-divider"></div>
-          <div className="price-box">
-            <div className="price-box-val">₹2,300</div>
-            <div className="price-box-lbl">Max</div>
-          </div>
-        </div>
-        <div style={{"fontSize":".8rem","color":"var(--gray-400)","marginTop":"6px"}}>
-          🕐 Last arrival: Today 8:15 AM &nbsp;·&nbsp; Lots traded: 22
-        </div>
+        ))}
       </div>
-
-      {/*  Ghaziabad  */}
-      <div className="mandi-card">
-        <div className="mandi-card-head">
-          <div>
-            <div className="mandi-name">Ghaziabad APMC</div>
-            <div className="mandi-dist">📍 32 km away</div>
-          </div>
-          <span className="trend-tag trend-down">▼ 0.8% from yesterday</span>
-        </div>
-        <div className="price-row">
-          <div className="price-box">
-            <div className="price-box-val">₹2,050</div>
-            <div className="price-box-lbl">Min</div>
-          </div>
-          <div className="price-divider"></div>
-          <div className="price-box">
-            <div className="price-box-val modal">₹2,200</div>
-            <div className="price-box-lbl">Modal</div>
-          </div>
-          <div className="price-divider"></div>
-          <div className="price-box">
-            <div className="price-box-val">₹2,280</div>
-            <div className="price-box-lbl">Max</div>
-          </div>
-        </div>
-        <div style={{"fontSize":".8rem","color":"var(--gray-400)","marginTop":"6px"}}>
-          🕐 Last arrival: Today 9:00 AM &nbsp;·&nbsp; Lots traded: 14
-        </div>
+    ) : (
+      <div style={{ padding: '48px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px dashed #cbd5e1', margin: '20px 0' }}>
+        <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>📈</div>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>Live Mandi Rates Updating...</h3>
+        <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 16px' }}>
+          No custom Mandi price submissions recorded for your district yet. Official Agmarknet & eNAM feeds refresh live.
+        </p>
       </div>
-
-      {/*  Bulandshahr  */}
-      <div className="mandi-card">
-        <div className="mandi-card-head">
-          <div>
-            <div className="mandi-name">Bulandshahr Mandi</div>
-            <div className="mandi-dist">📍 47 km away</div>
-          </div>
-          <span className="trend-tag trend-up">▲ 1.8% from yesterday</span>
-        </div>
-        <div className="price-row">
-          <div className="price-box">
-            <div className="price-box-val">₹2,220</div>
-            <div className="price-box-lbl">Min</div>
-          </div>
-          <div className="price-divider"></div>
-          <div className="price-box">
-            <div className="price-box-val modal">₹2,310</div>
-            <div className="price-box-lbl">Modal</div>
-          </div>
-          <div className="price-divider"></div>
-          <div className="price-box">
-            <div className="price-box-val">₹2,380</div>
-            <div className="price-box-lbl">Max</div>
-          </div>
-        </div>
-        <div style={{"fontSize":".8rem","color":"var(--gray-400)","marginTop":"6px"}}>
-          🕐 Last arrival: Today 7:45 AM &nbsp;·&nbsp; Lots traded: 29
-        </div>
-      </div>
-    </div>{/*  .mandi-grid  */}
-    {/*  Sell Suggestion Banner  */}
-    <div id="sellSuggestion" className="suggest-sell">
-      <div className="ss-icon">✅</div>
-      <div className="ss-text">
-        <div className="ss-title">Sell Now — Prices are above MSP and trending up</div>
-        <div className="ss-sub">Best mandi: Meerut Grain Market (4.2 km away) · Modal ₹2,340/quintal · ₹65 above MSP · Prices forecast to dip slightly over next 3 days</div>
-      </div>
-    </div>
-
-    {/*  ── 30-Day Price Chart ───────────────────────────────────  */}
-    <div className="chart-section">
-      <div className="chart-section-head">
-        <div>
-          <h2>📈 30-Day Price Trend — Wheat, Meerut</h2>
-          <p>Daily modal prices at Meerut Grain Market · Last 30 days</p>
-        </div>
-        <div className="chart-legend">
-          <div className="cl-row"><div className="cl-line"></div> Modal Price</div>
-          <div className="cl-row"><div className="cl-dash"></div> MSP ₹2,275</div>
-        </div>
-      </div>
-
-      <canvas id="priceChart" height={90}></canvas>
-
-      <p className="chart-note">
-        MSP = Minimum Support Price set by the Government of India for Wheat (Rabi 2025-26) ·
-        Prices sourced from Agmarknet · Updated daily at 6 PM
-      </p>
-    </div>
-      </>
     )}
-
   </div>{/*  #priceResults  */}
 
 </main>

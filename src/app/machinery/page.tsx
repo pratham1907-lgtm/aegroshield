@@ -177,171 +177,41 @@ export default function Page() {
     </select>
   </div>
 
-  {/*  ── Machinery Results ─────────────────────────────────────  */}
+  /* ── Machinery Results ───────────────────────────────────── */
   <div id="machineryResults">
-
-    {isRealAccount ? (
-      liveMachinery && liveMachinery.length > 0 ? (
-        liveMachinery.map((item, idx) => (
-          <div key={item.id || idx} className="machine-card" data-available="true">
-            <div className="mc-icon-circle tractor">🚜</div>
-            <div className="mc-body">
-              <div className="mc-top">
-                <div>
-                  <div className="mc-name">{item.machineName || item.equipmentType || item.model || 'Farm Machine'}</div>
-                  <div className="mc-provider">👤 <strong>{item.provider || item.chcName || 'Registered Provider'}</strong> — {item.district || 'Local District'}</div>
-                </div>
-                <span className="mc-badge available">● Available</span>
-              </div>
-              <div className="mc-pills">
-                <span className="mc-pill highlight">₹{item.hourlyRate || item.ratePerHour || 400}/hr</span>
-                {item.operator && <span className="mc-pill">👨‍🌾 Includes Operator</span>}
-                <span className="mc-pill">📍 {item.village || item.district || 'Nearby'}</span>
-              </div>
-              <div className="mc-actions" style={{ marginTop: '12px' }}>
-                <button className="btn-book-now">🚜 Book Now</button>
-              </div>
-            </div>
-          </div>
-        ))
-      ) : (
-        <div style={{ padding: '48px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px dashed #cbd5e1', margin: '20px 0' }}>
-          <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>🚜</div>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>No machinery available in your area yet</h3>
-          <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 16px' }}>
-            Be the first to list farm equipment or tractors for hire in your district using the Register Equipment tab.
-          </p>
-        </div>
-      )
-    ) : (
-      <>
-        {/* Mock Machinery Cards for Demo / Guest Sessions ONLY */}
-        <div className="machine-card"
-             data-id="1"
-             data-available="true"
-             data-km="3.1"
-             data-rate="400"
-             data-operator="true"
-             data-filter-tags="available-today within-10km under-500 with-operator">
+    {liveMachinery && liveMachinery.length > 0 ? (
+      liveMachinery.map((item, idx) => (
+        <div key={item.id || idx} className="machine-card" data-available="true">
           <div className="mc-icon-circle tractor">🚜</div>
           <div className="mc-body">
             <div className="mc-top">
               <div>
-                <div className="mc-name">Mahindra 575 DI Tractor</div>
-                <div className="mc-provider">👤 <strong>Ramesh Kumar</strong> — CHC Meerut · Modipuram Branch</div>
+                <div className="mc-name">{item.machineName || item.equipmentType || item.model || 'Farm Machine'}</div>
+                <div className="mc-provider">👤 <strong>{item.provider || item.chcName || 'Registered Provider'}</strong> — {item.district || 'Local District'}</div>
               </div>
               <span className="mc-badge available">● Available</span>
             </div>
             <div className="mc-pills">
-              <span className="mc-pill">📍 3.1 km away</span>
-              <span className="mc-pill highlight">₹400/hr</span>
-              <span className="mc-pill">⭐ 4.8 (41 reviews)</span>
-              <span className="mc-pill">🐎 47 HP</span>
-              <span className="mc-pill">📅 2023 model</span>
+              <span className="mc-pill highlight">₹{item.hourlyRate || item.ratePerHour || 400}/hr</span>
+              {item.operator && <span className="mc-pill">👨‍🌾 Includes Operator</span>}
+              <span className="mc-pill">📍 {item.village || item.district || 'Nearby'}</span>
             </div>
-            <span className="mc-operator-tag">👨‍🌾 Includes operator</span>
-            <div className="mc-actions">
-              <button className="btn-view-slots" onClick={() => {}}>📅 View Slots</button>
-              <button className="btn-book-now" onClick={() => {}}>🚜 Book Now</button>
+            <div className="mc-actions" style={{ marginTop: '12px' }}>
+              <button className="btn-book-now">🚜 Book Now</button>
             </div>
           </div>
         </div>
-
-        {/* Card 2: John Deere Harvester */}
-        <div className="machine-card"
-             data-id="2"
-             data-available="true"
-             data-km="7.4"
-             data-rate="1200"
-             data-operator="true"
-             data-filter-tags="available-today within-10km with-operator">
-          <div className="mc-icon-circle harvester">🌾</div>
-          <div className="mc-body">
-            <div className="mc-top">
-              <div>
-                <div className="mc-name">John Deere W70 Combine Harvester</div>
-                <div className="mc-provider">👤 <strong>Suresh Agro Services</strong> — CHC Sardhana</div>
-              </div>
-              <span className="mc-badge available">● Available</span>
-            </div>
-            <div className="mc-pills">
-              <span className="mc-pill">📍 7.4 km away</span>
-              <span className="mc-pill highlight">₹1,200/hr</span>
-              <span className="mc-pill">⭐ 4.6 (19 reviews)</span>
-              <span className="mc-pill">🐎 140 HP</span>
-              <span className="mc-pill">📅 2024 model</span>
-            </div>
-            <span className="mc-operator-tag">👨‍🌾 Includes operator</span>
-            <div className="mc-actions">
-              <button className="btn-view-slots" onClick={() => {}}>📅 View Slots</button>
-              <button className="btn-book-now" onClick={() => {}}>🌾 Book Now</button>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: Sonalika Rotavator */}
-        <div className="machine-card booked-card"
-             data-id="3"
-             data-available="false"
-             data-km="5.8"
-             data-rate="350"
-             data-operator="false"
-             data-filter-tags="within-10km under-500">
-          <div className="mc-icon-circle rotavator">🔄</div>
-          <div className="mc-body">
-            <div className="mc-top">
-              <div>
-                <div className="mc-name">Sonalika 60 Rotavator (6 ft)</div>
-                <div className="mc-provider">👤 <strong>Kisan Seva Kendra</strong> — CHC Ghaziabad North</div>
-              </div>
-              <span className="mc-badge booked">⏳ Booked Today</span>
-            </div>
-            <div className="mc-pills">
-              <span className="mc-pill">📍 5.8 km away</span>
-              <span className="mc-pill">₹350/hr</span>
-              <span className="mc-pill">⭐ 4.3 (12 reviews)</span>
-              <span className="mc-pill">🐎 60 HP</span>
-              <span className="mc-pill" style={{"background":"#fde8e8","borderColor":"#f5c0b0","color":"var(--danger)"}}>Next Free: 11 Jun 8AM</span>
-            </div>
-            <div className="mc-actions">
-              <button className="btn-view-slots" onClick={() => {}}>📅 View Slots</button>
-              <button className="btn-book-now" disabled>⏳ Booked Today</button>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Kirloskar Power Sprayer */}
-        <div className="machine-card"
-             data-id="4"
-             data-available="true"
-             data-km="2.2"
-             data-rate="200"
-             data-operator="false"
-             data-filter-tags="available-today within-10km under-500">
-          <div className="mc-icon-circle sprayer">💦</div>
-          <div className="mc-body">
-            <div className="mc-top">
-              <div>
-                <div className="mc-name">Kirloskar Power Sprayer (600L Boom)</div>
-                <div className="mc-provider">👤 <strong>Vinod Kumar Farms</strong> — CHC Meerut · Pallavpuram</div>
-              </div>
-              <span className="mc-badge available">● Available</span>
-            </div>
-            <div className="mc-pills">
-              <span className="mc-pill">📍 2.2 km away</span>
-              <span className="mc-pill highlight">₹200/hr</span>
-              <span className="mc-pill">⭐ 4.9 (57 reviews)</span>
-              <span className="mc-pill">🛢️ 600 L tank</span>
-              <span className="mc-pill">📅 2025 model</span>
-            </div>
-            <div className="mc-actions">
-              <button className="btn-view-slots" onClick={() => {}}>📅 View Slots</button>
-              <button className="btn-book-now" onClick={() => {}}>💦 Book Now</button>
-            </div>
-          </div>
-        </div>
-      </>
+      ))
+    ) : (
+      <div style={{ padding: '48px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px dashed #cbd5e1', margin: '20px 0' }}>
+        <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>🚜</div>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>No machinery available in your area yet</h3>
+        <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 16px' }}>
+          Be the first to list farm equipment or tractors for hire in your district using the Register Equipment tab.
+        </p>
+      </div>
     )}
+  </div>
 
   </div>{/*  #machineryResults  */}
 
@@ -446,10 +316,7 @@ export default function Page() {
         </p>
 
       </div>{/*  .bs-body  */}
-    </div>{/*  #bookingForm  */}
-
   </div>{/*  #bookingSection  */}
-
   </div>{/*  #findSection  */}
 
   {/*  ════════════════════════════════════════════════════════  */}
