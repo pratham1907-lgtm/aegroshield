@@ -97,6 +97,26 @@ function getCommodityLabel(comm: string): string {
   return comm;
 }
 
+function formatPerKg(modalPrice: number): string {
+  if (!modalPrice || isNaN(modalPrice)) return '0';
+  const val = modalPrice / 100;
+  if (Number.isInteger(val)) return val.toString();
+  const fixed = val.toFixed(2);
+  return fixed.endsWith('0') ? val.toFixed(1) : fixed;
+}
+
+function getVarietyDisplay(variety?: string): { isSpecific: boolean; label: string } {
+  if (!variety) {
+    return { isSpecific: false, label: 'Standard Quality' };
+  }
+  const clean = variety.trim();
+  const lower = clean.toLowerCase();
+  if (['other', 'standard', 'standard variety', 'general', 'common', 'faq', 'regular'].includes(lower) || clean === '') {
+    return { isSpecific: false, label: 'Standard Quality' };
+  }
+  return { isSpecific: true, label: clean };
+}
+
 function parseArrivalDate(dateStr?: string): number {
   if (!dateStr) return 0;
   if (dateStr.toLowerCase() === 'today') return Date.now();
@@ -212,15 +232,10 @@ function ensureItemAnalytics(item: MandiRateItem): MandiRateItem {
 export default function Page() {
   const { user, userData, isDemo } = useAuth();
 
-  // Search filter selections
+  // Reactive search filter selections
   const [selectedCrop, setSelectedCrop] = useState<string>("All");
   const [selectedState, setSelectedState] = useState<string>("All");
   const [selectedDistrict, setSelectedDistrict] = useState<string>("All");
-
-  // Applied filter states (updated on search click or reset)
-  const [appliedCrop, setAppliedCrop] = useState<string>("All");
-  const [appliedState, setAppliedState] = useState<string>("All");
-  const [appliedDistrict, setAppliedDistrict] = useState<string>("All");
 
   const [liveMandiRates, setLiveMandiRates] = useState<MandiRateItem[] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -286,15 +301,18 @@ export default function Page() {
     return Array.from(s).sort((a, b) => a.localeCompare(b));
   }, [rawData]);
 
-  // 2. Available Districts (Cascading filter based on selected state)
+  // 2. Available Districts (Strict cascading filter based on selected state)
   const availableDistricts = useMemo(() => {
+    if (!selectedState || selectedState === "All") {
+      return [];
+    }
     const d = new Set<string>();
     rawData.forEach((item) => {
       const itemState = (item.state || '').trim();
       const dist = (item.district || '').trim();
       if (!dist) return;
 
-      if (!selectedState || selectedState === "All" || itemState.toLowerCase() === selectedState.toLowerCase()) {
+      if (itemState.toLowerCase() === selectedState.toLowerCase()) {
         d.add(dist);
       }
     });
@@ -316,6 +334,17 @@ export default function Page() {
     // Reset district to "All" whenever state changes to maintain cascading integrity
     setSelectedDistrict("All");
   };
+
+  // Prevent cross-state mismatches reactively
+  useEffect(() => {
+    if (selectedState === "All" || !selectedState) {
+      if (selectedDistrict !== "All") {
+        setSelectedDistrict("All");
+      }
+    } else if (selectedDistrict !== "All" && availableDistricts.length > 0 && !availableDistricts.includes(selectedDistrict)) {
+      setSelectedDistrict("All");
+    }
+  }, [selectedState, selectedDistrict, availableDistricts]);
 
   const fetchFirestoreRates = useCallback(async () => {
     try {
@@ -412,45 +441,41 @@ export default function Page() {
     };
   }, [fetchFirestoreRates, triggerSyncAndRefresh]);
 
-  // Explicit Search Handler for "Get Live Prices →" button
+  // Primary Search Handler for "Get Live Prices →" button - filters against existing cached Firestore rates
   const handleGetLivePrices = async () => {
     setIsSearching(true);
     setError(null);
     setSyncMessage(null);
 
-    const targetCrop = selectedCrop;
-    const targetState = selectedState;
-    const targetDistrict = selectedDistrict;
+    // If live rates not loaded yet, query from Firestore
+    if (!liveMandiRates || liveMandiRates.length === 0) {
+      const items = await fetchFirestoreRates();
+      if (items.length > 0) {
+        setLiveMandiRates(items);
+      }
+    }
 
-    // Commit to applied filters
-    setAppliedCrop(targetCrop);
-    setAppliedState(targetState);
-    setAppliedDistrict(targetDistrict);
-
-    // Call sync API with user's chosen filters
-    await triggerSyncAndRefresh(targetState, targetDistrict, targetCrop);
-
-    setIsSearching(false);
+    // Responsive visual feedback
+    setTimeout(() => {
+      setIsSearching(false);
+    }, 250);
   };
 
   const handleResetFilters = () => {
     setSelectedCrop("All");
     setSelectedState("All");
     setSelectedDistrict("All");
-    setAppliedCrop("All");
-    setAppliedState("All");
-    setAppliedDistrict("All");
     setError(null);
     setSyncMessage(null);
   };
 
-  // Filter computation with fallback to nearby district rates & off-season detection
+  // Filter computation with fallback to nearby district rates & off-season detection (strictly reactive to dropdown changes)
   const { filteredRates, isShowingNearby, isOffSeason } = useMemo(() => {
     const source = rawData;
 
-    const normCrop = (appliedCrop || "All").trim().toLowerCase();
-    const normDist = (appliedDistrict || "All").trim().toLowerCase();
-    const normState = (appliedState || "All").trim().toLowerCase();
+    const normCrop = (selectedCrop || "All").trim().toLowerCase();
+    const normDist = (selectedDistrict || "All").trim().toLowerCase();
+    const normState = (selectedState || "All").trim().toLowerCase();
 
     const isCropMatch = (item: MandiRateItem) => {
       if (!normCrop || normCrop === "all" || normCrop === "all crops") return true;
@@ -557,7 +582,7 @@ export default function Page() {
       isShowingNearby: false,
       isOffSeason: false
     };
-  }, [rawData, appliedCrop, appliedDistrict, appliedState]);
+  }, [rawData, selectedCrop, selectedDistrict, selectedState]);
 
   return (
     <main>
@@ -565,6 +590,16 @@ export default function Page() {
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        .skeleton-pulse {
+          background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+          background-size: 200% 100%;
+          animation: shimmer 1.5s infinite ease-in-out;
+          border-radius: 6px;
         }
       `}</style>
 
@@ -603,7 +638,7 @@ export default function Page() {
             <div className="stat-icon amber">🔄</div>
             <div>
               <div className="stat-label">Last Updated</div>
-              <div className="stat-value">{syncing || isSearching ? "Syncing..." : "Live data"}</div>
+              <div className="stat-value">{syncing || isSearching ? "Filtering..." : "Live data"}</div>
               <div className="stat-sub">Agmarknet Feed</div>
             </div>
           </div>
@@ -629,14 +664,21 @@ export default function Page() {
         <div className="search-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <h3 style={{ margin: 0 }}>🔍 Search Mandi Prices</h3>
-            <button
-              className="btn btn-outline-primary"
-              onClick={() => triggerSyncAndRefresh(selectedState, selectedDistrict, selectedCrop)}
-              disabled={syncing || isSearching || loading}
-              style={{ padding: "6px 14px", fontSize: "0.85rem", display: "inline-flex", alignItems: "center", gap: "6px" }}
-            >
-              {syncing ? "🔄 Syncing..." : "🔄 Sync Live Mandi Data"}
-            </button>
+            <div style={{
+              fontSize: "0.82rem",
+              color: "#047857",
+              background: "#ecfdf5",
+              border: "1px solid #a7f3d0",
+              padding: "4px 12px",
+              borderRadius: "20px",
+              fontWeight: 600,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px"
+            }}>
+              <span style={{ display: "inline-block", width: "7px", height: "7px", borderRadius: "50%", background: "#10b981" }}></span>
+              Verified Mandi Rates
+            </div>
           </div>
 
           <div className="search-row">
@@ -674,7 +716,7 @@ export default function Page() {
               </select>
             </div>
 
-            {/* 3. District Dropdown (Cascading filter based on selected state) */}
+            {/* 3. District Dropdown (Strict cascading select based on selected state) */}
             <div className="form-group">
               <label className="form-label" htmlFor="priceDistrict">District</label>
               <select
@@ -682,11 +724,24 @@ export default function Page() {
                 id="priceDistrict"
                 value={selectedDistrict}
                 onChange={(e) => setSelectedDistrict(e.target.value)}
+                disabled={selectedState === "All" || !selectedState || availableDistricts.length === 0}
+                style={{
+                  cursor: (selectedState === "All" || !selectedState || availableDistricts.length === 0) ? "not-allowed" : "pointer",
+                  backgroundColor: (selectedState === "All" || !selectedState || availableDistricts.length === 0) ? "#f8fafc" : "#ffffff",
+                }}
               >
-                <option value="All">All Districts (सभी जिले)</option>
-                {availableDistricts.map((dist) => (
-                  <option key={dist} value={dist}>{dist}</option>
-                ))}
+                {selectedState === "All" || !selectedState ? (
+                  <option value="All">Select a State first (पहले राज्य चुनें)</option>
+                ) : availableDistricts.length === 0 ? (
+                  <option value="All">No Districts Found ({selectedState})</option>
+                ) : (
+                  <>
+                    <option value="All">All Districts ({selectedState})</option>
+                    {availableDistricts.map((dist) => (
+                      <option key={dist} value={dist}>{dist}</option>
+                    ))}
+                  </>
+                )}
               </select>
             </div>
 
@@ -711,29 +766,24 @@ export default function Page() {
           </div>
 
           <div className="today-label">
-            🗓️ Showing prices for: <span id="todayDateLabel">Today & Recent Arrivals</span>
-            &nbsp;·&nbsp; Source: Agmarknet / eNAM (data.gov.in)
-            {liveMandiRates && liveMandiRates.length > 0 && (
-              <span style={{ marginLeft: "12px", color: "#16a34a", fontWeight: 600 }}>
-                • Connected to Firestore ('mandi_rates' — {liveMandiRates.length} records)
-              </span>
-            )}
-            {appliedState && appliedState !== "All" && (
+            🗓️ Showing prices for: <span id="todayDateLabel">Today &amp; Recent Arrivals</span>
+            {selectedState && selectedState !== "All" && (
               <span style={{ marginLeft: "8px", color: "#16a34a", fontWeight: 500 }}>
-                • State: {appliedState}
+                • State: {selectedState}
               </span>
             )}
-            {appliedDistrict && appliedDistrict !== "All" && (
+            {selectedDistrict && selectedDistrict !== "All" && (
               <span style={{ marginLeft: "8px", color: "#2563eb", fontWeight: 500 }}>
-                • District: {appliedDistrict}
+                • District: {selectedDistrict}
               </span>
             )}
-            {appliedCrop && appliedCrop !== "All" && (
+            {selectedCrop && selectedCrop !== "All" && (
               <span style={{ marginLeft: "8px", color: "#ea580c", fontWeight: 500 }}>
-                • Crop: {appliedCrop}
+                • Crop: {selectedCrop}
               </span>
             )}
           </div>
+
 
           {syncMessage && (
             <div style={{ marginTop: "10px", padding: "8px 12px", background: "#f0fdf4", color: "#15803d", borderRadius: "8px", fontSize: "0.88rem", border: "1px solid #bbf7d0" }}>
@@ -764,7 +814,7 @@ export default function Page() {
             gap: "10px"
           }}>
             <div style={{ fontSize: "0.95rem" }}>
-              📍 <strong>No arrivals recorded for {appliedCrop !== "All" ? appliedCrop : "selected crop"} in {appliedDistrict}.</strong> Showing available rates from nearby mandis in {appliedState}.
+              📍 <strong>No arrivals recorded for {selectedCrop !== "All" ? selectedCrop : "selected crop"} in {selectedDistrict}.</strong> Showing available rates from nearby mandis in {selectedState}.
             </div>
             <button
               onClick={handleResetFilters}
@@ -778,15 +828,53 @@ export default function Page() {
 
         {/* ── Price Results ───────────────────────────────────────── */}
         <div id="priceResults">
-          {loading || syncing ? (
-            <div style={{ padding: "48px 24px", textAlign: "center", background: "#ffffff", borderRadius: "16px", border: "1px dashed #cbd5e1", margin: "20px 0" }}>
-              <div style={{ display: "inline-block", width: "40px", height: "40px", border: "4px solid #16a34a", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", marginBottom: "16px" }}></div>
-              <h3 style={{ fontSize: "1.15rem", fontWeight: "700", color: "#1e293b", marginBottom: "4px" }}>
-                {syncing ? "Fetching latest mandi rates from Agmarknet..." : "Loading Mandi Prices..."}
-              </h3>
-              <p style={{ color: "#64748b", fontSize: "0.88rem" }}>
-                Connecting to Agmarknet feed for {selectedState && selectedState !== 'All' ? selectedState : 'all India'}{selectedDistrict && selectedDistrict !== 'All' ? ` (${selectedDistrict})` : ''}...
-              </p>
+          {loading ? (
+            <div className="mandi-grid">
+              {[1, 2, 3, 4, 5, 6].map((k) => (
+                <div key={k} className="mandi-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* Header skeleton */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ width: '65%' }}>
+                      <div className="skeleton-pulse" style={{ height: '22px', width: '85%', marginBottom: '6px' }}></div>
+                      <div className="skeleton-pulse" style={{ height: '14px', width: '55%' }}></div>
+                    </div>
+                    <div className="skeleton-pulse" style={{ height: '24px', width: '75px', borderRadius: '6px' }}></div>
+                  </div>
+
+                  {/* Commodity & Variety badge skeleton */}
+                  <div className="skeleton-pulse" style={{ height: '28px', width: '130px', borderRadius: '6px' }}></div>
+
+                  {/* AI Decision banner skeleton */}
+                  <div className="skeleton-pulse" style={{ height: '36px', width: '100%', borderRadius: '8px' }}></div>
+
+                  {/* Price Row skeleton */}
+                  <div className="price-row" style={{ margin: '4px 0' }}>
+                    <div className="price-box">
+                      <div className="skeleton-pulse" style={{ height: '24px', width: '70%', margin: '0 auto 4px' }}></div>
+                      <div className="skeleton-pulse" style={{ height: '12px', width: '50%', margin: '0 auto' }}></div>
+                    </div>
+                    <div className="price-divider"></div>
+                    <div className="price-box">
+                      <div className="skeleton-pulse" style={{ height: '28px', width: '80%', margin: '0 auto 4px' }}></div>
+                      <div className="skeleton-pulse" style={{ height: '12px', width: '50%', margin: '0 auto' }}></div>
+                    </div>
+                    <div className="price-divider"></div>
+                    <div className="price-box">
+                      <div className="skeleton-pulse" style={{ height: '24px', width: '70%', margin: '0 auto 4px' }}></div>
+                      <div className="skeleton-pulse" style={{ height: '12px', width: '50%', margin: '0 auto' }}></div>
+                    </div>
+                  </div>
+
+                  {/* Mandi Mitra Advisory card skeleton */}
+                  <div className="skeleton-pulse" style={{ height: '62px', width: '100%', borderRadius: '8px' }}></div>
+
+                  {/* Footer skeleton */}
+                  <div style={{ marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="skeleton-pulse" style={{ height: '14px', width: '120px' }}></div>
+                    <div className="skeleton-pulse" style={{ height: '18px', width: '90px', borderRadius: '4px' }}></div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredRates.length > 0 ? (
             <div className="mandi-grid">
@@ -798,6 +886,7 @@ export default function Page() {
                 const isSellNow = item.recommendation === 'SELL_NOW';
                 const trend = item.trend || 'STABLE';
                 const changePct = item.priceChangePercent ?? 0;
+                const varietyInfo = getVarietyDisplay(item.variety);
 
                 return (
                   <div key={item.id || idx} className="mandi-card" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -865,13 +954,21 @@ export default function Page() {
                         gap: "4px"
                       }}>
                         🌾 {getCommodityLabel(actualCommodity)}
-                        {item.variety && item.variety !== 'Other' && item.variety !== 'Standard' && (
-                          <span style={{ fontWeight: 500, color: "#2e7d32" }}> • {item.variety}</span>
+                        {varietyInfo.isSpecific && (
+                          <span style={{ fontWeight: 600, color: "#2e7d32" }}> • {varietyInfo.label}</span>
                         )}
                       </span>
-                      {item.variety === 'Other' && (
-                        <span style={{ background: "#f1f5f9", color: "#64748b", fontSize: "0.75rem", padding: "3px 8px", borderRadius: "4px" }}>
-                          Standard Variety
+                      {!varietyInfo.isSpecific && (
+                        <span style={{
+                          background: "#f1f5f9",
+                          color: "#475569",
+                          fontSize: "0.75rem",
+                          padding: "3px 8px",
+                          borderRadius: "4px",
+                          fontWeight: 600,
+                          border: "1px solid #e2e8f0"
+                        }}>
+                          {varietyInfo.label}
                         </span>
                       )}
                     </div>
@@ -917,14 +1014,16 @@ export default function Page() {
                     {/* Price Row: Min, Modal, Max + Visual Trend Pill */}
                     <div className="price-row">
                       <div className="price-box">
-                        <div className="price-box-val">₹{item.minPrice}</div>
+                        <div className="price-box-val">
+                          ₹{item.minPrice} <span style={{ fontSize: "0.74rem", fontWeight: 600, color: "#64748b" }}>/ qtl</span>
+                        </div>
                         <div className="price-box-lbl">Min Price</div>
                       </div>
                       <div className="price-divider"></div>
                       <div className="price-box">
                         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: "6px", flexWrap: "wrap" }}>
                           <div className="price-box-val modal" style={{ fontSize: "1.35rem", color: "#16a34a", fontWeight: 800 }}>
-                            ₹{item.modalPrice}
+                            ₹{item.modalPrice} <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#16a34a" }}>/ qtl</span>
                           </div>
                           {/* Visual Trend Pill */}
                           {trend === 'RISING' ? (
@@ -974,11 +1073,23 @@ export default function Page() {
                             </span>
                           )}
                         </div>
+                        {/* Small secondary calculation below modal price: (≈ ₹[modalPrice / 100]/kg) */}
+                        <div style={{
+                          fontSize: "0.76rem",
+                          color: "#166534",
+                          fontWeight: 600,
+                          marginTop: "2px",
+                          display: "inline-block"
+                        }}>
+                          (≈ ₹{formatPerKg(item.modalPrice)}/kg)
+                        </div>
                         <div className="price-box-lbl" style={{ color: "#16a34a", fontWeight: 700, marginTop: "2px" }}>Modal Rate</div>
                       </div>
                       <div className="price-divider"></div>
                       <div className="price-box">
-                        <div className="price-box-val">₹{item.maxPrice}</div>
+                        <div className="price-box-val">
+                          ₹{item.maxPrice} <span style={{ fontSize: "0.74rem", fontWeight: 600, color: "#64748b" }}>/ qtl</span>
+                        </div>
                         <div className="price-box-lbl">Max Price</div>
                       </div>
                     </div>
@@ -1063,10 +1174,47 @@ export default function Page() {
                     }}>
                       <span>🗓️ Arrival Date: <strong style={{ color: "#334155" }}>{item.arrivalDate || "Today"}</strong></span>
                       <span style={{ fontSize: "0.75rem", background: "#f8fafc", color: "#475569", padding: "2px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", fontWeight: 600 }}>
-                        ₹/Quintal
+                        ₹/Quintal (100 kg)
                       </span>
                     </div>
+
+                    {/* ── View Detailed Analysis Button ── */}
+                    {item.id && (
+                      <Link
+                        href={`/market/${item.id}`}
+                        style={{
+                          display: "block",
+                          marginTop: "12px",
+                          padding: "10px 16px",
+                          background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+                          border: "1px solid #86efac",
+                          borderRadius: "10px",
+                          color: "#15803d",
+                          fontSize: "0.82rem",
+                          fontWeight: 700,
+                          textAlign: "center",
+                          textDecoration: "none",
+                          transition: "all 0.15s ease",
+                          letterSpacing: "0.01em",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)";
+                          e.currentTarget.style.borderColor = "#4ade80";
+                          e.currentTarget.style.transform = "translateY(-1px)";
+                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(34,197,94,0.18)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)";
+                          e.currentTarget.style.borderColor = "#86efac";
+                          e.currentTarget.style.transform = "";
+                          e.currentTarget.style.boxShadow = "";
+                        }}
+                      >
+                        📊 View Detailed Analysis &amp; 30-Day Trends →
+                      </Link>
+                    )}
                   </div>
+
                 );
               })}
             </div>
@@ -1075,31 +1223,30 @@ export default function Page() {
             <div style={{ padding: "48px 24px", textAlign: "center", background: "#ffffff", borderRadius: "16px", border: "1px dashed #cbd5e1", margin: "20px 0" }}>
               <div style={{ fontSize: "2.8rem", marginBottom: "12px" }}>🍂</div>
               <h3 style={{ fontSize: "1.25rem", fontWeight: "700", color: "#1e293b", marginBottom: "8px" }}>
-                Zero arrivals reported for {appliedCrop !== "All" ? appliedCrop : "selected crop"} across {appliedState !== "All" ? appliedState : "mandis"} (Likely Off-Season).
+                Zero arrivals reported for {selectedCrop !== "All" ? selectedCrop : "selected crop"} across {selectedState !== "All" ? selectedState : "mandis"} (Likely Off-Season).
               </h3>
               <p style={{ color: "#64748b", fontSize: "0.92rem", maxWidth: "520px", margin: "0 auto 20px" }}>
-                No APMC market in {appliedState !== "All" ? appliedState : "this region"} has recorded recent arrivals for this crop. It may currently be out of season or awaiting incoming harvest.
+                No APMC market in {selectedState !== "All" ? selectedState : "this region"} has recorded recent arrivals for this crop. It may currently be out of season or awaiting incoming harvest.
               </p>
               <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
-                {appliedState !== "All" && (
+                {selectedState !== "All" && (
                   <button
                     className="btn btn-primary"
                     onClick={() => {
                       setSelectedCrop("All");
-                      setAppliedCrop("All");
                     }}
                     style={{ padding: "10px 24px", fontSize: "0.95rem", display: "inline-flex", alignItems: "center", gap: "8px" }}
                   >
-                    🌾 View All Actively Traded Crops in {appliedState}
+                    🌾 View All Actively Traded Crops in {selectedState}
                   </button>
                 )}
                 <button
                   className="btn btn-outline-primary"
-                  onClick={() => triggerSyncAndRefresh(appliedState, appliedDistrict !== "All" ? appliedDistrict : "", appliedCrop !== "All" ? appliedCrop : "")}
-                  disabled={syncing || loading}
+                  onClick={() => fetchFirestoreRates()}
+                  disabled={loading}
                   style={{ padding: "10px 20px", fontSize: "0.95rem" }}
                 >
-                  {syncing ? "🔄 Syncing..." : "🔄 Sync Live Mandi Data"}
+                  🔄 Reload Cached Rates
                 </button>
                 <button
                   className="btn btn-outline-primary"
@@ -1118,23 +1265,16 @@ export default function Page() {
                 No Mandi Rates Found
               </h3>
               <p style={{ color: "#64748b", fontSize: "0.92rem", maxWidth: "480px", margin: "0 auto 16px" }}>
-                {error ? error : `No price records returned for ${appliedCrop !== 'All' ? appliedCrop : 'crops'} in ${appliedState !== 'All' ? appliedState : 'India'}${appliedDistrict !== 'All' ? ` (${appliedDistrict})` : ''}.`}
+                {error ? error : `No price records returned for ${selectedCrop !== 'All' ? selectedCrop : 'crops'} in ${selectedState !== 'All' ? selectedState : 'India'}${selectedDistrict !== 'All' ? ` (${selectedDistrict})` : ''}.`}
               </p>
               <div style={{ display: "flex", gap: "10px", justifyContent: "center", flexWrap: "wrap" }}>
                 <button
                   className="btn btn-primary"
-                  onClick={() => triggerSyncAndRefresh(selectedState, selectedDistrict, selectedCrop)}
-                  disabled={syncing || loading}
+                  onClick={() => fetchFirestoreRates()}
+                  disabled={loading}
                   style={{ padding: "10px 24px", fontSize: "0.95rem", display: "inline-flex", alignItems: "center", gap: "8px" }}
                 >
-                  {syncing ? (
-                    <>
-                      <span style={{ display: "inline-block", width: "14px", height: "14px", border: "2px solid #ffffff", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }}></span>
-                      Syncing Mandi Rates...
-                    </>
-                  ) : (
-                    "🔄 Sync Mandi Rates"
-                  )}
+                  🔄 Reload Cached Rates
                 </button>
                 <button
                   className="btn btn-outline-primary"

@@ -1,6 +1,26 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { collection, doc, writeBatch, serverTimestamp, getDocs } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  writeBatch,
+  serverTimestamp,
+  getDocs,
+  getDoc,
+  setDoc,
+  query,
+  orderBy,
+  limit,
+} from 'firebase/firestore';
+
+function getTimestampMs(ts: any): number {
+  if (!ts) return 0;
+  if (typeof ts.toMillis === 'function') return ts.toMillis();
+  if (typeof ts === 'number') return ts;
+  if (ts instanceof Date) return ts.getTime();
+  if (typeof ts.seconds === 'number') return ts.seconds * 1000;
+  return 0;
+}
 
 function sanitizeDocIdPart(str: string = ''): string {
   return str.toString().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -325,6 +345,8 @@ const BASELINE_MANDI_RECORDS = [
   },
 ];
 
+const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+
 async function populateBaselineRecords() {
   console.log('[mandi-sync] Writing baseline records into Firestore collection mandi_rates...');
   const batch = writeBatch(db);
@@ -348,6 +370,18 @@ async function populateBaselineRecords() {
     );
   }
   await batch.commit();
+
+  try {
+    await setDoc(doc(db, 'mandi_metadata', 'sync_status'), {
+      lastSyncedAt: serverTimestamp(),
+      lastSyncCount: BASELINE_MANDI_RECORDS.length,
+      lastStateFilter: 'all',
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (metaErr) {
+    console.warn('[mandi-sync] Failed to write baseline sync metadata:', metaErr);
+  }
+
   console.log(`[mandi-sync] Baseline records successfully written to Firestore (${BASELINE_MANDI_RECORDS.length} docs).`);
   return BASELINE_MANDI_RECORDS.length;
 }
@@ -363,6 +397,57 @@ export async function GET(req: Request) {
     const state = (rawState.toLowerCase() === 'all' || rawState.toLowerCase() === 'all states') ? '' : rawState;
     const district = (rawDistrict.toLowerCase() === 'all' || rawDistrict.toLowerCase() === 'all districts') ? '' : rawDistrict;
     const commodity = (rawCommodity.toLowerCase() === 'all' || rawCommodity.toLowerCase() === 'all crops') ? '' : rawCommodity;
+
+    // Check if bypass is requested (e.g. ?force=true or Vercel Cron secret)
+    const isForce =
+      searchParams.get('force') === 'true' ||
+      req.headers.get('x-cron-secret') === process.env.CRON_SECRET ||
+      req.headers.get('authorization') === `Bearer ${process.env.CRON_SECRET}`;
+
+    // Rate-limiting / 6-hour Cooldown Check
+    if (!isForce) {
+      try {
+        let mostRecentMs = 0;
+
+        // 1. Check sync status metadata doc
+        const metaRef = doc(db, 'mandi_metadata', 'sync_status');
+        const metaSnap = await getDoc(metaRef);
+        if (metaSnap.exists()) {
+          const metaData = metaSnap.data();
+          const metaMs = getTimestampMs(metaData.lastSyncedAt || metaData.updatedAt);
+          if (metaMs > mostRecentMs) mostRecentMs = metaMs;
+        }
+
+        // 2. Check recent records in mandi_rates
+        const recentQuery = query(collection(db, 'mandi_rates'), orderBy('updatedAt', 'desc'), limit(15));
+        const recentSnap = await getDocs(recentQuery);
+        recentSnap.forEach((d) => {
+          const data = d.data();
+          const docState = (data.state || '').toLowerCase();
+          if (!state || docState === state.toLowerCase()) {
+            const ms = getTimestampMs(data.updatedAt);
+            if (ms > mostRecentMs) mostRecentMs = ms;
+          }
+        });
+
+        const now = Date.now();
+        if (mostRecentMs > 0 && (now - mostRecentMs < SIX_HOURS_MS)) {
+          const remainingMinutes = Math.round((SIX_HOURS_MS - (now - mostRecentMs)) / (60 * 1000));
+          const remainingHours = (remainingMinutes / 60).toFixed(1);
+          console.log(`[mandi-sync] Rate-limit/Cooldown active. Last updated: ${new Date(mostRecentMs).toISOString()} (${remainingHours}h remaining). Serving cached live data.`);
+          return NextResponse.json({
+            success: true,
+            cached: true,
+            source: 'cache',
+            message: 'Serving cached live data',
+            cooldownRemainingHours: parseFloat(remainingHours),
+            lastUpdated: new Date(mostRecentMs).toISOString(),
+          });
+        }
+      } catch (cooldownErr) {
+        console.warn('[mandi-sync] Cooldown check warning:', cooldownErr);
+      }
+    }
 
     const apiKey = process.env.DATA_GOV_API_KEY;
     const resourceId = process.env.DATA_GOV_RESOURCE_ID || '9ef84268-d588-465a-a308-a864a43d0070';
@@ -481,6 +566,17 @@ export async function GET(req: Request) {
         }
 
         await batch.commit();
+        try {
+          await setDoc(doc(db, 'mandi_metadata', 'sync_status'), {
+            lastSyncedAt: serverTimestamp(),
+            lastSyncCount: count,
+            lastStateFilter: state || 'all',
+            lastDistrictFilter: district || 'all',
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+        } catch (metaErr) {
+          console.warn('[mandi-sync] Failed to record live sync metadata:', metaErr);
+        }
         console.log(`[mandi-sync] Saved ${count} live records to Firestore collection mandi_rates.`);
         return NextResponse.json({ success: true, count, source: 'live' });
       }
