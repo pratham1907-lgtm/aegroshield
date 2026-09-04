@@ -343,14 +343,278 @@ const BASELINE_MANDI_RECORDS = [
     recommendationTimeline: '7-10 Days',
     advisoryText: 'Chawal ki maang unchi hai aur bhav badh rahe hain. Kuch din hold karne par behtar munafa milega.',
   },
+  {
+    state: "Chhattisgarh",
+    district: "Raipur",
+    market: "Raipur (Fafadih) Krishi Mandi",
+    commodity: "Paddy(Dhan)",
+    variety: "IR-64",
+    minPrice: 2200,
+    maxPrice: 2380,
+    modalPrice: 2320,
+    arrivalDate: new Date().toLocaleDateString('en-IN'),
+    type: "APMC",
+    priceHistory: [
+      { date: "02/09/2026", modalPrice: 2260 },
+      { date: "03/09/2026", modalPrice: 2290 },
+      { date: "04/09/2026", modalPrice: 2320 },
+    ],
+    priceChangePercent: 1.31,
+    trend: 'RISING' as const,
+    recommendation: 'HOLD' as const,
+    recommendationTimeline: '7-10 Days',
+    advisoryText: 'Raipur mandi me Dhan ki achhi maang hai aur daam badh rahe hain. Kuch din hold karne par behtar daam mil sakte hain.',
+  },
+  {
+    state: "Chhattisgarh",
+    district: "Raipur",
+    market: "Raipur APMC",
+    commodity: "Wheat",
+    variety: "Lokwan",
+    minPrice: 2400,
+    maxPrice: 2650,
+    modalPrice: 2540,
+    arrivalDate: new Date().toLocaleDateString('en-IN'),
+    type: "APMC",
+    priceHistory: [
+      { date: "02/09/2026", modalPrice: 2520 },
+      { date: "03/09/2026", modalPrice: 2530 },
+      { date: "04/09/2026", modalPrice: 2540 },
+    ],
+    priceChangePercent: 0.40,
+    trend: 'STABLE' as const,
+    recommendation: 'HOLD' as const,
+    recommendationTimeline: '3-5 Days',
+    advisoryText: 'Gehu ka bhav santulit bana hua hai. Aane wale dino me aavak dekhkar nirnay lein.',
+  },
+  {
+    state: "Chhattisgarh",
+    district: "Raipur",
+    market: "Raipur (Pandri) Mandi",
+    commodity: "Soybean",
+    variety: "Yellow",
+    minPrice: 4500,
+    maxPrice: 4850,
+    modalPrice: 4720,
+    arrivalDate: new Date().toLocaleDateString('en-IN'),
+    type: "APMC",
+    priceHistory: [
+      { date: "02/09/2026", modalPrice: 4820 },
+      { date: "03/09/2026", modalPrice: 4780 },
+      { date: "04/09/2026", modalPrice: 4720 },
+    ],
+    priceChangePercent: -1.26,
+    trend: 'FALLING' as const,
+    recommendation: 'SELL_NOW' as const,
+    recommendationTimeline: 'Immediate',
+    advisoryText: 'Soybean aavak badhne se mandi bhav me narmi hai. Abhi bechna adhik labhkari rahega.',
+  },
+  {
+    state: "Chhattisgarh",
+    district: "Raipur",
+    market: "Tilda Neora Mandi",
+    commodity: "Maize",
+    variety: "Hybrid",
+    minPrice: 2050,
+    maxPrice: 2280,
+    modalPrice: 2180,
+    arrivalDate: new Date().toLocaleDateString('en-IN'),
+    type: "APMC",
+    priceHistory: [
+      { date: "02/09/2026", modalPrice: 2130 },
+      { date: "03/09/2026", modalPrice: 2150 },
+      { date: "04/09/2026", modalPrice: 2180 },
+    ],
+    priceChangePercent: 1.40,
+    trend: 'RISING' as const,
+    recommendation: 'HOLD' as const,
+    recommendationTimeline: '7-10 Days',
+    advisoryText: 'Makka ki maang poultry aur feed sector se majboot hai. Bhav me badhotari ki sambhavna hai.',
+  },
+  {
+    state: "Chhattisgarh",
+    district: "Bilaspur",
+    market: "Bilaspur APMC",
+    commodity: "Paddy(Dhan)",
+    variety: "Mahamaya",
+    minPrice: 2250,
+    maxPrice: 2420,
+    modalPrice: 2360,
+    arrivalDate: new Date().toLocaleDateString('en-IN'),
+    type: "APMC",
+    priceHistory: [
+      { date: "02/09/2026", modalPrice: 2310 },
+      { date: "03/09/2026", modalPrice: 2340 },
+      { date: "04/09/2026", modalPrice: 2360 },
+    ],
+    priceChangePercent: 0.85,
+    trend: 'STABLE' as const,
+    recommendation: 'HOLD' as const,
+    recommendationTimeline: '7-10 Days',
+    advisoryText: 'Bilaspur mandi me Dhan ke daam acche bane hue hain.',
+  },
+  {
+    state: "Chhattisgarh",
+    district: "Durg",
+    market: "Durg APMC",
+    commodity: "Chickpea",
+    variety: "Chana Desi",
+    minPrice: 5600,
+    maxPrice: 6050,
+    modalPrice: 5850,
+    arrivalDate: new Date().toLocaleDateString('en-IN'),
+    type: "APMC",
+    priceHistory: [
+      { date: "02/09/2026", modalPrice: 5720 },
+      { date: "03/09/2026", modalPrice: 5790 },
+      { date: "04/09/2026", modalPrice: 5850 },
+    ],
+    priceChangePercent: 1.04,
+    trend: 'RISING' as const,
+    recommendation: 'HOLD' as const,
+    recommendationTimeline: '7-10 Days',
+    advisoryText: 'Chana market me lagatar tezi ka rukh hai.',
+  },
+  {
+    state: "Jharkhand",
+    district: "Ranchi",
+    market: "Ranchi APMC (Pandra)",
+    commodity: "Tomato",
+    variety: "Hybrid",
+    minPrice: 1200,
+    maxPrice: 1600,
+    modalPrice: 1450,
+    arrivalDate: new Date().toLocaleDateString('en-IN'),
+    type: "APMC",
+    priceHistory: [
+      { date: "02/09/2026", modalPrice: 1520 },
+      { date: "03/09/2026", modalPrice: 1480 },
+      { date: "04/09/2026", modalPrice: 1450 },
+    ],
+    priceChangePercent: -2.03,
+    trend: 'FALLING' as const,
+    recommendation: 'SELL_NOW' as const,
+    recommendationTimeline: 'Immediate',
+    advisoryText: 'Tamatar ki aavak badh rahi hai, jald bechna munafedar rahega.',
+  },
+  {
+    state: "Assam",
+    district: "Kamrup Metropolitan",
+    market: "Guwahati Wholesale Market",
+    commodity: "Rice",
+    variety: "Aijung",
+    minPrice: 3100,
+    maxPrice: 3450,
+    modalPrice: 3300,
+    arrivalDate: new Date().toLocaleDateString('en-IN'),
+    type: "APMC",
+    priceHistory: [
+      { date: "02/09/2026", modalPrice: 3220 },
+      { date: "03/09/2026", modalPrice: 3260 },
+      { date: "04/09/2026", modalPrice: 3300 },
+    ],
+    priceChangePercent: 1.23,
+    trend: 'RISING' as const,
+    recommendation: 'HOLD' as const,
+    recommendationTimeline: '7-10 Days',
+    advisoryText: 'Chawal ki maang unchi hai aur bhav badh rahe hain.',
+  },
+  {
+    state: "Telangana",
+    district: "Warangal",
+    market: "Warangal APMC",
+    commodity: "Cotton",
+    variety: "Medium Staple",
+    minPrice: 7100,
+    maxPrice: 7600,
+    modalPrice: 7420,
+    arrivalDate: new Date().toLocaleDateString('en-IN'),
+    type: "APMC",
+    priceHistory: [
+      { date: "02/09/2026", modalPrice: 7300 },
+      { date: "03/09/2026", modalPrice: 7360 },
+      { date: "04/09/2026", modalPrice: 7420 },
+    ],
+    priceChangePercent: 0.82,
+    trend: 'STABLE' as const,
+    recommendation: 'HOLD' as const,
+    recommendationTimeline: '3-5 Days',
+    advisoryText: 'Kapas ke bhav is samay theek hain.',
+  },
+  {
+    state: "Uttarakhand",
+    district: "Dehradun",
+    market: "Dehradun Mandi",
+    commodity: "Paddy(Dhan)",
+    variety: "Basmati",
+    minPrice: 3800,
+    maxPrice: 4400,
+    modalPrice: 4150,
+    arrivalDate: new Date().toLocaleDateString('en-IN'),
+    type: "APMC",
+    priceHistory: [
+      { date: "02/09/2026", modalPrice: 4050 },
+      { date: "03/09/2026", modalPrice: 4100 },
+      { date: "04/09/2026", modalPrice: 4150 },
+    ],
+    priceChangePercent: 1.22,
+    trend: 'RISING' as const,
+    recommendation: 'HOLD' as const,
+    recommendationTimeline: '7-10 Days',
+    advisoryText: 'Basmati Dhan ke daam badh rahe hain.',
+  },
+  {
+    state: "Himachal Pradesh",
+    district: "Shimla",
+    market: "Dhali APMC, Shimla",
+    commodity: "Apple",
+    variety: "Royal Delicious",
+    minPrice: 6500,
+    maxPrice: 9200,
+    modalPrice: 8200,
+    arrivalDate: new Date().toLocaleDateString('en-IN'),
+    type: "APMC",
+    priceHistory: [
+      { date: "02/09/2026", modalPrice: 7900 },
+      { date: "03/09/2026", modalPrice: 8050 },
+      { date: "04/09/2026", modalPrice: 8200 },
+    ],
+    priceChangePercent: 1.86,
+    trend: 'RISING' as const,
+    recommendation: 'SELL_NOW' as const,
+    recommendationTimeline: 'Immediate',
+    advisoryText: 'Seb ke daam uchhtam star par hain. Abhi bechkar munafa lena behtar rahega.',
+  },
+  {
+    state: "Delhi",
+    district: "North Delhi",
+    market: "Azadpur Mandi",
+    commodity: "Onion",
+    variety: "Nasik Red",
+    minPrice: 1800,
+    maxPrice: 2400,
+    modalPrice: 2150,
+    arrivalDate: new Date().toLocaleDateString('en-IN'),
+    type: "APMC",
+    priceHistory: [
+      { date: "02/09/2026", modalPrice: 2100 },
+      { date: "03/09/2026", modalPrice: 2120 },
+      { date: "04/09/2026", modalPrice: 2150 },
+    ],
+    priceChangePercent: 1.42,
+    trend: 'RISING' as const,
+    recommendation: 'HOLD' as const,
+    recommendationTimeline: '7-10 Days',
+    advisoryText: 'Azadpur me Pyaz ki demand bani hui hai.',
+  },
 ];
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
-async function populateBaselineRecords() {
-  console.log('[mandi-sync] Writing baseline records into Firestore collection mandi_rates...');
+async function populateBaselineRecords(recordsToPopulate = BASELINE_MANDI_RECORDS) {
+  console.log(`[mandi-sync] Writing baseline records into Firestore collection mandi_rates (${recordsToPopulate.length} docs)...`);
   const batch = writeBatch(db);
-  for (const rec of BASELINE_MANDI_RECORDS) {
+  for (const rec of recordsToPopulate) {
     const sState = sanitizeDocIdPart(rec.state);
     const sDist = sanitizeDocIdPart(rec.district);
     const sMkt = sanitizeDocIdPart(rec.market);
@@ -374,7 +638,7 @@ async function populateBaselineRecords() {
   try {
     await setDoc(doc(db, 'mandi_metadata', 'sync_status'), {
       lastSyncedAt: serverTimestamp(),
-      lastSyncCount: BASELINE_MANDI_RECORDS.length,
+      lastSyncCount: recordsToPopulate.length,
       lastStateFilter: 'all',
       updatedAt: serverTimestamp(),
     }, { merge: true });
@@ -382,8 +646,8 @@ async function populateBaselineRecords() {
     console.warn('[mandi-sync] Failed to write baseline sync metadata:', metaErr);
   }
 
-  console.log(`[mandi-sync] Baseline records successfully written to Firestore (${BASELINE_MANDI_RECORDS.length} docs).`);
-  return BASELINE_MANDI_RECORDS.length;
+  console.log(`[mandi-sync] Baseline records successfully written to Firestore (${recordsToPopulate.length} docs).`);
+  return recordsToPopulate.length;
 }
 
 export async function GET(req: Request) {
@@ -404,8 +668,8 @@ export async function GET(req: Request) {
       req.headers.get('x-cron-secret') === process.env.CRON_SECRET ||
       req.headers.get('authorization') === `Bearer ${process.env.CRON_SECRET}`;
 
-    // Rate-limiting / 6-hour Cooldown Check
-    if (!isForce) {
+    // Rate-limiting / 6-hour Cooldown Check (Only for unfiltered pan-India bulk sync)
+    if (!isForce && !state && !district && !commodity) {
       try {
         let mostRecentMs = 0;
 
@@ -582,6 +846,20 @@ export async function GET(req: Request) {
       }
 
       // External API returned 0 records for specific filters
+      // Check if baseline records have this state/district/commodity
+      const matchedBaseline = BASELINE_MANDI_RECORDS.filter(rec => {
+        const sMatch = !state || rec.state.toLowerCase() === state.toLowerCase() || rec.state.toLowerCase().includes(state.toLowerCase()) || state.toLowerCase().includes(rec.state.toLowerCase());
+        const dMatch = !district || rec.district.toLowerCase() === district.toLowerCase() || rec.district.toLowerCase().includes(district.toLowerCase());
+        const cMatch = !commodity || rec.commodity.toLowerCase().includes(commodity.toLowerCase()) || commodity.toLowerCase().includes(rec.commodity.toLowerCase());
+        return sMatch && dMatch && cMatch;
+      });
+
+      if (matchedBaseline.length > 0) {
+        const count = await populateBaselineRecords(matchedBaseline);
+        console.log(`[mandi-sync] Seeded ${count} matching baseline records for ${state || 'any'} / ${district || 'any'}`);
+        return NextResponse.json({ success: true, count, source: 'seeded' });
+      }
+
       return NextResponse.json({ success: true, count: 0, source: 'live' });
     }
 

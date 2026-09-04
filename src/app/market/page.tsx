@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { MOCK_MARKET_PRICES } from "@/lib/mockData";
+import { getAllIndianStates, getDistrictsForState, isStateMatching } from "@/lib/india-locations";
 
 export interface PriceHistoryItem {
   date: string;
@@ -291,9 +292,9 @@ export default function Page() {
     return (liveMandiRates && liveMandiRates.length > 0) ? liveMandiRates : normalizedMockPrices;
   }, [isDemo, liveMandiRates, normalizedMockPrices]);
 
-  // 1. Available States (Derived dynamically from distinct state values in Firestore 'mandi_rates')
+  // 1. Available States (Comprehensive 28 states + 8 UTs, plus any custom states from DB)
   const availableStates = useMemo(() => {
-    const s = new Set<string>();
+    const s = new Set<string>(getAllIndianStates());
     rawData.forEach((item) => {
       const st = (item.state || '').trim();
       if (st) s.add(st);
@@ -301,18 +302,18 @@ export default function Page() {
     return Array.from(s).sort((a, b) => a.localeCompare(b));
   }, [rawData]);
 
-  // 2. Available Districts (Strict cascading filter based on selected state)
+  // 2. Available Districts (Strict cascading filter based on selected state from India dataset + live records)
   const availableDistricts = useMemo(() => {
     if (!selectedState || selectedState === "All") {
       return [];
     }
-    const d = new Set<string>();
+    const d = new Set<string>(getDistrictsForState(selectedState));
     rawData.forEach((item) => {
       const itemState = (item.state || '').trim();
       const dist = (item.district || '').trim();
       if (!dist) return;
 
-      if (itemState.toLowerCase() === selectedState.toLowerCase()) {
+      if (isStateMatching(itemState, selectedState)) {
         d.add(dist);
       }
     });
@@ -441,18 +442,40 @@ export default function Page() {
     };
   }, [fetchFirestoreRates, triggerSyncAndRefresh]);
 
-  // Primary Search Handler for "Get Live Prices →" button - filters against existing cached Firestore rates
+  // Primary Search Handler for "Get Live Prices →" button - filters cached rates or triggers live Agmarknet fetch
   const handleGetLivePrices = async () => {
     setIsSearching(true);
     setError(null);
     setSyncMessage(null);
 
     // If live rates not loaded yet, query from Firestore
-    if (!liveMandiRates || liveMandiRates.length === 0) {
-      const items = await fetchFirestoreRates();
-      if (items.length > 0) {
-        setLiveMandiRates(items);
+    let currentRates = liveMandiRates;
+    if (!currentRates || currentRates.length === 0) {
+      currentRates = await fetchFirestoreRates();
+      if (currentRates.length > 0) {
+        setLiveMandiRates(currentRates);
       }
+    }
+
+    const normCrop = (selectedCrop || "All").trim().toLowerCase();
+    const normDist = (selectedDistrict || "All").trim().toLowerCase();
+    const normState = (selectedState || "All").trim().toLowerCase();
+
+    const hasSpecificState = normState && normState !== "all" && normState !== "all states";
+    const hasSpecificDist = normDist && normDist !== "all" && normDist !== "all districts";
+    const hasSpecificCrop = normCrop && normCrop !== "all" && normCrop !== "all crops";
+
+    const pool = (currentRates && currentRates.length > 0) ? currentRates : rawData;
+    const hasExistingMatch = pool.some(item => {
+      const sMatch = !hasSpecificState || isStateMatching(item.state || '', normState);
+      const dMatch = !hasSpecificDist || (item.district || '').trim().toLowerCase() === normDist;
+      const cMatch = !hasSpecificCrop || (item.commodity || item.cropName || '').trim().toLowerCase().includes(normCrop);
+      return sMatch && dMatch && cMatch;
+    });
+
+    // If a specific state/district was selected and no matching arrival exists locally, fetch live from Agmarknet API
+    if (hasSpecificState && !hasExistingMatch) {
+      await triggerSyncAndRefresh(selectedState, selectedDistrict, selectedCrop);
     }
 
     // Responsive visual feedback
@@ -492,8 +515,7 @@ export default function Page() {
 
     const isStateMatch = (item: MandiRateItem) => {
       if (!normState || normState === "all" || normState === "all states") return true;
-      const itemState = (item.state || '').toLowerCase();
-      return itemState === normState || itemState.includes(normState) || normState.includes(itemState);
+      return isStateMatching(item.state || '', normState);
     };
 
     const isDistrictMatch = (item: MandiRateItem) => {
@@ -506,6 +528,10 @@ export default function Page() {
       return [...items].sort((a, b) => parseArrivalDate(b.arrivalDate) - parseArrivalDate(a.arrivalDate));
     };
 
+    const hasSpecificDist = Boolean(normDist && normDist !== "all" && normDist !== "all districts");
+    const hasSpecificCrop = Boolean(normCrop && normCrop !== "all" && normCrop !== "all crops");
+    const hasSpecificState = Boolean(normState && normState !== "all" && normState !== "all states");
+
     // 1. Try exact matches (crop + state + district)
     const exactMatches = source.filter(item => isCropMatch(item) && isStateMatch(item) && isDistrictMatch(item));
     if (exactMatches.length > 0) {
@@ -516,67 +542,19 @@ export default function Page() {
       };
     }
 
-    const hasSpecificDist = normDist && normDist !== "all" && normDist !== "all districts";
-    const hasSpecificCrop = normCrop && normCrop !== "all" && normCrop !== "all crops";
-    const hasSpecificState = normState && normState !== "all" && normState !== "all states";
-
-    // 2. Specific District + Specific Crop + Specific State: 0 exact matches in that district
-    if (hasSpecificDist && hasSpecificCrop && hasSpecificState) {
-      // Check if this crop exists in any other district within the selected state
-      const stateCropMatches = source.filter(item => isCropMatch(item) && isStateMatch(item));
-      if (stateCropMatches.length > 0) {
-        return {
-          filteredRates: sortByRecent(stateCropMatches),
-          isShowingNearby: true,
-          isOffSeason: false
-        };
-      }
-      // If 0 records across the entire state -> Off-season!
+    // 2. Strict Filter Integrity:
+    // If user specified a State, District, or Crop and no exact matches exist,
+    // never fall back to unrelated records (e.g. showing Andaman when searching Raipur).
+    // Return empty list so the dedicated "Data Not Available" view is shown.
+    if (hasSpecificState || hasSpecificDist || hasSpecificCrop) {
       return {
         filteredRates: [],
         isShowingNearby: false,
-        isOffSeason: true
+        isOffSeason: false
       };
     }
 
-    // 3. Specific Crop + Specific State (District = "All"): 0 records in state -> Off-season!
-    if (hasSpecificCrop && hasSpecificState) {
-      return {
-        filteredRates: [],
-        isShowingNearby: false,
-        isOffSeason: true
-      };
-    }
-
-    // 4. Specific District + All Crops: check other districts in state
-    if (hasSpecificDist && hasSpecificState) {
-      const stateMatches = source.filter(item => isStateMatch(item));
-      if (stateMatches.length > 0) {
-        return {
-          filteredRates: sortByRecent(stateMatches),
-          isShowingNearby: true,
-          isOffSeason: false
-        };
-      }
-    }
-
-    // 5. Specific Crop across All States: check if exists anywhere
-    if (hasSpecificCrop) {
-      const allCropMatches = source.filter(item => isCropMatch(item));
-      if (allCropMatches.length > 0) {
-        return {
-          filteredRates: sortByRecent(allCropMatches),
-          isShowingNearby: false,
-          isOffSeason: false
-        };
-      }
-      return {
-        filteredRates: [],
-        isShowingNearby: false,
-        isOffSeason: true
-      };
-    }
-
+    // 3. Only when NO filter is selected (Pan-India view), show all records
     return {
       filteredRates: sortByRecent(source),
       isShowingNearby: false,
@@ -1258,30 +1236,46 @@ export default function Page() {
               </div>
             </div>
           ) : (
-            /* ── Standard Empty State ───────────────────────── */
-            <div style={{ padding: "48px 24px", textAlign: "center", background: "#ffffff", borderRadius: "16px", border: "1px dashed #cbd5e1", margin: "20px 0" }}>
-              <div style={{ fontSize: "2.8rem", marginBottom: "12px" }}>📈</div>
-              <h3 style={{ fontSize: "1.25rem", fontWeight: "700", color: "#1e293b", marginBottom: "8px" }}>
-                No Mandi Rates Found
+            /* ── Data Not Available / Empty State ───────────────────────── */
+            <div style={{
+              padding: "52px 24px",
+              textAlign: "center",
+              background: "#ffffff",
+              borderRadius: "16px",
+              border: "1px dashed #cbd5e1",
+              margin: "24px 0",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.02)"
+            }}>
+              <div style={{ fontSize: "3rem", marginBottom: "12px" }}>📍</div>
+              <h3 style={{ fontSize: "1.35rem", fontWeight: "700", color: "#1e293b", marginBottom: "8px" }}>
+                Mandi Data Not Available (डेटा उपलब्ध नहीं है)
               </h3>
-              <p style={{ color: "#64748b", fontSize: "0.92rem", maxWidth: "480px", margin: "0 auto 16px" }}>
-                {error ? error : `No price records returned for ${selectedCrop !== 'All' ? selectedCrop : 'crops'} in ${selectedState !== 'All' ? selectedState : 'India'}${selectedDistrict !== 'All' ? ` (${selectedDistrict})` : ''}.`}
+              <p style={{ color: "#475569", fontSize: "0.95rem", maxWidth: "560px", margin: "0 auto 10px", lineHeight: "1.6" }}>
+                {selectedDistrict !== "All" && selectedState !== "All"
+                  ? `Vartaman me ${selectedDistrict} (${selectedState}) mandi ke liye naye bhav ya aavak darj nahi hue hain.`
+                  : selectedState !== "All"
+                  ? `Vartaman me ${selectedState} ke liye naye mandi bhav darj nahi hue hain.`
+                  : "Chuni gayi fasal ya mandi ke liye vartaman me koi rate darj nahi hai."}
+              </p>
+              <p style={{ color: "#94a3b8", fontSize: "0.85rem", maxWidth: "500px", margin: "0 auto 20px" }}>
+                Official Agmarknet / APMC portal par aavak darj hote hi yahan live rates update ho jayenge.
               </p>
               <div style={{ display: "flex", gap: "10px", justifyContent: "center", flexWrap: "wrap" }}>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => fetchFirestoreRates()}
-                  disabled={loading}
-                  style={{ padding: "10px 24px", fontSize: "0.95rem", display: "inline-flex", alignItems: "center", gap: "8px" }}
-                >
-                  🔄 Reload Cached Rates
-                </button>
+                {selectedDistrict !== "All" && selectedState !== "All" && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => setSelectedDistrict("All")}
+                    style={{ padding: "10px 22px", fontSize: "0.92rem", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                  >
+                    🌾 View All {selectedState} Mandis
+                  </button>
+                )}
                 <button
                   className="btn btn-outline-primary"
                   onClick={handleResetFilters}
-                  style={{ padding: "10px 20px", fontSize: "0.95rem" }}
+                  style={{ padding: "10px 20px", fontSize: "0.92rem" }}
                 >
-                  ↺ Reset Filters
+                  ↺ Reset Filters (Sabhi Rajya)
                 </button>
               </div>
             </div>

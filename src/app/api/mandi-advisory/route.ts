@@ -153,7 +153,7 @@ Generate a JSON object with exactly these 4 fields (each 1-2 sentences in Hingli
 Respond ONLY with valid JSON, no markdown.`;
 
           const geminiRes = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: userPrompt,
             config: {
               systemInstruction,
@@ -256,7 +256,7 @@ Platform Action: ${rec === 'SELL_NOW' ? 'BECHO (Sell Now)' : 'ROKO (Hold 7-10 Da
 Provide exactly 2 actionable lines in Hinglish for the farmer.`;
 
         const geminiRes = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-1.5-flash',
           contents: userPrompt,
           config: {
             systemInstruction,

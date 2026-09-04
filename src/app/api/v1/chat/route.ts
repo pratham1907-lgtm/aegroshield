@@ -69,7 +69,7 @@ If you use a tool, you DO NOT need to output text, the system will handle the re
     }];
 
     const geminiRes = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: messages,
       config: {
         systemInstruction: systemPrompt,
