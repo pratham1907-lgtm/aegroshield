@@ -936,6 +936,172 @@ export default function MandiDetailPage({
           )}
         </div>
 
+        {/* ── APMC Mandi Trading Sessions & Automated Sync Schedule ────────── */}
+        <div style={{
+          marginTop: 24,
+          background: "#ffffff",
+          borderRadius: 20,
+          border: "1px solid #e2e8f0",
+          padding: "26px 28px",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
+            <div>
+              <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "#1e293b", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                🕒 APMC Mandi Trading Sessions &amp; Automated Sync Schedule
+              </h2>
+              <p style={{ fontSize: "0.82rem", color: "#64748b", margin: "4px 0 0" }}>
+                मंडी व्यापार सत्र और 4 दैनिक ऑटोमैटिक सिंक — How official APMC rates are discovered and updated in Aegroshield
+              </p>
+            </div>
+            <span style={{
+              fontSize: "0.78rem",
+              background: "#ecfdf5",
+              color: "#047857",
+              border: "1px solid #a7f3d0",
+              padding: "4px 12px",
+              borderRadius: 20,
+              fontWeight: 700,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span>
+              Vercel Cron: 30 0,6,11,15 * * *
+            </span>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14 }}>
+            {/* Session 1: Early Morning Inflow */}
+            <div style={{
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: 14,
+              padding: "16px 18px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "1.3rem" }}>🌅</span>
+                <span style={{ fontSize: "0.72rem", background: "#e0f2fe", color: "#0369a1", fontWeight: 700, padding: "2px 8px", borderRadius: 10 }}>
+                  06:00 AM IST
+                </span>
+              </div>
+              <div>
+                <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "#0f172a" }}>
+                  1. Early Morning Inflow
+                </div>
+                <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                  सवेरे की आवक एवं छंटाई
+                </div>
+              </div>
+              <p style={{ margin: 0, fontSize: "0.82rem", color: "#475569", lineHeight: 1.5 }}>
+                Mandi gates open. Farmers arrive with fresh tractor loads. Unloading, lot allocation, moisture check, and quality grading (छांटाई) commence.
+              </p>
+              <div style={{ marginTop: "auto", paddingTop: 8, borderTop: "1px dashed #cbd5e1", fontSize: "0.74rem", color: "#0284c7", fontWeight: 600 }}>
+                ⚡ Auto-Sync #1 at 00:30 UTC
+              </div>
+            </div>
+
+            {/* Session 2: Midday Peak Auction */}
+            <div style={{
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: 14,
+              padding: "16px 18px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "1.3rem" }}>☀️</span>
+                <span style={{ fontSize: "0.72rem", background: "#fef3c7", color: "#92400e", fontWeight: 700, padding: "2px 8px", borderRadius: 10 }}>
+                  12:00 PM IST
+                </span>
+              </div>
+              <div>
+                <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "#0f172a" }}>
+                  2. Midday Peak Auction
+                </div>
+                <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                  दोपहर की मुख्य नीलामी
+                </div>
+              </div>
+              <p style={{ margin: 0, fontSize: "0.82rem", color: "#475569", lineHeight: 1.5 }}>
+                Peak open-cry bidding and e-NAM digital auctions between commission agents (Arhtiyas) and wholesale buyers discover the primary modal rate.
+              </p>
+              <div style={{ marginTop: "auto", paddingTop: 8, borderTop: "1px dashed #cbd5e1", fontSize: "0.74rem", color: "#d97706", fontWeight: 600 }}>
+                ⚡ Auto-Sync #2 at 06:30 UTC
+              </div>
+            </div>
+
+            {/* Session 3: Evening Settlement */}
+            <div style={{
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: 14,
+              padding: "16px 18px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "1.3rem" }}>🌇</span>
+                <span style={{ fontSize: "0.72rem", background: "#ffedd5", color: "#c2410c", fontWeight: 700, padding: "2px 8px", borderRadius: 10 }}>
+                  05:00 PM IST
+                </span>
+              </div>
+              <div>
+                <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "#0f172a" }}>
+                  3. Evening Settlement
+                </div>
+                <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                  तौलाई व तकपट्टी भुगतान
+                </div>
+              </div>
+              <p style={{ margin: 0, fontSize: "0.82rem", color: "#475569", lineHeight: 1.5 }}>
+                Electronic weighment (तौलाई) finalized, official Takpatti (J-Form) sale slips generated, farmer bank accounts credited, and logistics dispatched.
+              </p>
+              <div style={{ marginTop: "auto", paddingTop: 8, borderTop: "1px dashed #cbd5e1", fontSize: "0.74rem", color: "#ea580c", fontWeight: 600 }}>
+                ⚡ Auto-Sync #3 at 11:30 UTC
+              </div>
+            </div>
+
+            {/* Session 4: Night Agmarknet Portal Refresh */}
+            <div style={{
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: 14,
+              padding: "16px 18px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "1.3rem" }}>🌙</span>
+                <span style={{ fontSize: "0.72rem", background: "#ede9fe", color: "#6d28d9", fontWeight: 700, padding: "2px 8px", borderRadius: 10 }}>
+                  09:00 PM IST
+                </span>
+              </div>
+              <div>
+                <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "#0f172a" }}>
+                  4. Night Portal Refresh
+                </div>
+                <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                  राष्ट्रीय एग्मार्कनेट पोर्टल सिंक
+                </div>
+              </div>
+              <p style={{ margin: 0, fontSize: "0.82rem", color: "#475569", lineHeight: 1.5 }}>
+                APMC secretaries certify and upload official daily trading data to the central Agmarknet (Ministry of Agriculture) national repository.
+              </p>
+              <div style={{ marginTop: "auto", paddingTop: 8, borderTop: "1px dashed #cbd5e1", fontSize: "0.74rem", color: "#7c3aed", fontWeight: 600 }}>
+                ⚡ Auto-Sync #4 at 15:30 UTC
+              </div>
+            </div>
+          </div>
+        </div>
+
         <style jsx>{`
           @keyframes spin {
             to { transform: rotate(360deg); }

@@ -809,47 +809,29 @@ export default function Page() {
           {loading ? (
             <div className="mandi-grid">
               {[1, 2, 3, 4, 5, 6].map((k) => (
-                <div key={k} className="mandi-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div key={k} className="mandi-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '18px' }}>
                   {/* Header skeleton */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ width: '65%' }}>
-                      <div className="skeleton-pulse" style={{ height: '22px', width: '85%', marginBottom: '6px' }}></div>
+                      <div className="skeleton-pulse" style={{ height: '20px', width: '85%', marginBottom: '6px' }}></div>
                       <div className="skeleton-pulse" style={{ height: '14px', width: '55%' }}></div>
                     </div>
-                    <div className="skeleton-pulse" style={{ height: '24px', width: '75px', borderRadius: '6px' }}></div>
+                    <div className="skeleton-pulse" style={{ height: '22px', width: '75px', borderRadius: '6px' }}></div>
                   </div>
 
                   {/* Commodity & Variety badge skeleton */}
-                  <div className="skeleton-pulse" style={{ height: '28px', width: '130px', borderRadius: '6px' }}></div>
+                  <div className="skeleton-pulse" style={{ height: '26px', width: '130px', borderRadius: '6px' }}></div>
+
+                  {/* Price Strip skeleton */}
+                  <div className="skeleton-pulse" style={{ height: '60px', width: '100%', borderRadius: '10px' }}></div>
 
                   {/* AI Decision banner skeleton */}
-                  <div className="skeleton-pulse" style={{ height: '36px', width: '100%', borderRadius: '8px' }}></div>
-
-                  {/* Price Row skeleton */}
-                  <div className="price-row" style={{ margin: '4px 0' }}>
-                    <div className="price-box">
-                      <div className="skeleton-pulse" style={{ height: '24px', width: '70%', margin: '0 auto 4px' }}></div>
-                      <div className="skeleton-pulse" style={{ height: '12px', width: '50%', margin: '0 auto' }}></div>
-                    </div>
-                    <div className="price-divider"></div>
-                    <div className="price-box">
-                      <div className="skeleton-pulse" style={{ height: '28px', width: '80%', margin: '0 auto 4px' }}></div>
-                      <div className="skeleton-pulse" style={{ height: '12px', width: '50%', margin: '0 auto' }}></div>
-                    </div>
-                    <div className="price-divider"></div>
-                    <div className="price-box">
-                      <div className="skeleton-pulse" style={{ height: '24px', width: '70%', margin: '0 auto 4px' }}></div>
-                      <div className="skeleton-pulse" style={{ height: '12px', width: '50%', margin: '0 auto' }}></div>
-                    </div>
-                  </div>
-
-                  {/* Mandi Mitra Advisory card skeleton */}
-                  <div className="skeleton-pulse" style={{ height: '62px', width: '100%', borderRadius: '8px' }}></div>
+                  <div className="skeleton-pulse" style={{ height: '34px', width: '100%', borderRadius: '8px' }}></div>
 
                   {/* Footer skeleton */}
                   <div style={{ marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div className="skeleton-pulse" style={{ height: '14px', width: '120px' }}></div>
-                    <div className="skeleton-pulse" style={{ height: '18px', width: '90px', borderRadius: '4px' }}></div>
+                    <div className="skeleton-pulse" style={{ height: '14px', width: '100px' }}></div>
+                    <div className="skeleton-pulse" style={{ height: '30px', width: '120px', borderRadius: '8px' }}></div>
                   </div>
                 </div>
               ))}
@@ -867,29 +849,46 @@ export default function Page() {
                 const varietyInfo = getVarietyDisplay(item.variety);
 
                 return (
-                  <div key={item.id || idx} className="mandi-card" style={{ display: 'flex', flexDirection: 'column' }}>
-                    {/* Header: Market Location & Freshness Status Badge */}
-                    <div className="mandi-card-head">
-                      <div>
-                        <div className="mandi-name" style={{ fontSize: "1.08rem", fontWeight: 700, color: "#0f172a" }}>
-                          🏛️ {actualMarket}
+                  <div key={item.id || idx} className="mandi-card" style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    padding: '18px 20px',
+                    borderRadius: '16px',
+                    border: '1px solid #e2e8f0',
+                    background: '#ffffff',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                  }}>
+                    <div>
+                      {/* Header: Market Location & Freshness Status Badge */}
+                      <div className="mandi-card-head" style={{ marginBottom: "10px" }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div className="mandi-name" style={{
+                            fontSize: "1.05rem",
+                            fontWeight: 700,
+                            color: "#0f172a",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis"
+                          }} title={actualMarket}>
+                            🏛️ {actualMarket}
+                          </div>
+                          <div className="mandi-dist" style={{ fontSize: "0.82rem", color: "#64748b", marginTop: "2px" }}>
+                            📍 {actualDistrict}{item.state ? `, ${item.state}` : ''}
+                          </div>
                         </div>
-                        <div className="mandi-dist" style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "2px" }}>
-                          📍 {actualDistrict}{item.state ? `, ${item.state}` : ''}
-                        </div>
-                      </div>
 
-                      {/* Status Badge: Live Today vs Last Known Traded Price */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                         {liveToday ? (
                           <span style={{
                             background: "#dcfce7",
                             color: "#15803d",
                             border: "1px solid #86efac",
                             fontWeight: 700,
-                            fontSize: "0.78rem",
+                            fontSize: "0.75rem",
                             padding: "3px 8px",
                             borderRadius: "6px",
+                            whiteSpace: "nowrap",
                             display: "inline-flex",
                             alignItems: "center",
                             gap: "4px"
@@ -901,298 +900,186 @@ export default function Page() {
                             background: "#fef3c7",
                             color: "#92400e",
                             border: "1px solid #fde68a",
-                            fontWeight: 700,
-                            fontSize: "0.78rem",
+                            fontWeight: 600,
+                            fontSize: "0.75rem",
                             padding: "3px 8px",
                             borderRadius: "6px",
+                            whiteSpace: "nowrap",
                             display: "inline-flex",
                             alignItems: "center",
                             gap: "4px"
                           }}>
-                            ⏱️ Last Traded: {item.arrivalDate || "Recent"}
+                            ⏱️ {item.arrivalDate || "Recent"}
                           </span>
                         )}
-                        <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
-                          {item.type || 'APMC'}
-                        </span>
                       </div>
-                    </div>
 
-                    {/* Commodity & Variety Badge on top */}
-                    <div style={{ margin: "10px 0 8px", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                      <span style={{
-                        background: "#e8f5e9",
-                        color: "#1b5e20",
-                        fontWeight: 700,
-                        fontSize: "0.92rem",
-                        padding: "4px 10px",
-                        borderRadius: "6px",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "4px"
-                      }}>
-                        🌾 {getCommodityLabel(actualCommodity)}
-                        {varietyInfo.isSpecific && (
-                          <span style={{ fontWeight: 600, color: "#2e7d32" }}> • {varietyInfo.label}</span>
-                        )}
-                      </span>
-                      {!varietyInfo.isSpecific && (
+                      {/* Commodity & Variety Badge */}
+                      <div style={{ margin: "8px 0 12px", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                         <span style={{
-                          background: "#f1f5f9",
-                          color: "#475569",
-                          fontSize: "0.75rem",
+                          background: "#e8f5e9",
+                          color: "#1b5e20",
+                          fontWeight: 700,
+                          fontSize: "0.88rem",
+                          padding: "3px 9px",
+                          borderRadius: "6px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}>
+                          🌾 {getCommodityLabel(actualCommodity)}
+                        </span>
+                        <span style={{
+                          background: varietyInfo.isSpecific ? "#fef3c7" : "#f1f5f9",
+                          color: varietyInfo.isSpecific ? "#92400e" : "#475569",
+                          fontSize: "0.74rem",
                           padding: "3px 8px",
                           borderRadius: "4px",
                           fontWeight: 600,
-                          border: "1px solid #e2e8f0"
+                          border: varietyInfo.isSpecific ? "1px solid #fde68a" : "1px solid #e2e8f0"
                         }}>
                           {varietyInfo.label}
                         </span>
-                      )}
-                    </div>
-
-                    {/* ── AI Decision Banner ── */}
-                    <div style={{
-                      margin: "4px 0 12px",
-                      padding: "8px 12px",
-                      borderRadius: "8px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      background: isSellNow ? "#f0fdf4" : "#fefce8",
-                      border: isSellNow ? "1px solid #bbf7d0" : "1px solid #fef08a",
-                    }}>
-                      <div style={{
-                        fontSize: "0.85rem",
-                        fontWeight: 700,
-                        color: isSellNow ? "#15803d" : "#854d0e",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                      }}>
-                        <span>{isSellNow ? '🟢' : '🟡'}</span>
-                        <span>
-                          {isSellNow
-                            ? 'AI Decision: BECHO (Sell Now)'
-                            : `AI Decision: ROKO (Hold ${item.recommendationTimeline || '7–10 Days'})`}
+                        <span style={{ fontSize: "0.72rem", color: "#94a3b8", marginLeft: "auto", fontWeight: 600 }}>
+                          {item.type || 'APMC'}
                         </span>
                       </div>
-                      <span style={{
-                        fontSize: "0.72rem",
-                        color: isSellNow ? "#166534" : "#a16207",
-                        fontWeight: 600,
-                        background: isSellNow ? "#dcfce7" : "#fef9c3",
-                        padding: "2px 8px",
+
+                      {/* Streamlined Price Strip */}
+                      <div className="price-row" style={{
+                        margin: "10px 0",
+                        background: "#f8fafc",
+                        padding: "10px 12px",
                         borderRadius: "10px",
+                        border: "1px solid #f1f5f9",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between"
                       }}>
-                        {isSellNow ? 'Target Reached' : 'Price Rise Expected'}
-                      </span>
-                    </div>
-
-                    {/* Price Row: Min, Modal, Max + Visual Trend Pill */}
-                    <div className="price-row">
-                      <div className="price-box">
-                        <div className="price-box-val">
-                          ₹{item.minPrice} <span style={{ fontSize: "0.74rem", fontWeight: 600, color: "#64748b" }}>/ qtl</span>
-                        </div>
-                        <div className="price-box-lbl">Min Price</div>
-                      </div>
-                      <div className="price-divider"></div>
-                      <div className="price-box">
-                        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: "6px", flexWrap: "wrap" }}>
-                          <div className="price-box-val modal" style={{ fontSize: "1.35rem", color: "#16a34a", fontWeight: 800 }}>
-                            ₹{item.modalPrice} <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#16a34a" }}>/ qtl</span>
+                        <div className="price-box" style={{ flex: 1, textAlign: "center" }}>
+                          <div className="price-box-val" style={{ fontSize: "0.95rem", fontWeight: 700, color: "#475569" }}>
+                            ₹{item.minPrice}
                           </div>
-                          {/* Visual Trend Pill */}
-                          {trend === 'RISING' ? (
-                            <span style={{
-                              background: "#dcfce7",
-                              color: "#15803d",
-                              border: "1px solid #86efac",
-                              borderRadius: "12px",
-                              padding: "2px 7px",
-                              fontSize: "0.74rem",
-                              fontWeight: 700,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "2px",
-                            }}>
-                              ▲ +{changePct}% (Rising)
-                            </span>
-                          ) : trend === 'FALLING' ? (
-                            <span style={{
-                              background: "#fee2e2",
-                              color: "#b91c1c",
-                              border: "1px solid #fca5a5",
-                              borderRadius: "12px",
-                              padding: "2px 7px",
-                              fontSize: "0.74rem",
-                              fontWeight: 700,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "2px",
-                            }}>
-                              ▼ {changePct}% (Falling)
-                            </span>
-                          ) : (
-                            <span style={{
-                              background: "#fef9c3",
-                              color: "#854d0e",
-                              border: "1px solid #fde047",
-                              borderRadius: "12px",
-                              padding: "2px 7px",
-                              fontSize: "0.74rem",
-                              fontWeight: 700,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "2px",
-                            }}>
-                              ● Stable
-                            </span>
-                          )}
+                          <div className="price-box-lbl" style={{ fontSize: "0.68rem", color: "#94a3b8", fontWeight: 600 }}>Min Rate</div>
                         </div>
-                        {/* Small secondary calculation below modal price: (≈ ₹[modalPrice / 100]/kg) */}
-                        <div style={{
-                          fontSize: "0.76rem",
-                          color: "#166534",
-                          fontWeight: 600,
-                          marginTop: "2px",
-                          display: "inline-block"
-                        }}>
-                          (≈ ₹{formatPerKg(item.modalPrice)}/kg)
-                        </div>
-                        <div className="price-box-lbl" style={{ color: "#16a34a", fontWeight: 700, marginTop: "2px" }}>Modal Rate</div>
-                      </div>
-                      <div className="price-divider"></div>
-                      <div className="price-box">
-                        <div className="price-box-val">
-                          ₹{item.maxPrice} <span style={{ fontSize: "0.74rem", fontWeight: 600, color: "#64748b" }}>/ qtl</span>
-                        </div>
-                        <div className="price-box-lbl">Max Price</div>
-                      </div>
-                    </div>
 
-                    {/* ── AI Insight Box: Mandi Mitra Advisory ── */}
-                    <div style={{
-                      marginTop: "12px",
-                      padding: "10px 12px",
-                      background: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      fontSize: "0.82rem",
-                      lineHeight: "1.45",
-                    }}>
+                        <div className="price-divider" style={{ width: "1px", height: "36px", background: "#e2e8f0", margin: "0 6px" }}></div>
+
+                        <div className="price-box" style={{ flex: 1.4, textAlign: "center" }}>
+                          <div className="price-box-val modal" style={{ fontSize: "1.28rem", color: "#16a34a", fontWeight: 800, lineHeight: 1.1 }}>
+                            ₹{item.modalPrice} <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "#16a34a" }}>/qtl</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", marginTop: "2px" }}>
+                            <span style={{ fontSize: "0.72rem", color: "#15803d", fontWeight: 600 }}>
+                              ≈ ₹{formatPerKg(item.modalPrice)}/kg
+                            </span>
+                            {trend === 'RISING' ? (
+                              <span style={{ background: "#dcfce7", color: "#15803d", borderRadius: "8px", padding: "1px 5px", fontSize: "0.66rem", fontWeight: 700 }}>
+                                ▲ +{changePct}%
+                              </span>
+                            ) : trend === 'FALLING' ? (
+                              <span style={{ background: "#fee2e2", color: "#b91c1c", borderRadius: "8px", padding: "1px 5px", fontSize: "0.66rem", fontWeight: 700 }}>
+                                ▼ {changePct}%
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="price-box-lbl" style={{ color: "#16a34a", fontWeight: 700, fontSize: "0.68rem", marginTop: "2px" }}>Modal Rate</div>
+                        </div>
+
+                        <div className="price-divider" style={{ width: "1px", height: "36px", background: "#e2e8f0", margin: "0 6px" }}></div>
+
+                        <div className="price-box" style={{ flex: 1, textAlign: "center" }}>
+                          <div className="price-box-val" style={{ fontSize: "0.95rem", fontWeight: 700, color: "#475569" }}>
+                            ₹{item.maxPrice}
+                          </div>
+                          <div className="price-box-lbl" style={{ fontSize: "0.68rem", color: "#94a3b8", fontWeight: 600 }}>Max Rate</div>
+                        </div>
+                      </div>
+
+                      {/* Streamlined AI Decision & Action Signal */}
                       <div style={{
+                        margin: "10px 0 12px",
+                        padding: "8px 12px",
+                        borderRadius: "8px",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        marginBottom: "4px",
+                        background: isSellNow ? "#f0fdf4" : "#fefce8",
+                        border: isSellNow ? "1px solid #bbf7d0" : "1px solid #fef08a",
                       }}>
-                        <span style={{
-                          fontWeight: 700,
-                          color: "#0284c7",
-                          fontSize: "0.78rem",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "5px",
-                        }}>
-                          🤖 Mandi Mitra Advisory
-                        </span>
-                        {item.priceHistory && item.priceHistory.length > 1 && (
-                          <span style={{ fontSize: "0.7rem", color: "#64748b" }}>
-                            📊 {item.priceHistory.length}-day trend
-                          </span>
-                        )}
-                      </div>
-                      <p style={{ margin: 0, color: "#334155", fontStyle: "italic" }}>
-                        "{item.advisoryText}"
-                      </p>
-
-                      {/* Mini Price History Points */}
-                      {item.priceHistory && item.priceHistory.length > 1 && (
                         <div style={{
-                          marginTop: "8px",
-                          paddingTop: "6px",
-                          borderTop: "1px dashed #e2e8f0",
+                          fontSize: "0.82rem",
+                          fontWeight: 700,
+                          color: isSellNow ? "#15803d" : "#854d0e",
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "space-between",
                           gap: "6px",
-                          fontSize: "0.72rem",
-                          color: "#64748b",
                         }}>
-                          <span style={{ fontWeight: 600 }}>History:</span>
-                          <div style={{ display: "flex", gap: "5px", overflowX: "auto" }}>
-                            {item.priceHistory.slice(-4).map((h, hIdx) => (
-                              <span key={hIdx} style={{
-                                background: "#ffffff",
-                                padding: "2px 6px",
-                                borderRadius: "4px",
-                                border: "1px solid #cbd5e1",
-                                whiteSpace: "nowrap",
-                              }}>
-                                {h.date.split('/')[0]}/{h.date.split('/')[1]}: ₹{h.modalPrice}
-                              </span>
-                            ))}
-                          </div>
+                          <span>{isSellNow ? '🟢' : '🟡'}</span>
+                          <span>
+                            {isSellNow ? 'BECHO (Sell Now)' : `ROKO (Hold ${item.recommendationTimeline || '7-10 Days'})`}
+                          </span>
                         </div>
-                      )}
+                        <span style={{
+                          fontSize: "0.7rem",
+                          color: isSellNow ? "#166534" : "#a16207",
+                          fontWeight: 600,
+                          background: isSellNow ? "#dcfce7" : "#fef9c3",
+                          padding: "2px 7px",
+                          borderRadius: "8px",
+                        }}>
+                          {isSellNow ? 'Target Reached' : 'Price Rise Expected'}
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Footer: Arrival Date & Unit */}
+                    {/* Footer: Arrival Date & Detail Analysis CTA */}
                     <div style={{
                       marginTop: "auto",
                       paddingTop: "12px",
                       borderTop: "1px solid #f1f5f9",
-                      fontSize: "0.82rem",
-                      color: "#64748b",
                       display: "flex",
+                      alignItems: "center",
                       justifyContent: "space-between",
-                      alignItems: "center"
+                      gap: "8px",
                     }}>
-                      <span>🗓️ Arrival Date: <strong style={{ color: "#334155" }}>{item.arrivalDate || "Today"}</strong></span>
-                      <span style={{ fontSize: "0.75rem", background: "#f8fafc", color: "#475569", padding: "2px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", fontWeight: 600 }}>
-                        ₹/Quintal (100 kg)
+                      <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                        🗓️ {item.arrivalDate || "Today"}
                       </span>
+
+                      {item.id ? (
+                        <Link
+                          href={`/market/${item.id}`}
+                          style={{
+                            padding: "7px 14px",
+                            background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+                            color: "#ffffff",
+                            borderRadius: "8px",
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            textDecoration: "none",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            boxShadow: "0 2px 6px rgba(22,163,74,0.25)",
+                            transition: "all 0.15s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = "translateY(-1px)";
+                            e.currentTarget.style.boxShadow = "0 4px 12px rgba(22,163,74,0.35)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = "";
+                            e.currentTarget.style.boxShadow = "0 2px 6px rgba(22,163,74,0.25)";
+                          }}
+                        >
+                          Analysis &amp; Trends →
+                        </Link>
+                      ) : (
+                        <span style={{ fontSize: "0.74rem", color: "#94a3b8" }}>APMC Verified</span>
+                      )}
                     </div>
-
-                    {/* ── View Detailed Analysis Button ── */}
-                    {item.id && (
-                      <Link
-                        href={`/market/${item.id}`}
-                        style={{
-                          display: "block",
-                          marginTop: "12px",
-                          padding: "10px 16px",
-                          background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
-                          border: "1px solid #86efac",
-                          borderRadius: "10px",
-                          color: "#15803d",
-                          fontSize: "0.82rem",
-                          fontWeight: 700,
-                          textAlign: "center",
-                          textDecoration: "none",
-                          transition: "all 0.15s ease",
-                          letterSpacing: "0.01em",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = "linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)";
-                          e.currentTarget.style.borderColor = "#4ade80";
-                          e.currentTarget.style.transform = "translateY(-1px)";
-                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(34,197,94,0.18)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)";
-                          e.currentTarget.style.borderColor = "#86efac";
-                          e.currentTarget.style.transform = "";
-                          e.currentTarget.style.boxShadow = "";
-                        }}
-                      >
-                        📊 View Detailed Analysis &amp; 30-Day Trends →
-                      </Link>
-                    )}
                   </div>
-
                 );
               })}
             </div>
