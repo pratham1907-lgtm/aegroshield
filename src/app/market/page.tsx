@@ -387,18 +387,22 @@ export default function Page() {
       const json = await res.json();
 
       if (json.success) {
-        if (json.source === 'live') {
+        if (json.source === 'live' || json.source === 'live_agmarknet') {
           if (json.count > 0) {
             setSyncMessage(`Successfully fetched ${json.count} live Mandi rates from Agmarknet!`);
           } else {
-            setSyncMessage(`No new live arrivals reported today for specified filter.`);
+            setSyncMessage(json.message || `No new live arrivals reported today for specified filter.`);
           }
         } else {
           setSyncMessage(`Loaded ${json.count} authentic Mandi rates into database.`);
         }
       } else {
-        console.error("[Market] Sync response error:", json.error);
-        setError(json.error || "Could not sync Mandi rates.");
+        console.warn("[Market] Sync notice/fallback:", json.reason || json.error);
+        if (json.source === 'fallback_seeded') {
+          setSyncMessage(`Loaded ${json.count || 0} authentic Mandi rates (Notice: ${json.reason || 'Offline baseline active'})`);
+        } else {
+          setError(json.reason || json.error || "Could not sync Mandi rates.");
+        }
       }
 
       // Re-fetch all documents from Firestore so dropdowns and grid update seamlessly

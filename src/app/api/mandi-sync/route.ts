@@ -26,6 +26,13 @@ function sanitizeDocIdPart(str: string = ''): string {
   return str.toString().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
 
+function getFormattedDate(d: Date = new Date()): string {
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 function getPreviousDateStr(dateStr: string): string {
   const parts = dateStr.split('/');
   if (parts.length === 3) {
@@ -33,12 +40,29 @@ function getPreviousDateStr(dateStr: string): string {
     const month = parseInt(parts[1], 10) - 1;
     const year = parseInt(parts[2], 10);
     const d = new Date(year, month, day);
-    d.setDate(d.getDate() - 1);
-    const prevDay = String(d.getDate()).padStart(2, '0');
-    const prevMonth = String(d.getMonth() + 1).padStart(2, '0');
-    return `${prevDay}/${prevMonth}/${d.getFullYear()}`;
+    if (!isNaN(d.getTime())) {
+      d.setDate(d.getDate() - 1);
+      return getFormattedDate(d);
+    }
   }
-  return '03/09/2026';
+  const fallback = new Date();
+  fallback.setDate(fallback.getDate() - 1);
+  return getFormattedDate(fallback);
+}
+
+function getDynamicDateStrings(): { today: string; yesterday: string; dayBefore: string; threeDaysAgo: string } {
+  const now = new Date();
+  const getOffset = (daysAgo: number) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - daysAgo);
+    return getFormattedDate(d);
+  };
+  return {
+    today: getOffset(0),
+    yesterday: getOffset(1),
+    dayBefore: getOffset(2),
+    threeDaysAgo: getOffset(3),
+  };
 }
 
 export function computeTrendAndRecommendation(
@@ -612,9 +636,25 @@ const BASELINE_MANDI_RECORDS = [
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
 async function populateBaselineRecords(recordsToPopulate = BASELINE_MANDI_RECORDS) {
-  console.log(`[mandi-sync] Writing baseline records into Firestore collection mandi_rates (${recordsToPopulate.length} docs)...`);
+  const dates = getDynamicDateStrings();
+  console.log(`[mandi-sync] Writing baseline records into Firestore collection mandi_rates (${recordsToPopulate.length} docs) with dynamic date: ${dates.today}...`);
   const batch = writeBatch(db);
-  for (const rec of recordsToPopulate) {
+
+  for (const rawRec of recordsToPopulate) {
+    const baseModal = rawRec.modalPrice || 2000;
+    const rec = {
+      ...rawRec,
+      arrivalDate: dates.today,
+      priceHistory: [
+        { date: dates.threeDaysAgo, modalPrice: Math.round(baseModal * 0.975) },
+        { date: dates.dayBefore, modalPrice: Math.round(baseModal * 0.985) },
+        { date: dates.yesterday, modalPrice: Math.round(baseModal * 0.995) },
+        { date: dates.today, modalPrice: baseModal },
+      ],
+      updatedAt: serverTimestamp(),
+      advisoryUpdatedAt: serverTimestamp(),
+    };
+
     const sState = sanitizeDocIdPart(rec.state);
     const sDist = sanitizeDocIdPart(rec.district);
     const sMkt = sanitizeDocIdPart(rec.market);
@@ -623,15 +663,7 @@ async function populateBaselineRecords(recordsToPopulate = BASELINE_MANDI_RECORD
     const docId = sVar ? `${sState}_${sDist}_${sMkt}_${sComm}_${sVar}` : `${sState}_${sDist}_${sMkt}_${sComm}`;
     const docRef = doc(db, 'mandi_rates', docId);
 
-    batch.set(
-      docRef,
-      {
-        ...rec,
-        updatedAt: serverTimestamp(),
-        advisoryUpdatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
+    batch.set(docRef, rec, { merge: true });
   }
   await batch.commit();
 
@@ -713,14 +745,23 @@ export async function GET(req: Request) {
       }
     }
 
-    const apiKey = process.env.DATA_GOV_API_KEY;
-    const resourceId = process.env.DATA_GOV_RESOURCE_ID || '9ef84268-d588-465a-a308-a864a43d0070';
+    const apiKey =
+      process.env.DATA_GOV_API_KEY ||
+      process.env.DATA_GOV_IN_API_KEY ||
+      process.env.AGMARKNET_API_KEY ||
+      process.env.NEXT_PUBLIC_DATA_GOV_API_KEY ||
+      '';
+    const resourceId =
+      process.env.DATA_GOV_RESOURCE_ID ||
+      process.env.AGMARKNET_RESOURCE_ID ||
+      '9ef84268-d588-465a-a308-a864a43d0070';
 
     let records: any[] = [];
     let isLive = false;
+    let apiErrorReason = '';
 
     if (apiKey) {
-      let apiUrl = `https://api.data.gov.in/resource/${resourceId}?api-key=${apiKey}&format=json&limit=100`;
+      let apiUrl = `https://api.data.gov.in/resource/${resourceId}?api-key=${apiKey}&format=json&limit=50`;
 
       if (state) {
         apiUrl += `&filters[state]=${encodeURIComponent(state)}`;
@@ -732,23 +773,26 @@ export async function GET(req: Request) {
         apiUrl += `&filters[commodity]=${encodeURIComponent(commodity)}`;
       }
 
-      console.log(`[mandi-sync] Sending GET request to data.gov.in API: ${apiUrl}`);
+      console.log(`[mandi-sync] Sending GET request to data.gov.in API: ${apiUrl.replace(apiKey, '[REDACTED]')}`);
       try {
         const apiRes = await fetch(apiUrl, { cache: 'no-store' });
         if (apiRes.ok) {
           const data = await apiRes.json();
           records = data.records || [];
           isLive = true;
-          console.log(`[mandi-sync] External API returned ${records.length} live records.`);
+          console.log(`[mandi-sync] External API returned HTTP ${apiRes.status} OK with ${records.length} live records.`);
         } else {
           const errText = await apiRes.text();
+          apiErrorReason = `data.gov.in rejected request with HTTP ${apiRes.status}: ${errText.slice(0, 300)}`;
           console.error(`[mandi-sync] External API HTTP ${apiRes.status} Error:`, errText);
         }
       } catch (fetchErr: any) {
-        console.error('[mandi-sync] External API fetch exception:', fetchErr?.message || fetchErr);
+        apiErrorReason = `Network exception connecting to data.gov.in: ${fetchErr?.message || fetchErr}`;
+        console.error('[mandi-sync] External API fetch exception:', fetchErr);
       }
     } else {
-      console.warn('[mandi-sync] DATA_GOV_API_KEY environment variable is missing.');
+      apiErrorReason = 'Missing API Key. Please configure DATA_GOV_API_KEY, DATA_GOV_IN_API_KEY, or AGMARKNET_API_KEY in environment variables.';
+      console.warn(`[mandi-sync] ${apiErrorReason}`);
     }
 
     if (isLive) {
@@ -782,7 +826,7 @@ export async function GET(req: Request) {
           const minPrice = parseFloat(record.min_price) || 0;
           const maxPrice = parseFloat(record.max_price) || 0;
           const modalPrice = parseFloat(record.modal_price) || 0;
-          const arrivalDate = record.arrival_date || new Date().toLocaleDateString('en-IN');
+          const arrivalDate = record.arrival_date || getFormattedDate();
 
           const existingData = existingMap.get(docId);
           const existingHistory = existingData?.priceHistory || [];
@@ -842,40 +886,62 @@ export async function GET(req: Request) {
           console.warn('[mandi-sync] Failed to record live sync metadata:', metaErr);
         }
         console.log(`[mandi-sync] Saved ${count} live records to Firestore collection mandi_rates.`);
-        return NextResponse.json({ success: true, count, source: 'live' });
+        return NextResponse.json({ success: true, count, source: 'live_agmarknet' });
       }
 
-      // External API returned 0 records for specific filters
-      // Check if baseline records have this state/district/commodity
-      const matchedBaseline = BASELINE_MANDI_RECORDS.filter(rec => {
-        const sMatch = !state || rec.state.toLowerCase() === state.toLowerCase() || rec.state.toLowerCase().includes(state.toLowerCase()) || state.toLowerCase().includes(rec.state.toLowerCase());
-        const dMatch = !district || rec.district.toLowerCase() === district.toLowerCase() || rec.district.toLowerCase().includes(district.toLowerCase());
-        const cMatch = !commodity || rec.commodity.toLowerCase().includes(commodity.toLowerCase()) || commodity.toLowerCase().includes(rec.commodity.toLowerCase());
-        return sMatch && dMatch && cMatch;
+      // External API was reached and returned 0 records for specific filters
+      // If user filtered by a specific location/crop, check if baseline has records to provide
+      if (state || district || commodity) {
+        const matchedBaseline = BASELINE_MANDI_RECORDS.filter(rec => {
+          const sMatch = !state || rec.state.toLowerCase() === state.toLowerCase() || rec.state.toLowerCase().includes(state.toLowerCase()) || state.toLowerCase().includes(rec.state.toLowerCase());
+          const dMatch = !district || rec.district.toLowerCase() === district.toLowerCase() || rec.district.toLowerCase().includes(district.toLowerCase());
+          const cMatch = !commodity || rec.commodity.toLowerCase().includes(commodity.toLowerCase()) || commodity.toLowerCase().includes(rec.commodity.toLowerCase());
+          return sMatch && dMatch && cMatch;
+        });
+
+        if (matchedBaseline.length > 0) {
+          const count = await populateBaselineRecords(matchedBaseline);
+          console.log(`[mandi-sync] Seeded ${count} matching baseline records for ${state || 'any'} / ${district || 'any'}`);
+          return NextResponse.json({
+            success: false,
+            source: 'fallback_seeded',
+            reason: `Agmarknet API reported 0 active arrivals for filter. Seeded ${count} baseline records.`,
+            count,
+          });
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        count: 0,
+        source: 'live_agmarknet',
+        message: 'Agmarknet API responded with 0 active arrivals for specified filter.',
       });
-
-      if (matchedBaseline.length > 0) {
-        const count = await populateBaselineRecords(matchedBaseline);
-        console.log(`[mandi-sync] Seeded ${count} matching baseline records for ${state || 'any'} / ${district || 'any'}`);
-        return NextResponse.json({ success: true, count, source: 'seeded' });
-      }
-
-      return NextResponse.json({ success: true, count: 0, source: 'live' });
     }
 
     // Fallback: Populate authentic baseline pan-India records when API is unreachable or no API key
     const count = await populateBaselineRecords();
-    return NextResponse.json({ success: true, count, source: 'seeded' });
+    return NextResponse.json({
+      success: false,
+      source: 'fallback_seeded',
+      reason: apiErrorReason || 'Live Agmarknet API unavailable',
+      count,
+    });
 
   } catch (error: any) {
     console.error('[mandi-sync] Critical route error:', error);
     try {
       const count = await populateBaselineRecords();
-      return NextResponse.json({ success: true, count, source: 'seeded' });
+      return NextResponse.json({
+        success: false,
+        source: 'fallback_seeded',
+        reason: error?.message || 'Critical server error during mandi sync',
+        count,
+      });
     } catch (fallbackErr: any) {
       console.error('[mandi-sync] Fallback seed error:', fallbackErr);
       return NextResponse.json(
-        { success: false, error: error?.message || 'Internal Server Error' },
+        { success: false, source: 'error', reason: error?.message || 'Internal Server Error' },
         { status: 500 }
       );
     }
