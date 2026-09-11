@@ -54,19 +54,19 @@ export default function Navbar() {
     <nav className="navbar">
       <Link
         href="/"
-        style={{ cursor: 'pointer' }}
-        className="nav-brand cursor-pointer transition-transform duration-200 hover:-translate-y-0.5"
+        style={{ cursor: 'pointer', color: '#ffffff' }}
+        className="nav-brand text-white font-bold text-xl cursor-pointer flex items-center gap-2"
       >
         🌿 Aegroshield
       </Link>
-      <div className="nav-links">
+      <div className="nav-links flex items-center gap-2">
         {navItems.map(item => (
           <Link
             key={item.href}
             href={item.href}
-            style={{ cursor: 'pointer' }}
-            className={`cursor-pointer px-3.5 py-1.5 rounded-xl font-medium transition-all duration-200 ease-out flex items-center gap-1.5 ${
-              item.isActive ? 'active' : ''
+            style={{ cursor: 'pointer', color: '#ffffff' }}
+            className={`text-white hover:text-white hover:bg-white/15 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer flex items-center gap-1.5 ${
+              item.isActive ? 'active bg-white/25 text-white font-semibold' : ''
             }`}
           >
             {item.label}
@@ -76,9 +76,9 @@ export default function Navbar() {
         {/* ── Cart Icon ── */}
         <Link
           href="/cart"
-          style={{ cursor: 'pointer' }}
-          className={`nav-cart-btn cursor-pointer px-3.5 py-1.5 rounded-xl font-medium transition-all duration-200 ease-out flex items-center gap-1.5 ${
-            pathname.startsWith('/cart') ? 'active' : ''
+          style={{ cursor: 'pointer', color: '#ffffff' }}
+          className={`nav-cart-btn text-white hover:text-white hover:bg-white/15 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer flex items-center gap-1.5 ${
+            pathname.startsWith('/cart') ? 'active bg-white/25 text-white font-semibold' : ''
           }`}
           title="View Cart"
         >
@@ -90,15 +90,15 @@ export default function Navbar() {
         {/* ── Language Toggle ── */}
         <div className="lang-toggle-wrap">
           <select
-            className="lang-select cursor-pointer transition-all duration-200 hover:bg-white hover:text-[#16a34a] hover:-translate-y-0.5"
-            style={{ cursor: 'pointer' }}
+            className="lang-select border border-white/40 text-white hover:bg-white/10 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer"
+            style={{ cursor: 'pointer', color: '#ffffff', background: 'transparent', borderColor: 'rgba(255, 255, 255, 0.4)' }}
             value={lang}
             onChange={e => setLang(e.target.value as Language)}
             aria-label="Select language"
             title="Change Language"
           >
             {LANG_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <option key={opt.value} value={opt.value} style={{ color: '#0f172a', background: '#ffffff' }}>{opt.label}</option>
             ))}
           </select>
         </div>
@@ -142,7 +142,7 @@ export default function Navbar() {
                 backdropFilter: 'blur(4px)',
                 transition: 'all 0.2s ease',
               }}
-              className="cursor-pointer hover:bg-red-600 hover:border-red-500 hover:-translate-y-0.5"
+              className="cursor-pointer hover:bg-red-600 hover:border-red-500"
               title="Sign Out"
             >
               <LogOut size={15} color="#ffffff" /> Logout
@@ -151,8 +151,8 @@ export default function Navbar() {
         ) : (
           <Link
             href="/login"
-            style={{ cursor: 'pointer' }}
-            className="nav-btn-signin cursor-pointer transition-all duration-200 hover:bg-white hover:text-[#16a34a] hover:-translate-y-0.5"
+            style={{ cursor: 'pointer', color: '#ffffff' }}
+            className="nav-btn-signin border border-white/40 text-white hover:bg-white/10 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer"
           >
             {t('nav.signin')}
           </Link>
