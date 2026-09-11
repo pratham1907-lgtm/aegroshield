@@ -93,9 +93,17 @@ h1, h2, h3, h4, h5, h6 { font-weight: 600; }
   gap: 24px;
 }
 .nav-links a,
-.nav-cart-btn,
-.nav-btn-signin,
-.nav-brand {
+.nav-cart-btn {
+  color: var(--white);
+  font-size: 15px;
+  font-weight: 600;
+  position: relative;
+  padding: 8px 14px !important;
+  border-radius: 12px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  text-decoration: none !important;
   cursor: pointer !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
@@ -107,6 +115,15 @@ h1, h2, h3, h4, h5, h6 { font-weight: 600; }
   background-color: #ffffff !important;
   color: #16a34a !important;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18) !important;
+}
+
+.nav-links a.active,
+.nav-cart-btn.active {
+  background-color: #ffffff !important;
+  color: #16a34a !important;
+  font-weight: 700 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.14) !important;
 }
 .nav-btn-signin {
   border: 2px solid var(--white);

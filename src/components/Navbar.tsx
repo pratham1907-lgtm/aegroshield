@@ -66,9 +66,7 @@ export default function Navbar() {
             href={item.href}
             style={{ cursor: 'pointer' }}
             className={`cursor-pointer px-3.5 py-1.5 rounded-xl font-medium transition-all duration-200 ease-out flex items-center gap-1.5 ${
-              item.isActive
-                ? 'bg-white text-[#16a34a] font-bold shadow-md -translate-y-0.5'
-                : 'text-white/90 hover:bg-white hover:text-[#16a34a] hover:-translate-y-1 hover:shadow-lg'
+              item.isActive ? 'active' : ''
             }`}
           >
             {item.label}
@@ -79,10 +77,8 @@ export default function Navbar() {
         <Link
           href="/cart"
           style={{ cursor: 'pointer' }}
-          className={`cursor-pointer px-3.5 py-1.5 rounded-xl font-medium transition-all duration-200 ease-out flex items-center gap-1.5 ${
-            pathname.startsWith('/cart')
-              ? 'bg-white text-[#16a34a] font-bold shadow-md -translate-y-0.5'
-              : 'text-white/90 hover:bg-white hover:text-[#16a34a] hover:-translate-y-1 hover:shadow-lg'
+          className={`nav-cart-btn cursor-pointer px-3.5 py-1.5 rounded-xl font-medium transition-all duration-200 ease-out flex items-center gap-1.5 ${
+            pathname.startsWith('/cart') ? 'active' : ''
           }`}
           title="View Cart"
         >
