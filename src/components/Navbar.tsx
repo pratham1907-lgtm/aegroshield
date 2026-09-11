@@ -52,17 +52,23 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <Link href="/" className="nav-brand cursor-pointer" style={{ cursor: 'pointer' }}>🌿 Aegroshield</Link>
+      <Link
+        href="/"
+        style={{ cursor: 'pointer' }}
+        className="nav-brand cursor-pointer transition-transform duration-200 hover:-translate-y-0.5"
+      >
+        🌿 Aegroshield
+      </Link>
       <div className="nav-links">
         {navItems.map(item => (
           <Link
             key={item.href}
             href={item.href}
             style={{ cursor: 'pointer' }}
-            className={`cursor-pointer px-3 py-1.5 rounded-lg transition-colors duration-150 flex items-center gap-1.5 ${
+            className={`cursor-pointer px-3.5 py-1.5 rounded-xl font-medium transition-all duration-200 ease-out flex items-center gap-1.5 ${
               item.isActive
-                ? 'bg-white/20 text-white font-medium'
-                : 'text-white/90 hover:text-white hover:bg-white/10'
+                ? 'bg-white text-[#16a34a] font-bold shadow-md -translate-y-0.5'
+                : 'text-white/90 hover:bg-white hover:text-[#16a34a] hover:-translate-y-1 hover:shadow-lg'
             }`}
           >
             {item.label}
@@ -73,10 +79,10 @@ export default function Navbar() {
         <Link
           href="/cart"
           style={{ cursor: 'pointer' }}
-          className={`cursor-pointer px-3 py-1.5 rounded-lg transition-colors duration-150 flex items-center gap-1.5 ${
+          className={`cursor-pointer px-3.5 py-1.5 rounded-xl font-medium transition-all duration-200 ease-out flex items-center gap-1.5 ${
             pathname.startsWith('/cart')
-              ? 'bg-white/20 text-white font-medium'
-              : 'text-white/90 hover:text-white hover:bg-white/10'
+              ? 'bg-white text-[#16a34a] font-bold shadow-md -translate-y-0.5'
+              : 'text-white/90 hover:bg-white hover:text-[#16a34a] hover:-translate-y-1 hover:shadow-lg'
           }`}
           title="View Cart"
         >
@@ -88,7 +94,7 @@ export default function Navbar() {
         {/* ── Language Toggle ── */}
         <div className="lang-toggle-wrap">
           <select
-            className="lang-select cursor-pointer"
+            className="lang-select cursor-pointer transition-all duration-200 hover:bg-white hover:text-[#16a34a] hover:-translate-y-0.5"
             style={{ cursor: 'pointer' }}
             value={lang}
             onChange={e => setLang(e.target.value as Language)}
@@ -140,14 +146,20 @@ export default function Navbar() {
                 backdropFilter: 'blur(4px)',
                 transition: 'all 0.2s ease',
               }}
-              className="cursor-pointer hover:bg-red-600 hover:border-red-500"
+              className="cursor-pointer hover:bg-red-600 hover:border-red-500 hover:-translate-y-0.5"
               title="Sign Out"
             >
               <LogOut size={15} color="#ffffff" /> Logout
             </button>
           </div>
         ) : (
-          <Link href="/login" style={{ cursor: 'pointer' }} className="nav-btn-signin cursor-pointer">{t('nav.signin')}</Link>
+          <Link
+            href="/login"
+            style={{ cursor: 'pointer' }}
+            className="nav-btn-signin cursor-pointer transition-all duration-200 hover:bg-white hover:text-[#16a34a] hover:-translate-y-0.5"
+          >
+            {t('nav.signin')}
+          </Link>
         )}
       </div>
     </nav>

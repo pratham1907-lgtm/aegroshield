@@ -93,20 +93,20 @@ h1, h2, h3, h4, h5, h6 { font-weight: 600; }
   gap: 24px;
 }
 .nav-links a,
-.navbar a,
-.navbar button,
+.nav-cart-btn,
+.nav-btn-signin,
 .nav-brand {
-  color: var(--white);
-  font-size: 16px;
-  position: relative;
-  padding: 4px 0;
   cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
-.nav-links a:hover {
-  color: var(--bg-light);
-}
-.nav-links a.active {
-  border-bottom: 2px solid var(--warning);
+
+.nav-links a:hover,
+.nav-cart-btn:hover {
+  cursor: pointer !important;
+  transform: translateY(-3px) !important;
+  background-color: #ffffff !important;
+  color: #16a34a !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18) !important;
 }
 .nav-btn-signin {
   border: 2px solid var(--white);
