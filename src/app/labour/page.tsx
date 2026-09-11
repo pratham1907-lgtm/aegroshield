@@ -3,13 +3,16 @@ import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, addDoc } from "firebase/firestore";
 import { MOCK_LABOUR } from "@/lib/mockData";
 
 export default function Page() {
   const { user, userData, isDemo } = useAuth();
   const [liveLabour, setLiveLabour] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'find' | 'register'>('find');
+  const [postSubmitted, setPostSubmitted] = useState(false);
+  const [listingId, setListingId] = useState('');
 
   const [userBookings, setUserBookings] = useState<any[]>([]);
 
@@ -52,6 +55,39 @@ export default function Page() {
   }, [user, isDemo]);
 
   const isRealAccount = Boolean(user && !isDemo);
+
+  const handlePostAvailability = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const checkedTasks: string[] = [];
+    const taskCheckboxes = e.currentTarget.querySelectorAll('input[name="tasks"]:checked');
+    taskCheckboxes.forEach((cb: any) => checkedTasks.push(cb.value));
+
+    const newLabour = {
+      teamLeaderName: (formData.get('postName') as string) || 'Worker Group',
+      contactPhone: (formData.get('postPhone') as string) || '',
+      district: (formData.get('postDistrict') as string) || 'Meerut',
+      dailyRatePerWorker: Number(formData.get('postRate')) || 400,
+      teamSize: Number(formData.get('postGroupSize')) || 5,
+      specialization: checkedTasks.join(', ') || 'Harvesting, Sowing',
+      available: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    const newId = 'LBR-' + Math.floor(100000 + Math.random() * 900000);
+    setListingId(newId);
+
+    try {
+      if (user && !isDemo) {
+        await addDoc(collection(db, 'labour'), { id: newId, ...newLabour });
+      }
+    } catch (err) {
+      console.warn("[Labour] Error saving worker availability:", err);
+    }
+
+    setLiveLabour(prev => [{ id: newId, ...newLabour }, ...(prev || [])]);
+    setPostSubmitted(true);
+  };
 
   const displayLabour = useMemo(() => {
     if (isRealAccount) {
@@ -105,18 +141,26 @@ export default function Page() {
 
   {/*  ── Tab Toggle ───────────────────────────────────────────  */}
   <div className="tab-bar">
-    <button className="tab-toggle active" id="findLabourTab" onClick={() => {}}>
+    <button
+      className={`tab-toggle cursor-pointer ${activeTab === 'find' ? 'active' : ''}`}
+      style={{ cursor: 'pointer' }}
+      id="findLabourTab"
+      onClick={() => setActiveTab('find')}
+    >
       🔍 Find Workers
     </button>
-    <button className="tab-toggle" id="postLabourTab" onClick={() => {}}>
+    <button
+      className={`tab-toggle cursor-pointer ${activeTab === 'register' ? 'active' : ''}`}
+      style={{ cursor: 'pointer' }}
+      id="postLabourTab"
+      onClick={() => setActiveTab('register')}
+    >
       📢 Post Availability
     </button>
   </div>
 
-  {/*  ════════════════════════════════════════════════════════  */}
-  {/*  TAB 1: FIND LABOUR                                        */}
-  {/*  ════════════════════════════════════════════════════════  */}
-  <div className="tab-content active" id="findLabourSection">
+  {activeTab === 'find' && (
+    <div className="tab-content active" id="findLabourSection">
 
     {/*  Search Card  */}
     <div className="search-card">
@@ -310,128 +354,133 @@ export default function Page() {
           </p>
         </div>
       )}
-    </div>{/*  #myBookings  */}
+    </div>{/* #myBookings */}
+  </div>
+  )}
 
-  </div>{/*  #findSection  */}
-
-  {/*  ════════════════════════════════════════════════════════  */}
-  {/*  TAB 2: POST AVAILABILITY                                  */}
-  {/*  ════════════════════════════════════════════════════════  */}
-  <div className="tab-content" id="postSection">
-
-    <div className="post-form-card">
-      <div className="post-form-head">
-        <h3>📢 Post Your Availability</h3>
-        <p>Farmers in your area will see your listing and contact you directly within hours.</p>
-      </div>
-      <div className="post-form-body">
-
-        {/*  Post Success  */}
-        <div className="post-success" id="postSuccess">
-          <div className="post-success-icon">📢</div>
-          <div style={{"fontSize":"1.4rem","fontWeight":"900","color":"var(--primary)","marginBottom":"8px"}}>Listing Posted!</div>
-          <div style={{"color":"var(--gray-600)","fontSize":".95rem","marginBottom":"24px"}}>Your availability is now visible to farmers in your district. You'll receive calls within a few hours.</div>
-          <div style={{"background":"#e8f5d6","borderRadius":"12px","padding":"16px 24px","display":"inline-block","marginBottom":"28px"}}>
-            <div style={{"fontSize":".82rem","color":"var(--gray-400)","fontWeight":"600","textTransform":"uppercase","letterSpacing":".05em"}}>Listing ID</div>
-            <div id="listingId" style={{"fontSize":"1.8rem","fontWeight":"900","color":"var(--primary)","letterSpacing":".1em"}}>—</div>
-          </div>
-          <div><button className="btn btn-outline" onClick={() => {}}>+ Post Another Listing</button></div>
+  {/* TAB 2: POST AVAILABILITY */}
+  {activeTab === 'register' && (
+    <div className="tab-content active" id="postSection">
+      <div className="post-form-card">
+        <div className="post-form-head">
+          <h3>📢 Post Your Availability</h3>
+          <p>Farmers in your area will see your listing and contact you directly within hours.</p>
         </div>
-
-        {/*  Post Form  */}
-        <form id="postAvailForm" className="post-form-grid" onSubmit={(e) => e.preventDefault()}>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="postName">Worker / Group Name <span>*</span></label>
-            <input type="text" className="form-control" id="postName" placeholder="e.g. Ramesh Kumar or Bajrang Group" required />
-          </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor="postPhone">Mobile Number <span>*</span></label>
-            <input type="tel" className="form-control" id="postPhone" placeholder="10-digit number" maxLength={10} required />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="postDistrict">District <span>*</span></label>
-            <select className="form-control" id="postDistrict" required>
-              <option defaultValue="" disabled selected>Select district…</option>
-              <option>Agra</option><option>Aligarh</option><option>Allahabad</option>
-              <option>Bareilly</option><option>Firozabad</option><option>Ghaziabad</option>
-              <option>Hapur</option><option>Kanpur</option><option>Lucknow</option>
-              <option>Mathura</option><option>Meerut</option><option>Moradabad</option>
-              <option>Muzaffarnagar</option><option>Noida</option><option>Saharanpur</option>
-              <option>Varanasi</option><option>Other</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor="postRate">Daily Rate (₹ per person) <span>*</span></label>
-            <input type="number" className="form-control" id="postRate" placeholder="e.g. 400" min="100" max="2000" required />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="postFromDate">Available From <span>*</span></label>
-            <input type="date" className="form-control" id="postFromDate" required />
-          </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor="postToDate">Available Until <span>*</span></label>
-            <input type="date" className="form-control" id="postToDate" required />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="postGroupSize">Group Size (no. of workers) <span>*</span></label>
-            <input type="number" className="form-control" id="postGroupSize" placeholder="1–20" min="1" max="20" required />
-          </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor="postVillage">Village / Area</label>
-            <input type="text" className="form-control" id="postVillage" placeholder="Village name (optional)" />
-          </div>
-
-          {/*  Task Types checkboxes  */}
-          <div className="form-group full">
-            <label className="form-label">Task Types <span>*</span></label>
-            <div className="checkbox-grid" id="taskCheckboxes">
-              <label className="checkbox-option" onClick={() => {}}>
-                <input type="checkbox" name="tasks" defaultValue="Weeding" />
-                <span className="checkbox-check">✓</span> 🪴 Weeding
-              </label>
-              <label className="checkbox-option" onClick={() => {}}>
-                <input type="checkbox" name="tasks" defaultValue="Harvesting" />
-                <span className="checkbox-check">✓</span> 🌾 Harvesting
-              </label>
-              <label className="checkbox-option" onClick={() => {}}>
-                <input type="checkbox" name="tasks" defaultValue="Spraying" />
-                <span className="checkbox-check">✓</span> 🧪 Spraying
-              </label>
-              <label className="checkbox-option" onClick={() => {}}>
-                <input type="checkbox" name="tasks" defaultValue="Sowing" />
-                <span className="checkbox-check">✓</span> 🌱 Sowing
-              </label>
-              <label className="checkbox-option" onClick={() => {}}>
-                <input type="checkbox" name="tasks" defaultValue="Transplanting" />
-                <span className="checkbox-check">✓</span> 🌿 Transplanting
-              </label>
-              <label className="checkbox-option" onClick={() => {}}>
-                <input type="checkbox" name="tasks" defaultValue="Packing" />
-                <span className="checkbox-check">✓</span> 📦 Packing
-              </label>
+        <div className="post-form-body">
+          {postSubmitted ? (
+            <div className="post-success" id="postSuccess" style={{ display: 'block' }}>
+              <div className="post-success-icon">📢</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: '900', color: 'var(--primary)', marginBottom: '8px' }}>Listing Posted!</div>
+              <div style={{ color: 'var(--gray-600)', fontSize: '.95rem', marginBottom: '24px' }}>Your availability is now visible to farmers in your district. You'll receive calls within a few hours.</div>
+              <div style={{ background: '#e8f5d6', borderRadius: '12px', padding: '16px 24px', display: 'inline-block', marginBottom: '28px' }}>
+                <div style={{ fontSize: '.82rem', color: 'var(--gray-400)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.05em' }}>Listing ID</div>
+                <div id="listingId" style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--primary)', letterSpacing: '.1em' }}>{listingId}</div>
+              </div>
+              <div>
+                <button className="btn btn-outline cursor-pointer" style={{ cursor: 'pointer' }} onClick={() => setPostSubmitted(false)}>
+                  + Post Another Listing
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <form id="postAvailForm" className="post-form-grid" onSubmit={handlePostAvailability}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="postName">Worker / Group Name <span>*</span></label>
+                <input type="text" className="form-control" id="postName" name="postName" placeholder="e.g. Ramesh Kumar or Bajrang Group" required />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="postPhone">Mobile Number <span>*</span></label>
+                <input type="tel" className="form-control" id="postPhone" name="postPhone" placeholder="10-digit number" maxLength={10} required />
+              </div>
 
-          <div className="form-group full" style={{"marginTop":"8px"}}>
-            <button type="submit" className="btn btn-primary btn-lg" id="postAvailability"
-              style={{"width":"100%","justifyContent":"center"}}>
-              📢 Post My Availability
-            </button>
-            <p style={{"textAlign":"center","fontSize":".8rem","color":"var(--gray-400)","marginTop":"10px"}}>
-              🔒 Your phone number is shared only with verified farmers · Free to post
-            </p>
-          </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="postDistrict">District <span>*</span></label>
+                <select className="form-control" id="postDistrict" name="postDistrict" required>
+                  <option value="" disabled selected>Select district…</option>
+                  <option>Agra</option>
+                  <option>Aligarh</option>
+                  <option>Allahabad</option>
+                  <option>Bareilly</option>
+                  <option>Firozabad</option>
+                  <option>Ghaziabad</option>
+                  <option>Hapur</option>
+                  <option>Kanpur</option>
+                  <option>Lucknow</option>
+                  <option>Mathura</option>
+                  <option>Meerut</option>
+                  <option>Moradabad</option>
+                  <option>Muzaffarnagar</option>
+                  <option>Noida</option>
+                  <option>Saharanpur</option>
+                  <option>Varanasi</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="postRate">Daily Rate (₹ per person) <span>*</span></label>
+                <input type="number" className="form-control" id="postRate" name="postRate" placeholder="e.g. 400" min="100" max="2000" required />
+              </div>
 
-        </form>
+              <div className="form-group">
+                <label className="form-label" htmlFor="postFromDate">Available From <span>*</span></label>
+                <input type="date" className="form-control" id="postFromDate" name="postFromDate" required />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="postToDate">Available Until <span>*</span></label>
+                <input type="date" className="form-control" id="postToDate" name="postToDate" required />
+              </div>
 
-      </div>{/*  .post-form-body  */}
-    </div>{/*  .post-form-card  */}
+              <div className="form-group">
+                <label className="form-label" htmlFor="postGroupSize">Group Size (no. of workers) <span>*</span></label>
+                <input type="number" className="form-control" id="postGroupSize" name="postGroupSize" placeholder="1–20" min="1" max="20" required />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="postVillage">Village / Area</label>
+                <input type="text" className="form-control" id="postVillage" name="postVillage" placeholder="Village name (optional)" />
+              </div>
 
-  </div>{/*  #postSection  */}
+              {/* Task Types checkboxes */}
+              <div className="form-group full">
+                <label className="form-label">Task Types <span>*</span></label>
+                <div className="checkbox-grid" id="taskCheckboxes">
+                  <label className="checkbox-option cursor-pointer" style={{ cursor: 'pointer' }}>
+                    <input type="checkbox" name="tasks" value="Weeding" />
+                    <span className="checkbox-check">✓</span> 🪴 Weeding
+                  </label>
+                  <label className="checkbox-option cursor-pointer" style={{ cursor: 'pointer' }}>
+                    <input type="checkbox" name="tasks" value="Harvesting" />
+                    <span className="checkbox-check">✓</span> 🌾 Harvesting
+                  </label>
+                  <label className="checkbox-option cursor-pointer" style={{ cursor: 'pointer' }}>
+                    <input type="checkbox" name="tasks" value="Spraying" />
+                    <span className="checkbox-check">✓</span> 🧪 Spraying
+                  </label>
+                  <label className="checkbox-option cursor-pointer" style={{ cursor: 'pointer' }}>
+                    <input type="checkbox" name="tasks" value="Sowing" />
+                    <span className="checkbox-check">✓</span> 🌱 Sowing
+                  </label>
+                  <label className="checkbox-option cursor-pointer" style={{ cursor: 'pointer' }}>
+                    <input type="checkbox" name="tasks" value="Transplanting" />
+                    <span className="checkbox-check">✓</span> 🌿 Transplanting
+                  </label>
+                  <label className="checkbox-option cursor-pointer" style={{ cursor: 'pointer' }}>
+                    <input type="checkbox" name="tasks" value="Packing" />
+                    <span className="checkbox-check">✓</span> 📦 Packing
+                  </label>
+                </div>
+              </div>
+
+              <div className="form-group full" style={{ marginTop: "8px" }}>
+                <button type="submit" className="btn btn-primary btn-lg cursor-pointer" id="postAvailability" style={{ width: "100%", justifyContent: "center", cursor: 'pointer' }}>
+                  📢 Post My Availability
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  )}
 
 </main>
 

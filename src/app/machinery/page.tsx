@@ -3,13 +3,16 @@ import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, addDoc } from "firebase/firestore";
 import { MOCK_MACHINERY } from "@/lib/mockData";
 
 export default function Page() {
   const { user, userData, isDemo } = useAuth();
   const [liveMachinery, setLiveMachinery] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'find' | 'register'>('find');
+  const [postSubmitted, setPostSubmitted] = useState(false);
+  const [listingId, setListingId] = useState('');
 
   useEffect(() => {
     if (user && !isDemo) {
@@ -36,6 +39,36 @@ export default function Page() {
   }, [user, isDemo]);
 
   const isRealAccount = Boolean(user && !isDemo);
+
+  const handleRegisterEquipment = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const newMachine = {
+      chcName: (formData.get('postOwnerName') as string) || 'Private Owner',
+      contactPhone: (formData.get('postPhone') as string) || '',
+      district: (formData.get('postDistrict') as string) || 'Meerut',
+      equipmentType: (formData.get('postMachineType') as string) || 'Tractor',
+      model: (formData.get('postMachineName') as string) || '',
+      ratePerHour: Number(formData.get('postHourlyRate')) || 400,
+      state: (formData.get('postState') as string) || 'Uttar Pradesh',
+      available: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    const newId = 'MCH-' + Math.floor(100000 + Math.random() * 900000);
+    setListingId(newId);
+
+    try {
+      if (user && !isDemo) {
+        await addDoc(collection(db, 'machinery'), { id: newId, ...newMachine });
+      }
+    } catch (err) {
+      console.warn("[Machinery] Error saving equipment:", err);
+    }
+
+    setLiveMachinery(prev => [{ id: newId, ...newMachine }, ...(prev || [])]);
+    setPostSubmitted(true);
+  };
 
   const displayMachinery = useMemo(() => {
     if (isRealAccount) {
@@ -89,15 +122,26 @@ export default function Page() {
 
   {/*  ── Tab Toggle ───────────────────────────────────────────  */}
   <div className="tab-bar">
-    <button className="tab-toggle active" id="findTab" onClick={() => {}}>
+    <button
+      className={`tab-toggle cursor-pointer ${activeTab === 'find' ? 'active' : ''}`}
+      style={{ cursor: 'pointer' }}
+      id="findTab"
+      onClick={() => setActiveTab('find')}
+    >
       🔍 Find Machinery
     </button>
-    <button className="tab-toggle" id="postTab" onClick={() => {}}>
+    <button
+      className={`tab-toggle cursor-pointer ${activeTab === 'register' ? 'active' : ''}`}
+      style={{ cursor: 'pointer' }}
+      id="postTab"
+      onClick={() => setActiveTab('register')}
+    >
       📢 Register Equipment
     </button>
   </div>
 
-  <div className="tab-content active" id="findSection">
+  {activeTab === 'find' && (
+    <div className="tab-content active" id="findSection">
 
   {/*  ── Search Card ───────────────────────────────────────────  */}
   <div className="search-card">
@@ -149,298 +193,159 @@ export default function Page() {
         <input type="date" className="form-control" id="bookingDate" />
       </div>
 
-      <div className="form-group">
-        <label className="form-label" htmlFor="durationHours">Hours Needed</label>
-        <input type="number" className="form-control" id="durationHours"
-          placeholder="Hours needed" min="1" max="24" defaultValue="4" />
-      </div>
-
-    </div>{/*  .search-grid  */}
-
-    <div style={{"marginTop":"18px","display":"flex","justifyContent":"flex-end"}}>
-      <button className="btn btn-primary btn-lg" id="searchMachinery">
-        🔍 Search Available Machinery →
-      </button>
     </div>
-  </div>{/*  .search-card  */}
-
-  {/*  ── Filter Pills ──────────────────────────────────────────  */}
-  <div className="filter-pills-bar">
-    <span className="filter-pills-label">Filter:</span>
-    <button className="filter-pill active" data-filter="all">All</button>
-    <button className="filter-pill" data-filter="available-today">✅ Available Today</button>
-    <button className="filter-pill" data-filter="within-10km">📍 Within 10 km</button>
-    <button className="filter-pill" data-filter="under-500">💰 Under ₹500/hr</button>
-    <button className="filter-pill" data-filter="with-operator">👨‍🌾 With Operator</button>
   </div>
 
-  {/*  ── Results Header ────────────────────────────────────────  */}
-  <div className="results-header">
-    <div className="results-count">Showing <span id="resultsCount">{displayMachinery.length}</span> results near Meerut, UP</div>
-    <select className="sort-select" id="sortSelect">
-      <option>Sort: Nearest First</option>
-      <option>Sort: Price: Low to High</option>
-      <option>Sort: Highest Rated</option>
-      <option>Sort: Available Today</option>
-    </select>
-  </div>
-
-  {/*  ── Machinery Results ─────────────────────────────────────  */}
-  <div id="machineryResults">
+  {/*  ── Machinery Grid ────────────────────────────────────────  */}
+  <div className="machinery-grid" id="machineryGrid">
     {displayMachinery.length > 0 ? (
-      displayMachinery.map((item, idx) => (
-        <div key={item.id || idx} className="machine-card" data-available="true">
-          <div className="mc-icon-circle tractor">🚜</div>
+      displayMachinery.map((machine, idx) => (
+        <div key={machine.id || idx} className="machine-card">
+          <div className="mc-head">
+            <div className="mc-icon">🚜</div>
+            <div className="mc-badges">
+              <span className="badge badge-chc">CHC Accredited</span>
+              <span className="badge badge-avail">Available Today</span>
+            </div>
+          </div>
           <div className="mc-body">
-            <div className="mc-top">
-              <div>
-                <div className="mc-name">{item.model || item.machineName || item.equipmentType || 'Farm Machine'}</div>
-                <div className="mc-provider">👤 <strong>{item.chcName || item.provider || 'CHC Centre'}</strong> — {item.location || item.district || 'Local District'}</div>
+            <h3 className="mc-title">{machine.equipmentType || machine.model || 'Farm Machine'}</h3>
+            <p className="mc-chc">🏭 {machine.chcName || 'Local Hiring Centre'}</p>
+            <div className="mc-specs">
+              <span className="spec-pill">⚙️ {machine.model || 'Standard'}</span>
+              <span className="spec-pill">📍 {machine.district || 'Meerut'}</span>
+            </div>
+            <div className="mc-pricing">
+              <div className="mc-rate">
+                <span className="mc-rate-val">₹{machine.ratePerHour || machine.rate || 400}</span>
+                <span className="mc-rate-unit">/hour</span>
               </div>
-              <span className="mc-badge available">● Available</span>
+              <div className="mc-sub">Incl. fuel &amp; operator</div>
             </div>
-            <div className="mc-pills">
-              <span className="mc-pill highlight">₹{item.ratePerHour || item.hourlyRate || 400}/hr</span>
-              <span className="mc-pill">📍 {item.location || item.district || 'Nearby'}</span>
-              <span className="mc-pill">⭐ 4.8</span>
-            </div>
-            <div className="mc-actions" style={{ marginTop: '12px' }}>
-              <button className="btn-book-now">🚜 Book Now</button>
-            </div>
+          </div>
+          <div className="mc-foot">
+            <div className="mc-rating">⭐ 4.8 <span>(42)</span></div>
+            <button className="btn btn-primary btn-sm cursor-pointer" style={{ cursor: 'pointer' }}>⚡ Book Now</button>
           </div>
         </div>
       ))
     ) : (
-      <div style={{ padding: '48px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px dashed #cbd5e1', margin: '20px 0' }}>
+      <div style={{ gridColumn: '1 / -1', padding: '48px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
         <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>🚜</div>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>No machinery available in your area yet</h3>
-        <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 16px' }}>
-          Be the first to list farm equipment or tractors for hire in your district using the Register Equipment tab.
+        <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>No machinery listings available yet</h3>
+        <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto' }}>
+          Be the first to list your tractor or harvester using the Register Equipment tab.
         </p>
       </div>
     )}
   </div>
 
-  </div>{/*  #machineryResults  */}
+  </div>
+  )}
 
-  {/*  ── Booking Section ───────────────────────────────────────  */}
-  <div id="bookingSection">
+  {/*  TAB 2: REGISTER EQUIPMENT  */}
+  {activeTab === 'register' && (
+    <div className="tab-content active" id="postSection">
+      <div className="post-form-card">
+        <div className="post-form-head">
+          <h3>📢 Register Your Equipment</h3>
+          <p>List your tractor, harvester, or other machinery to get booking requests from nearby farmers.</p>
+        </div>
+        <div className="post-form-body">
+          {postSubmitted ? (
+            <div className="post-success" id="postSuccess" style={{ display: 'block' }}>
+              <div className="post-success-icon">🚜</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: '900', color: 'var(--primary)', marginBottom: '8px' }}>Equipment Registered!</div>
+              <div style={{ color: 'var(--gray-600)', fontSize: '.95rem', marginBottom: '24px' }}>Your machinery is now listed and visible to farmers in your district. You'll receive calls for bookings.</div>
+              <div style={{ background: '#e8f5d6', borderRadius: '12px', padding: '16px 24px', display: 'inline-block', marginBottom: '28px' }}>
+                <div style={{ fontSize: '.82rem', color: 'var(--gray-400)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.05em' }}>Machine Listing ID</div>
+                <div id="listingId" style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--primary)', letterSpacing: '.1em' }}>{listingId}</div>
+              </div>
+              <div>
+                <button className="btn btn-outline cursor-pointer" style={{ cursor: 'pointer' }} onClick={() => setPostSubmitted(false)}>
+                  + Register Another Machine
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form id="postEquipmentForm" className="post-form-grid" onSubmit={handleRegisterEquipment}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="postMachineName">Machine Model Name <span>*</span></label>
+                <input type="text" className="form-control" id="postMachineName" name="postMachineName" placeholder="e.g. Mahindra 575 DI Tractor" required />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="postMachineType">Machine Type <span>*</span></label>
+                <select className="form-control" id="postMachineType" name="postMachineType" required>
+                  <option value="" disabled selected>Select type…</option>
+                  <option value="Tractor">🚜 Tractor</option>
+                  <option value="Harvester">🌾 Harvester</option>
+                  <option value="Rotavator">🔄 Rotavator</option>
+                  <option value="Thresher">⚙️ Thresher</option>
+                  <option value="Sprayer">💦 Sprayer</option>
+                  <option value="Seed Drill">🌱 Seed Drill</option>
+                  <option value="Baler">📦 Baler</option>
+                  <option value="Plough">🪵 Plough</option>
+                </select>
+              </div>
 
-    {/*  Success state (shown after confirm)  */}
-    <div id="bookingSuccess">
-      <div className="success-checkmark">✅</div>
-      <div className="success-title">Booking Confirmed! 🎉</div>
-      <div className="success-sub">The provider will call you within 2 hours to confirm details.</div>
-      <div className="booking-ref-box">
-        <div className="ref-label">Booking Reference</div>
-        <div className="ref-number" id="refNumber">—</div>
-      </div>
-      <div className="booking-details-chips" id="successChips"></div>
-      <div style={{"display":"flex","gap":"12px","justifyContent":"center","flexWrap":"wrap"}}>
-        <button className="btn btn-outline" onClick={() => {}}>🔄 Book Another Machine</button>
-        <a href="/calculator" className="btn btn-primary">🧪 Calculate Input Dose</a>
+              <div className="form-group">
+                <label className="form-label" htmlFor="postOwnerName">Owner / Provider Name <span>*</span></label>
+                <input type="text" className="form-control" id="postOwnerName" name="postOwnerName" placeholder="e.g. Ramesh Kumar" required />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="postPhone">Mobile Number <span>*</span></label>
+                <input type="tel" className="form-control" id="postPhone" name="postPhone" placeholder="10-digit number" maxLength={10} required />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="postState">State <span>*</span></label>
+                <select className="form-control" id="postState" name="postState" required>
+                  <option value="" disabled selected>Select state…</option>
+                  <option>Uttar Pradesh</option>
+                  <option>Punjab</option>
+                  <option>Haryana</option>
+                  <option>Madhya Pradesh</option>
+                  <option>Rajasthan</option>
+                  <option>Bihar</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="postDistrict">District <span>*</span></label>
+                <input type="text" className="form-control" id="postDistrict" name="postDistrict" placeholder="e.g. Meerut, Hapur…" required />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="postHourlyRate">Hourly Rate (₹ per hour) <span>*</span></label>
+                <input type="number" className="form-control" id="postHourlyRate" name="postHourlyRate" placeholder="e.g. 400" min="50" max="5000" required />
+              </div>
+              <div className="form-group" style={{ display: "flex", alignItems: "center", height: "100%", paddingTop: "28px" }}>
+                <label className="checkbox-option cursor-pointer" style={{ width: "100%", cursor: 'pointer' }}>
+                  <input type="checkbox" id="postOperator" name="operator" defaultValue="true" />
+                  <span className="checkbox-check">✓</span> 👨‍🌾 Includes Operator
+                </label>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="postSpecs">Specifications (optional)</label>
+                <input type="text" className="form-control" id="postSpecs" name="postSpecs" placeholder="e.g. 50 HP, 2022 Model, etc." />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="postVillage">Village / Area</label>
+                <input type="text" className="form-control" id="postVillage" name="postVillage" placeholder="Village name (optional)" />
+              </div>
+
+              <div className="form-group full" style={{ marginTop: "12px" }}>
+                <button type="submit" className="btn btn-primary btn-lg cursor-pointer" style={{ width: "100%", justifyContent: "center", cursor: 'pointer' }}>
+                  📢 Register My Equipment
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
       </div>
     </div>
-
-    {/*  Booking form state  */}
-    <div id="bookingForm">
-      {/*  Header  */}
-      <div className="bs-header">
-        <div className="bs-header-left">
-          <div className="bs-machine-icon" id="bsMachineIcon">🚜</div>
-          <div>
-            <div className="bs-machine-name" id="bsMachineName">Machine Name</div>
-            <div className="bs-provider" id="bsProvider">Provider Name</div>
-          </div>
-        </div>
-        <button id="cancelBooking" onClick={() => {}}>✕ Cancel</button>
-      </div>
-
-      <div className="bs-body">
-
-        {/*  Time Slot Selector  */}
-        <div className="bs-section-label">
-          🕐 Select Start Time <span>— for <span id="bsDateDisplay">selected date</span></span>
-        </div>
-        <div className="time-slots" id="timeSlots">
-          <button className="time-slot-btn" data-time="6:00 AM"  onClick={() => {}}>6 AM<small>Morning</small></button>
-          <button className="time-slot-btn" data-time="8:00 AM"  onClick={() => {}}>8 AM<small>Morning</small></button>
-          <button className="time-slot-btn" data-time="10:00 AM" onClick={() => {}}>10 AM<small>Late Morn</small></button>
-          <button className="time-slot-btn slot-booked"          data-time="12:00 PM">12 PM<small>Midday</small></button>
-          <button className="time-slot-btn" data-time="2:00 PM"  onClick={() => {}}>2 PM<small>Afternoon</small></button>
-          <button className="time-slot-btn" data-time="4:00 PM"  onClick={() => {}}>4 PM<small>Evening</small></button>
-        </div>
-
-        {/*  Pricing Display  */}
-        <div className="bs-section-label">💰 Cost Summary</div>
-        <div className="pricing-display">
-          <div className="pd-item">
-            <div className="pd-val" id="pdHours">4</div>
-            <div className="pd-lbl">Hours</div>
-          </div>
-          <div className="pd-divider"></div>
-          <div className="pd-item">
-            <div className="pd-val" id="pdRate">₹400</div>
-            <div className="pd-lbl">Per Hour</div>
-          </div>
-          <div className="pd-divider"></div>
-          <div className="pd-item">
-            <div className="pd-val">×</div>
-            <div className="pd-lbl">&nbsp;</div>
-          </div>
-          <div className="pd-divider"></div>
-          <div className="pd-item pd-total">
-            <div className="pd-val" id="pdTotal">₹1,600</div>
-            <div className="pd-lbl">Total (incl. GST)</div>
-          </div>
-        </div>
-
-        {/*  Farmer Details Form  */}
-        <div className="bs-section-label">👤 Your Details</div>
-        <div className="bs-form-grid">
-          <div className="form-group">
-            <label className="form-label" htmlFor="farmerName">Full Name <span>*</span></label>
-            <input type="text" className="form-control" id="farmerName" placeholder="e.g. Ramesh Kumar" required />
-          </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor="farmerPhone">Mobile Number <span>*</span></label>
-            <input type="tel" className="form-control" id="farmerPhone"
-              placeholder="10-digit number" maxLength={10} pattern="[0-9]{10}" required />
-          </div>
-          <div className="form-group full">
-            <label className="form-label" htmlFor="farmerInstructions">Special Instructions <span style={{"color":"var(--gray-400)","fontWeight":"400"}}>(optional)</span></label>
-            <textarea className="form-control" id="farmerInstructions" rows={3}
-              placeholder="e.g. Field is 2.5 acres, access from north side of village road. Need early morning start…"></textarea>
-          </div>
-        </div>
-
-        {/*  Confirm Button  */}
-        <button id="confirmBooking" onClick={() => {}}>
-          ✅ Confirm Booking
-        </button>
-
-        <p style={{"textAlign":"center","fontSize":".8rem","color":"var(--gray-400)","marginTop":"12px"}}>
-          🔒 Payment collected on delivery · No advance required · Free cancellation up to 2 hrs before
-        </p>
-
-      </div>{/*  .bs-body  */}
-  </div>{/*  #bookingSection  */}
-  </div>{/*  #findSection  */}
-
-  {/*  ════════════════════════════════════════════════════════  */}
-  {/*  TAB 2: REGISTER EQUIPMENT                                  */}
-  {/*  ════════════════════════════════════════════════════════  */}
-  <div className="tab-content" id="postSection">
-
-    <div className="post-form-card">
-      <div className="post-form-head">
-        <h3>📢 Register Your Equipment</h3>
-        <p>List your tractor, harvester, or other machinery to get booking requests from nearby farmers.</p>
-      </div>
-      <div className="post-form-body">
-
-        {/*  Post Success  */}
-        <div className="post-success" id="postSuccess">
-          <div className="post-success-icon">🚜</div>
-          <div style={{"fontSize":"1.4rem","fontWeight":"900","color":"var(--primary)","marginBottom":"8px"}}>Equipment Registered!</div>
-          <div style={{"color":"var(--gray-600)","fontSize":".95rem","marginBottom":"24px"}}>Your machinery is now listed and visible to farmers in your district. You'll receive calls for bookings.</div>
-          <div style={{"background":"#e8f5d6","borderRadius":"12px","padding":"16px 24px","display":"inline-block","marginBottom":"28px"}}>
-            <div style={{"fontSize":".82rem","color":"var(--gray-400)","fontWeight":"600","textTransform":"uppercase","letterSpacing":".05em"}}>Machine Listing ID</div>
-            <div id="listingId" style={{"fontSize":"1.8rem","fontWeight":"900","color":"var(--primary)","letterSpacing":".1em"}}>—</div>
-          </div>
-          <div><button className="btn btn-outline" onClick={() => {}}>+ Register Another Machine</button></div>
-        </div>
-
-        {/*  Post Form  */}
-        <form id="postEquipmentForm" className="post-form-grid" onSubmit={(e) => e.preventDefault()}>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="postMachineName">Machine Model Name <span>*</span></label>
-            <input type="text" className="form-control" id="postMachineName" placeholder="e.g. Mahindra 575 DI Tractor" required />
-          </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor="postMachineType">Machine Type <span>*</span></label>
-            <select className="form-control" id="postMachineType" required>
-              <option defaultValue="" disabled selected>Select type…</option>
-              <option defaultValue="Tractor">🚜 Tractor</option>
-              <option defaultValue="Harvester">🌾 Harvester</option>
-              <option defaultValue="Rotavator">🔄 Rotavator</option>
-              <option defaultValue="Thresher">⚙️ Thresher</option>
-              <option defaultValue="Sprayer">💦 Sprayer</option>
-              <option defaultValue="Seed Drill">🌱 Seed Drill</option>
-              <option defaultValue="Baler">📦 Baler</option>
-              <option defaultValue="Plough">🪵 Plough</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="postOwnerName">Owner / Provider Name <span>*</span></label>
-            <input type="text" className="form-control" id="postOwnerName" placeholder="e.g. Ramesh Kumar" required />
-          </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor="postPhone">Mobile Number <span>*</span></label>
-            <input type="tel" className="form-control" id="postPhone" placeholder="10-digit number" maxLength={10} required />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="postState">State <span>*</span></label>
-            <select className="form-control" id="postState" required>
-              <option defaultValue="" disabled selected>Select state…</option>
-              <option>Andhra Pradesh</option><option>Arunachal Pradesh</option>
-              <option>Assam</option><option>Bihar</option><option>Chhattisgarh</option>
-              <option>Goa</option><option>Gujarat</option><option>Haryana</option>
-              <option>Himachal Pradesh</option><option>Jharkhand</option>
-              <option>Karnataka</option><option>Kerala</option>
-              <option>Madhya Pradesh</option><option>Maharashtra</option>
-              <option>Manipur</option><option>Meghalaya</option><option>Mizoram</option>
-              <option>Nagaland</option><option>Odisha</option><option>Punjab</option>
-              <option>Rajasthan</option><option>Sikkim</option><option>Tamil Nadu</option>
-              <option>Telangana</option><option>Tripura</option>
-              <option>Uttar Pradesh</option><option>Uttarakhand</option>
-              <option>West Bengal</option><option>Delhi</option>
-              <option>Jammu &amp; Kashmir</option><option>Ladakh</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor="postDistrict">District <span>*</span></label>
-            <input type="text" className="form-control" id="postDistrict" placeholder="e.g. Meerut, Hapur…" required />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="postHourlyRate">Hourly Rate (₹ per hour) <span>*</span></label>
-            <input type="number" className="form-control" id="postHourlyRate" placeholder="e.g. 400" min="50" max="5000" required />
-          </div>
-          <div className="form-group" style={{"display":"flex","alignItems":"center","height":"100%","paddingTop":"28px"}}>
-            <label className="checkbox-option" id="operatorLabel" onClick={() => {}} style={{"width":"100%"}}>
-              <input type="checkbox" id="postOperator" name="operator" defaultValue="true" />
-              <span className="checkbox-check">✓</span> 👨‍🌾 Includes Operator
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="postSpecs">Specifications (optional)</label>
-            <input type="text" className="form-control" id="postSpecs" placeholder="e.g. 50 HP, 2022 Model, etc." />
-          </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor="postVillage">Village / Area</label>
-            <input type="text" className="form-control" id="postVillage" placeholder="Village name (optional)" />
-          </div>
-
-          <div className="form-group full" style={{"marginTop":"12px"}}>
-            <button type="submit" className="btn btn-primary btn-lg" id="postEquipment" style={{"width":"100%","justifyContent":"center"}}>
-              📢 Register My Equipment
-            </button>
-            <p style={{"textAlign":"center","fontSize":".8rem","color":"var(--gray-400)","marginTop":"10px"}}>
-              🔒 Your details are shared only with farmers requesting booking · Free to list
-            </p>
-          </div>
-
-        </form>
-
-      </div>{/*  .post-form-body  */}
-    </div>{/*  .post-form-card  */}
-
-  </div>{/*  #postSection  */}
+  )}
 
   {/*  CHC helpline  */}
   <div style={{"textAlign":"center","color":"var(--gray-400)","fontSize":".9rem","marginTop":"8px"}}>
