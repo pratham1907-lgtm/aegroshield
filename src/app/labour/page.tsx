@@ -3,13 +3,15 @@ import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { MOCK_LABOUR } from "@/lib/mockData";
 
 export default function Page() {
   const { user, userData, isDemo } = useAuth();
   const [liveLabour, setLiveLabour] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const [userBookings, setUserBookings] = useState<any[]>([]);
 
   useEffect(() => {
     if (user && !isDemo) {
@@ -29,9 +31,23 @@ export default function Page() {
           setLoading(false);
         }
       };
+      const fetchUserBookings = async () => {
+        try {
+          const q = query(collection(db, 'labourBookings'), where('userId', '==', user.uid));
+          const snap = await getDocs(q);
+          const items: any[] = [];
+          snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+          setUserBookings(items);
+        } catch (err) {
+          console.warn("[Labour] Error fetching user bookings:", err);
+          setUserBookings([]);
+        }
+      };
       fetchLabour();
+      fetchUserBookings();
     } else {
       setLiveLabour(null);
+      setUserBookings([]);
     }
   }, [user, isDemo]);
 
@@ -215,68 +231,85 @@ export default function Page() {
         <span style={{"fontSize":".85rem","color":"var(--gray-400)"}}>Recent labour history</span>
       </div>
 
-      {/*  Booking History Card  */}
-      <div className="booking-history-card">
-        <div className="bhc-header">
-          <div className="bhc-worker">
-            <div style={{"width":"36px","height":"36px","borderRadius":"10px","background":"linear-gradient(135deg,var(--primary),var(--mid))","color":"#fff","display":"flex","alignItems":"center","justifyContent":"center","fontWeight":"900","fontSize":".85rem"}}>RK</div>
-            Ramswaroop Group
-          </div>
-          <span className="status-badge status-completed">✅ Work Completed</span>
-        </div>
-        <div className="bhc-body">
-          <div className="bhc-meta-grid">
-            <div className="bhc-meta-item">
-              <div className="bhc-meta-val">Wheat Harvesting</div>
-              <div className="bhc-meta-lbl">Task</div>
-            </div>
-            <div className="bhc-meta-item">
-              <div className="bhc-meta-val">5 June 2024</div>
-              <div className="bhc-meta-lbl">Date</div>
-            </div>
-            <div className="bhc-meta-item">
-              <div className="bhc-meta-val">7 hrs · 8 workers</div>
-              <div className="bhc-meta-lbl">Hours Worked</div>
-            </div>
-            <div className="bhc-meta-item">
-              <div className="bhc-meta-val" style={{"color":"var(--primary)"}}>₹3,040</div>
-              <div className="bhc-meta-lbl">Total Paid</div>
-            </div>
-          </div>
-
-          {/*  Rating Form  */}
-          <div className="rating-form" id="ratingForm">
-            <div className="rating-label">⭐ Rate this team</div>
-            <div className="stars-row" id="starsRow">
-              <button className="star-btn" data-val="1" onClick={() => {}}>★</button>
-              <button className="star-btn" data-val="2" onClick={() => {}}>★</button>
-              <button className="star-btn" data-val="3" onClick={() => {}}>★</button>
-              <button className="star-btn" data-val="4" onClick={() => {}}>★</button>
-              <button className="star-btn" data-val="5" onClick={() => {}}>★</button>
-            </div>
-            <div className="rating-meta-row">
-              <div className="form-group" style={{"margin":"0"}}>
-                <label className="form-label" htmlFor="attendanceCount">Workers who showed up</label>
-                <input type="number" className="form-control" id="attendanceCount"
-                  placeholder="e.g. 8" min="0" max="50" defaultValue="8" />
+      {userBookings.length > 0 ? (
+        userBookings.map((b) => (
+          <div key={b.id} className="booking-history-card">
+            <div className="bhc-header">
+              <div className="bhc-worker">
+                <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "linear-gradient(135deg,var(--primary),var(--mid))", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "900", fontSize: ".85rem" }}>
+                  {(b.teamLeaderName || b.workerName || 'WK').slice(0, 2).toUpperCase()}
+                </div>
+                {b.teamLeaderName || b.workerName || 'Labour Group'}
               </div>
-              <div className="form-group" style={{"margin":"0"}}>
-                <label className="form-label" htmlFor="feedbackText">Work quality feedback</label>
-                <input type="text" className="form-control" id="feedbackText"
-                  placeholder="How was the work quality?" />
+              <span className={`status-badge ${b.status === 'Completed' ? 'status-completed' : 'status-pending'}`}>
+                {b.status === 'Completed' ? '✅ Work Completed' : '⏳ Booking Confirmed'}
+              </span>
+            </div>
+            <div className="bhc-body">
+              <div className="bhc-meta-grid">
+                <div className="bhc-meta-item">
+                  <div className="bhc-meta-val">{b.task || 'Wheat Harvesting'}</div>
+                  <div className="bhc-meta-lbl">Task</div>
+                </div>
+                <div className="bhc-meta-item">
+                  <div className="bhc-meta-val">{b.date || 'N/A'}</div>
+                  <div className="bhc-meta-lbl">Date</div>
+                </div>
+                <div className="bhc-meta-item">
+                  <div className="bhc-meta-val">{b.hours || 8} hrs · {b.teamSize || b.workersCount || 1} workers</div>
+                  <div className="bhc-meta-lbl">Hours Worked</div>
+                </div>
+                <div className="bhc-meta-item">
+                  <div className="bhc-meta-val" style={{ color: "var(--primary)" }}>₹{(b.totalPaid || b.dailyRate || 0).toLocaleString()}</div>
+                  <div className="bhc-meta-lbl">Total Paid</div>
+                </div>
+              </div>
+
+              {/* Rating Form */}
+              <div className="rating-form" id={`ratingForm-${b.id}`}>
+                <div className="rating-label">⭐ Rate this team</div>
+                <div className="stars-row">
+                  <button className="star-btn" data-val="1" onClick={() => {}}>★</button>
+                  <button className="star-btn" data-val="2" onClick={() => {}}>★</button>
+                  <button className="star-btn" data-val="3" onClick={() => {}}>★</button>
+                  <button className="star-btn" data-val="4" onClick={() => {}}>★</button>
+                  <button className="star-btn" data-val="5" onClick={() => {}}>★</button>
+                </div>
+                <div className="rating-meta-row">
+                  <div className="form-group" style={{ margin: "0" }}>
+                    <label className="form-label">Workers who showed up</label>
+                    <input type="number" className="form-control" placeholder="e.g. 8" min="0" max="50" defaultValue={b.workersCount || 8} />
+                  </div>
+                  <div className="form-group" style={{ margin: "0" }}>
+                    <label className="form-label">Work quality feedback</label>
+                    <input type="text" className="form-control" placeholder="How was the work quality?" />
+                  </div>
+                </div>
+                <button className="btn btn-primary" style={{ marginTop: "14px" }} onClick={() => {}}>
+                  💾 Save Rating & Attendance
+                </button>
               </div>
             </div>
-            <button className="btn btn-primary" id="saveRating"
-              style={{"marginTop":"14px"}} onClick={() => {}}>
-              💾 Save Rating & Attendance
-            </button>
-            <div className="rating-success" id="ratingSuccess">
-              ✅ Thank you! Rating saved. Farmers like you help build trust in the community.
-            </div>
           </div>
-
+        ))
+      ) : (
+        <div className="empty-bookings-card" style={{
+          textAlign: 'center',
+          padding: '48px 24px',
+          background: '#ffffff',
+          borderRadius: '20px',
+          border: '1.5px dashed #cbd5e1',
+          margin: '20px 0'
+        }}>
+          <div style={{ fontSize: '3.2rem', marginBottom: '12px' }}>📋</div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
+            Abhi tak koi labour booking nahi hai
+          </h3>
+          <p style={{ fontSize: '0.92rem', color: '#64748b', maxWidth: '420px', margin: '0 auto', lineHeight: '1.5' }}>
+            Apne khet ke kaam ke liye upar दिए गए labour groups ko book karein.
+          </p>
         </div>
-      </div>{/*  .booking-history-card  */}
+      )}
     </div>{/*  #myBookings  */}
 
   </div>{/*  #findSection  */}
