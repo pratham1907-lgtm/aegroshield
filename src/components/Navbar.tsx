@@ -41,19 +41,43 @@ export default function Navbar() {
   const isLoggedIn = Boolean(user || isDemo || userData);
   const displayName = userData?.name || user?.displayName || (userData?.email ? userData.email.split('@')[0] : 'Farmer');
 
+  const navItems = [
+    { href: '/', label: t('nav.home'), isActive: pathname === '/' },
+    { href: '/marketplace', label: t('nav.store'), isActive: pathname.startsWith('/marketplace') || pathname.startsWith('/store') },
+    { href: '/machinery', label: t('nav.machinery'), isActive: pathname.startsWith('/machinery') },
+    { href: '/labour', label: t('nav.labour'), isActive: pathname.startsWith('/labour') },
+    { href: '/market', label: t('nav.market'), isActive: pathname.startsWith('/market') },
+    { href: '/calculator', label: t('nav.calculator'), isActive: pathname.startsWith('/calculator') },
+  ];
+
   return (
     <nav className="navbar">
-      <Link href="/" className="nav-brand">🌿 Aegroshield</Link>
+      <Link href="/" className="nav-brand cursor-pointer">🌿 Aegroshield</Link>
       <div className="nav-links">
-        <Link href="/">{t('nav.home')}</Link>
-        <Link href="/marketplace">{t('nav.store')}</Link>
-        <Link href="/machinery">{t('nav.machinery')}</Link>
-        <Link href="/labour">{t('nav.labour')}</Link>
-        <Link href="/market">{t('nav.market')}</Link>
-        <Link href="/calculator">{t('nav.calculator')}</Link>
+        {navItems.map(item => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`cursor-pointer px-3 py-1.5 rounded-lg transition-colors duration-150 flex items-center gap-1.5 ${
+              item.isActive
+                ? 'bg-white/20 text-white font-medium'
+                : 'text-white/90 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            {item.label}
+          </Link>
+        ))}
 
         {/* ── Cart Icon ── */}
-        <Link href="/cart" className="nav-cart-btn" title="View Cart">
+        <Link
+          href="/cart"
+          className={`cursor-pointer px-3 py-1.5 rounded-lg transition-colors duration-150 flex items-center gap-1.5 ${
+            pathname.startsWith('/cart')
+              ? 'bg-white/20 text-white font-medium'
+              : 'text-white/90 hover:text-white hover:bg-white/10'
+          }`}
+          title="View Cart"
+        >
           <ShoppingBag size={18} />
           <span>Cart</span>
           {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
@@ -62,7 +86,7 @@ export default function Navbar() {
         {/* ── Language Toggle ── */}
         <div className="lang-toggle-wrap">
           <select
-            className="lang-select"
+            className="lang-select cursor-pointer"
             value={lang}
             onChange={e => setLang(e.target.value as Language)}
             aria-label="Select language"
@@ -113,17 +137,16 @@ export default function Navbar() {
                 backdropFilter: 'blur(4px)',
                 transition: 'all 0.2s ease',
               }}
-              className="hover:bg-red-600 hover:border-red-500"
+              className="cursor-pointer hover:bg-red-600 hover:border-red-500"
               title="Sign Out"
             >
               <LogOut size={15} color="#ffffff" /> Logout
             </button>
           </div>
         ) : (
-          <Link href="/login" className="nav-btn-signin">{t('nav.signin')}</Link>
+          <Link href="/login" className="nav-btn-signin cursor-pointer">{t('nav.signin')}</Link>
         )}
       </div>
     </nav>
   );
 }
-
