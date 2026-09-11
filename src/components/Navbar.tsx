@@ -52,12 +52,13 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <Link href="/" className="nav-brand cursor-pointer">🌿 Aegroshield</Link>
+      <Link href="/" className="nav-brand cursor-pointer" style={{ cursor: 'pointer' }}>🌿 Aegroshield</Link>
       <div className="nav-links">
         {navItems.map(item => (
           <Link
             key={item.href}
             href={item.href}
+            style={{ cursor: 'pointer' }}
             className={`cursor-pointer px-3 py-1.5 rounded-lg transition-colors duration-150 flex items-center gap-1.5 ${
               item.isActive
                 ? 'bg-white/20 text-white font-medium'
@@ -71,6 +72,7 @@ export default function Navbar() {
         {/* ── Cart Icon ── */}
         <Link
           href="/cart"
+          style={{ cursor: 'pointer' }}
           className={`cursor-pointer px-3 py-1.5 rounded-lg transition-colors duration-150 flex items-center gap-1.5 ${
             pathname.startsWith('/cart')
               ? 'bg-white/20 text-white font-medium'
@@ -87,6 +89,7 @@ export default function Navbar() {
         <div className="lang-toggle-wrap">
           <select
             className="lang-select cursor-pointer"
+            style={{ cursor: 'pointer' }}
             value={lang}
             onChange={e => setLang(e.target.value as Language)}
             aria-label="Select language"
@@ -144,7 +147,7 @@ export default function Navbar() {
             </button>
           </div>
         ) : (
-          <Link href="/login" className="nav-btn-signin cursor-pointer">{t('nav.signin')}</Link>
+          <Link href="/login" style={{ cursor: 'pointer' }} className="nav-btn-signin cursor-pointer">{t('nav.signin')}</Link>
         )}
       </div>
     </nav>
