@@ -17,10 +17,25 @@ export default function Page() {
   // Booking Modal State
   const [bookingMachine, setBookingMachine] = useState<any | null>(null);
   const [bookingHours, setBookingHours] = useState<number>(4);
+  const [bookingDate, setBookingDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [bookingContactPhone, setBookingContactPhone] = useState<string>('');
   const [bookingStatus, setBookingStatus] = useState<'idle' | 'booking' | 'success' | 'error'>('idle');
   const [confirmedBookingId, setConfirmedBookingId] = useState<string>('');
+  const [myBookings, setMyBookings] = useState<any[]>([]);
 
   const isDemoUser = Boolean(isDemo || !user);
+
+  const fetchBookings = async () => {
+    try {
+      const res = await fetch(`/api/bookings?firebaseUid=${user?.uid || 'demo-farmer-seller-uid'}`);
+      const json = await res.json();
+      if (json?.data) {
+        setMyBookings(json.data.filter((b: any) => b.bookingType === 'MACHINERY' || !b.bookingType));
+      }
+    } catch (err) {
+      console.warn('[Machinery] Error fetching bookings:', err);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -40,6 +55,8 @@ export default function Page() {
       .finally(() => {
         setLoading(false);
       });
+
+    fetchBookings();
   }, [user, isDemo, isDemoUser]);
 
   const handleRegisterEquipment = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -81,29 +98,40 @@ export default function Page() {
     setPostSubmitted(true);
   };
 
-  const handleConfirmBooking = async () => {
+  const handleConfirmBooking = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!bookingMachine) return;
     setBookingStatus('booking');
     try {
-      const rate = bookingMachine.ratePerHour || bookingMachine.rate || 400;
+      const rate = Number(bookingMachine.ratePerHour || bookingMachine.pricePerHour || bookingMachine.rate || 400);
+      const targetId = String(bookingMachine.id || 'mach-' + Date.now());
+      const effectiveUserId = user?.uid || 'demo-farmer-seller-uid';
+      const totalAmount = rate * bookingHours;
+
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bookingType: 'MACHINERY',
-          targetId: String(bookingMachine.id || 'mach-' + Date.now()),
-          totalAmount: rate * bookingHours,
-          bookingDate: new Date().toISOString(),
-          firebaseUid: user?.uid || null,
+          targetId: targetId,
+          totalAmount: totalAmount,
+          pricePerHour: rate,
+          status: 'PENDING',
+          bookingDate: bookingDate ? new Date(bookingDate).toISOString() : new Date().toISOString(),
+          contactPhone: bookingContactPhone || userData?.phone || user?.phoneNumber || '9876543210',
+          userId: effectiveUserId,
+          firebaseUid: effectiveUserId,
           userName: userData?.name || user?.displayName || 'Farmer',
-          userPhone: userData?.phone || user?.phoneNumber || '',
-          userEmail: user?.email || '',
+          userPhone: bookingContactPhone || userData?.phone || user?.phoneNumber || '9876543210',
+          userEmail: user?.email || 'demo@aegroshield.com',
         }),
       });
       const data = await res.json();
       if (data?.success) {
         setConfirmedBookingId(data.data.id);
         setBookingStatus('success');
+        // Refresh My Bookings immediately
+        fetchBookings();
       } else {
         setBookingStatus('error');
       }
@@ -292,6 +320,43 @@ export default function Page() {
       </div>
     )}
   </div>
+
+  {/*  ── My Machinery Bookings Section ──  */}
+  {myBookings.length > 0 && (
+    <div style={{ marginTop: '36px', background: '#fff', borderRadius: '16px', padding: '24px', border: '1px solid #e2e8f0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b' }}>📁 My Equipment Bookings</h3>
+          <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Recent machinery reservations from Custom Hiring Centres</p>
+        </div>
+        <button
+          onClick={fetchBookings}
+          className="cursor-pointer"
+          style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '0.82rem', fontWeight: 600, color: '#475569', cursor: 'pointer' }}
+        >
+          🔄 Refresh
+        </button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+        {myBookings.map((b) => (
+          <div key={b.id} style={{ background: '#f8fafc', borderRadius: '12px', padding: '16px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#64748b' }}>🚜 {b.targetId}</span>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, padding: '3px 8px', borderRadius: '999px', background: b.status === 'CONFIRMED' ? '#dcfce7' : '#fef9c3', color: b.status === 'CONFIRMED' ? '#15803d' : '#854d0e' }}>
+                {b.status === 'CONFIRMED' ? 'Confirmed' : '⏳ ' + b.status}
+              </span>
+            </div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
+              ₹{(b.totalAmount || 0).toLocaleString()}
+            </div>
+            <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
+              Date: {b.bookingDate ? new Date(b.bookingDate).toLocaleDateString() : 'Today'}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
 
   </div>
   )}
@@ -499,15 +564,46 @@ export default function Page() {
           </div>
 
           <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '14px', marginBottom: '16px', border: '1px solid #e2e8f0' }}>
-            <h4 style={{ fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>{bookingMachine.title || bookingMachine.equipmentType}</h4>
-            <p style={{ fontSize: '0.88rem', color: '#64748b' }}>📍 {bookingMachine.district} • 📞 {bookingMachine.contactPhone || 'Contact CHC'}</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <h4 style={{ fontWeight: 700, color: '#0f172a', margin: 0 }}>{bookingMachine.title || bookingMachine.equipmentType}</h4>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, background: '#e2e8f0', color: '#475569', padding: '2px 8px', borderRadius: '6px' }}>
+                ID: {bookingMachine.id || 'MCH-01'}
+              </span>
+            </div>
+            <p style={{ fontSize: '0.88rem', color: '#64748b', margin: '4px 0 0 0' }}>📍 {bookingMachine.district} • 📞 {bookingMachine.contactPhone || 'Contact CHC'}</p>
             <div style={{ marginTop: '8px', fontSize: '1.1rem', fontWeight: 700, color: '#16a34a' }}>
-              ₹{bookingMachine.ratePerHour || bookingMachine.rate || 400}<span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#64748b' }}>/hour</span>
+              ₹{bookingMachine.ratePerHour || bookingMachine.pricePerHour || bookingMachine.rate || 400}<span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#64748b' }}>/hour</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                Booking Date:
+              </label>
+              <input
+                type="date"
+                value={bookingDate}
+                onChange={(e) => setBookingDate(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                Contact Phone:
+              </label>
+              <input
+                type="tel"
+                value={bookingContactPhone}
+                onChange={(e) => setBookingContactPhone(e.target.value)}
+                placeholder="10-digit mobile"
+                style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+              />
             </div>
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
               Select Required Hours:
             </label>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -536,17 +632,33 @@ export default function Page() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: '1px solid #e2e8f0', marginBottom: '16px' }}>
             <span style={{ color: '#64748b', fontSize: '0.95rem' }}>Estimated Total:</span>
             <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>
-              ₹{(bookingMachine.ratePerHour || bookingMachine.rate || 400) * bookingHours}
+              ₹{(Number(bookingMachine.ratePerHour || bookingMachine.pricePerHour || bookingMachine.rate || 400)) * bookingHours}
             </span>
           </div>
+
+          {bookingStatus === 'error' && (
+            <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#b91c1c', fontSize: '0.85rem', marginBottom: '12px' }}>
+              ⚠️ Failed to register booking. Please try again.
+            </div>
+          )}
 
           <button
             onClick={handleConfirmBooking}
             disabled={bookingStatus === 'booking'}
             className="btn btn-primary cursor-pointer"
-            style={{ width: '100%', padding: '12px', fontSize: '1rem', cursor: 'pointer' }}
+            style={{ width: '100%', padding: '12px', fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            {bookingStatus === 'booking' ? 'Confirming Booking...' : '⚡ Confirm & Place Booking'}
+            {bookingStatus === 'booking' ? (
+              <>
+                <svg style={{ animation: 'spin 1s linear infinite', width: '18px', height: '18px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25"></circle>
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor"></path>
+                </svg>
+                <span>Confirming Booking...</span>
+              </>
+            ) : (
+              '⚡ Confirm & Place Booking'
+            )}
           </button>
         </div>
       )}

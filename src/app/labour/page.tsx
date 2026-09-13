@@ -18,10 +18,30 @@ export default function Page() {
   // Booking Modal State
   const [bookingLabour, setBookingLabour] = useState<any | null>(null);
   const [bookingDays, setBookingDays] = useState<number>(1);
+  const [bookingDate, setBookingDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [bookingPhone, setBookingPhone] = useState<string>('');
   const [bookingStatus, setBookingStatus] = useState<'idle' | 'booking' | 'success' | 'error'>('idle');
   const [confirmedBookingId, setConfirmedBookingId] = useState<string>('');
 
   const isDemoUser = Boolean(isDemo || !user);
+
+  const fetchUserBookings = async () => {
+    try {
+      const res = await fetch(`/api/bookings?firebaseUid=${user?.uid || 'demo-farmer-seller-uid'}`);
+      const json = await res.json();
+      if (json?.data && json.data.length > 0) {
+        setUserBookings(json.data.filter((b: any) => b.bookingType === 'LABOUR' || !b.bookingType));
+      } else if (user && !isDemo) {
+        const q = query(collection(db, 'labourBookings'), where('userId', '==', user.uid));
+        const snap = await getDocs(q);
+        const items: any[] = [];
+        snap.forEach((d) => items.push({ id: d.id, ...d.data() }));
+        setUserBookings(items);
+      }
+    } catch (err) {
+      console.warn('[Labour] Error fetching bookings:', err);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -42,24 +62,7 @@ export default function Page() {
         setLoading(false);
       });
 
-    // Fetch user bookings from Prisma API
-    fetch(`/api/bookings?firebaseUid=${user?.uid || ''}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json?.data && json.data.length > 0) {
-          setUserBookings(json.data);
-        } else if (user && !isDemo) {
-          const q = query(collection(db, 'labourBookings'), where('userId', '==', user.uid));
-          getDocs(q).then((snap) => {
-            const items: any[] = [];
-            snap.forEach((d) => items.push({ id: d.id, ...d.data() }));
-            setUserBookings(items);
-          }).catch(() => {});
-        }
-      })
-      .catch((err) => {
-        console.warn('[Labour] Error fetching bookings:', err);
-      });
+    fetchUserBookings();
   }, [user, isDemo, isDemoUser]);
 
   const handlePostAvailability = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -107,47 +110,40 @@ export default function Page() {
     setPostSubmitted(true);
   };
 
-  const handleConfirmLabourBooking = async () => {
+  const handleConfirmLabourBooking = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!bookingLabour) return;
     setBookingStatus('booking');
     try {
-      const dailyRate = bookingLabour.dailyRatePerWorker || bookingLabour.wagePerDay || bookingLabour.dailyRate || 400;
-      const groupSize = bookingLabour.teamSize || bookingLabour.groupSize || 5;
+      const dailyRate = Number(bookingLabour.dailyRatePerWorker || bookingLabour.wagePerDay || bookingLabour.dailyRate || 400);
+      const groupSize = Number(bookingLabour.teamSize || bookingLabour.groupSize || 5);
       const totalAmount = dailyRate * groupSize * bookingDays;
+      const targetId = String(bookingLabour.id || 'lab-' + Date.now());
+      const effectiveUserId = user?.uid || 'demo-farmer-seller-uid';
 
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bookingType: 'LABOUR',
-          targetId: String(bookingLabour.id || 'lab-' + Date.now()),
-          totalAmount,
-          bookingDate: new Date().toISOString(),
-          firebaseUid: user?.uid || null,
+          targetId: targetId,
+          totalAmount: totalAmount,
+          pricePerHour: dailyRate,
+          status: 'PENDING',
+          bookingDate: bookingDate ? new Date(bookingDate).toISOString() : new Date().toISOString(),
+          contactPhone: bookingPhone || userData?.phone || user?.phoneNumber || '9876543210',
+          userId: effectiveUserId,
+          firebaseUid: effectiveUserId,
           userName: userData?.name || user?.displayName || 'Farmer',
-          userPhone: userData?.phone || user?.phoneNumber || '',
-          userEmail: user?.email || '',
+          userPhone: bookingPhone || userData?.phone || user?.phoneNumber || '9876543210',
+          userEmail: user?.email || 'demo@aegroshield.com',
         }),
       });
       const data = await res.json();
       if (data?.success) {
         setConfirmedBookingId(data.data.id);
         setBookingStatus('success');
-        setUserBookings((prev) => [
-          {
-            id: data.data.id,
-            teamLeaderName: bookingLabour.teamLeaderName || bookingLabour.leaderName,
-            workerName: bookingLabour.teamLeaderName || bookingLabour.leaderName,
-            task: bookingLabour.specialization || bookingLabour.primarySkill || 'Agricultural Labour',
-            status: data.data.status,
-            totalPaid: totalAmount,
-            totalAmount,
-            hours: 8 * bookingDays,
-            teamSize: groupSize,
-            createdAt: new Date().toISOString(),
-          },
-          ...(prev || []),
-        ]);
+        fetchUserBookings();
       } else {
         setBookingStatus('error');
       }
@@ -354,9 +350,19 @@ export default function Page() {
 
     {/*  MY BOOKINGS  */}
     <div id="myBookings" className="my-bookings-section">
-      <div className="section-header">
-        <h2>📁 My Bookings</h2>
-        <span style={{"fontSize":".85rem","color":"var(--gray-400)"}}>Recent labour history</span>
+      <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h2>📁 My Bookings</h2>
+          <span style={{"fontSize":".85rem","color":"var(--gray-400)"}}>Recent labour history and pending requests</span>
+        </div>
+        <button
+          type="button"
+          onClick={fetchUserBookings}
+          className="cursor-pointer"
+          style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '0.82rem', fontWeight: 600, color: '#475569', cursor: 'pointer' }}
+        >
+          🔄 Refresh
+        </button>
       </div>
 
       {userBookings.length > 0 ? (
@@ -369,27 +375,27 @@ export default function Page() {
                 </div>
                 {b.teamLeaderName || b.workerName || 'Labour Group'}
               </div>
-              <span className={`status-badge ${b.status === 'Completed' ? 'status-completed' : 'status-pending'}`}>
-                {b.status === 'Completed' ? '✅ Work Completed' : '⏳ Booking Confirmed'}
+              <span className={`status-badge ${b.status === 'Completed' || b.status === 'CONFIRMED' ? 'status-completed' : 'status-pending'}`}>
+                {b.status === 'Completed' || b.status === 'CONFIRMED' ? '✅ Confirmed' : '⏳ ' + (b.status || 'Pending')}
               </span>
             </div>
             <div className="bhc-body">
               <div className="bhc-meta-grid">
                 <div className="bhc-meta-item">
-                  <div className="bhc-meta-val">{b.task || 'Wheat Harvesting'}</div>
-                  <div className="bhc-meta-lbl">Task</div>
+                  <div className="bhc-meta-val">{b.task || b.targetId || 'Farm Work Squad'}</div>
+                  <div className="bhc-meta-lbl">Target</div>
                 </div>
                 <div className="bhc-meta-item">
-                  <div className="bhc-meta-val">{b.date || 'N/A'}</div>
+                  <div className="bhc-meta-val">{b.date || (b.bookingDate ? new Date(b.bookingDate).toLocaleDateString() : 'Today')}</div>
                   <div className="bhc-meta-lbl">Date</div>
                 </div>
                 <div className="bhc-meta-item">
-                  <div className="bhc-meta-val">{b.hours || 8} hrs · {b.teamSize || b.workersCount || 1} workers</div>
-                  <div className="bhc-meta-lbl">Hours Worked</div>
+                  <div className="bhc-meta-val">{b.hours ? `${b.hours} hrs` : 'Full Day'} · {b.teamSize || b.workersCount || 5} workers</div>
+                  <div className="bhc-meta-lbl">Duration</div>
                 </div>
                 <div className="bhc-meta-item">
-                  <div className="bhc-meta-val" style={{ color: "var(--primary)" }}>₹{(b.totalPaid || b.dailyRate || 0).toLocaleString()}</div>
-                  <div className="bhc-meta-lbl">Total Paid</div>
+                  <div className="bhc-meta-val" style={{ color: "var(--primary)" }}>₹{(b.totalAmount || b.totalPaid || b.dailyRate || 0).toLocaleString()}</div>
+                  <div className="bhc-meta-lbl">Total Amount</div>
                 </div>
               </div>
 
@@ -660,15 +666,46 @@ export default function Page() {
           </div>
 
           <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '14px', marginBottom: '16px', border: '1px solid #e2e8f0' }}>
-            <h4 style={{ fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>{bookingLabour.teamLeaderName || bookingLabour.leaderName || 'Agricultural Worker Squad'}</h4>
-            <p style={{ fontSize: '0.88rem', color: '#64748b' }}>📍 {bookingLabour.district || 'Nearby'} • 👥 Group of {bookingLabour.teamSize || bookingLabour.groupSize || 5} workers</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <h4 style={{ fontWeight: 700, color: '#0f172a', margin: 0 }}>{bookingLabour.teamLeaderName || bookingLabour.leaderName || 'Agricultural Worker Squad'}</h4>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, background: '#e2e8f0', color: '#475569', padding: '2px 8px', borderRadius: '6px' }}>
+                ID: {bookingLabour.id || 'LAB-01'}
+              </span>
+            </div>
+            <p style={{ fontSize: '0.88rem', color: '#64748b', margin: '4px 0 0 0' }}>📍 {bookingLabour.district || 'Nearby'} • 👥 Group of {bookingLabour.teamSize || bookingLabour.groupSize || 5} workers</p>
             <div style={{ marginTop: '8px', fontSize: '1.1rem', fontWeight: 700, color: '#16a34a' }}>
               ₹{bookingLabour.dailyRatePerWorker || bookingLabour.wagePerDay || bookingLabour.dailyRate || 400}<span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#64748b' }}>/day per worker</span>
             </div>
           </div>
 
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                Start Date:
+              </label>
+              <input
+                type="date"
+                value={bookingDate}
+                onChange={(e) => setBookingDate(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                Contact Phone:
+              </label>
+              <input
+                type="tel"
+                value={bookingPhone}
+                onChange={(e) => setBookingPhone(e.target.value)}
+                placeholder="10-digit mobile"
+                style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+              />
+            </div>
+          </div>
+
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
               Select Number of Days:
             </label>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -697,17 +734,33 @@ export default function Page() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: '1px solid #e2e8f0', marginBottom: '16px' }}>
             <span style={{ color: '#64748b', fontSize: '0.95rem' }}>Estimated Total:</span>
             <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>
-              ₹{(bookingLabour.dailyRatePerWorker || bookingLabour.wagePerDay || bookingLabour.dailyRate || 400) * (bookingLabour.teamSize || bookingLabour.groupSize || 5) * bookingDays}
+              ₹{(Number(bookingLabour.dailyRatePerWorker || bookingLabour.wagePerDay || bookingLabour.dailyRate || 400)) * (Number(bookingLabour.teamSize || bookingLabour.groupSize || 5)) * bookingDays}
             </span>
           </div>
+
+          {bookingStatus === 'error' && (
+            <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#b91c1c', fontSize: '0.85rem', marginBottom: '12px' }}>
+              ⚠️ Failed to register labour request. Please try again.
+            </div>
+          )}
 
           <button
             onClick={handleConfirmLabourBooking}
             disabled={bookingStatus === 'booking'}
             className="btn btn-primary cursor-pointer"
-            style={{ width: '100%', padding: '12px', fontSize: '1rem', cursor: 'pointer' }}
+            style={{ width: '100%', padding: '12px', fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            {bookingStatus === 'booking' ? 'Booking Labour Squad...' : '⚡ Confirm & Send Booking'}
+            {bookingStatus === 'booking' ? (
+              <>
+                <svg style={{ animation: 'spin 1s linear infinite', width: '18px', height: '18px' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25"></circle>
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor"></path>
+                </svg>
+                <span>Sending Request...</span>
+              </>
+            ) : (
+              '⚡ Confirm & Send Request'
+            )}
           </button>
         </div>
       )}
