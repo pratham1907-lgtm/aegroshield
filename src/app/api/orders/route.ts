@@ -125,55 +125,56 @@ export async function POST(request: NextRequest) {
       vendorId: String(item.vendorId || ''),
     }));
 
-    // Resolve user ID with immediate fallback to seeded Demo User
-    let targetUserId: string | null = null;
+    // Resolve or auto-create User record for this customer
+    let user = null;
+    const cleanPhone = customerPhone ? String(customerPhone).trim() : null;
+    const cleanName = customerName ? String(customerName).trim() : 'AgriShield Farmer';
     const lookupKey = firebaseUid || userId;
 
-    if (lookupKey && typeof lookupKey === 'string' && lookupKey.trim() !== '') {
+    // 1. Look up user by phone if available
+    if (cleanPhone) {
       try {
-        // 1. Check if lookupKey matches database id
-        const userById = await prisma.user.findUnique({
-          where: { id: lookupKey },
-        });
-        if (userById) {
-          targetUserId = userById.id;
-        } else {
-          // 2. Check if lookupKey matches firebaseUid
-          const userByFb = await prisma.user.findUnique({
-            where: { firebaseUid: lookupKey },
-          });
-          if (userByFb) {
-            targetUserId = userByFb.id;
-          } else {
-            // Auto-create user row in PostgreSQL for this firebaseUid
-            const createdUser = await prisma.user.create({
-              data: {
-                firebaseUid: lookupKey,
-                name: customerName ? String(customerName).trim() : 'AgriShield Farmer',
-                phone: customerPhone ? String(customerPhone).trim() : null,
-                role: 'FARMER',
-                isDemo: false,
-              },
-            });
-            targetUserId = createdUser.id;
-          }
-        }
-      } catch (lookupErr) {
-        console.warn('[API/Orders] User resolution warning:', lookupErr);
+        user = await prisma.user.findFirst({ where: { phone: cleanPhone } });
+      } catch (err) {
+        console.warn('[API/Orders] Phone lookup warning:', err);
       }
     }
 
-    // 3. Fallback: If userId is not in session/auth header, fallback to seeded Demo User ID so guest/demo checkout never fails
-    if (!targetUserId) {
+    // 2. Look up user by lookupKey (id or firebaseUid) if not found by phone
+    if (!user && lookupKey && typeof lookupKey === 'string' && lookupKey.trim() !== '') {
       try {
-        const defaultUser =
+        user = (await prisma.user.findUnique({ where: { id: lookupKey } })) ||
+               (await prisma.user.findUnique({ where: { firebaseUid: lookupKey } }));
+      } catch (err) {
+        console.warn('[API/Orders] User ID lookup warning:', err);
+      }
+    }
+
+    // 3. If user doesn't exist, create a new User record for this farmer
+    if (!user) {
+      try {
+        user = await prisma.user.create({
+          data: {
+            name: cleanName,
+            phone: cleanPhone,
+            role: 'FARMER',
+            ...(lookupKey ? { firebaseUid: lookupKey } : {}),
+          },
+        });
+      } catch (createErr) {
+        console.warn('[API/Orders] Auto user creation warning:', createErr);
+      }
+    }
+
+    // 4. Fallback: Seeded Demo User ID or any existing user in DB
+    if (!user) {
+      try {
+        user =
           (await prisma.user.findFirst({ where: { isDemo: true } })) ||
           (await prisma.user.findFirst());
 
-        if (defaultUser) {
-          targetUserId = defaultUser.id;
-        } else {
-          const demoUser = await prisma.user.upsert({
+        if (!user) {
+          user = await prisma.user.upsert({
             where: { firebaseUid: 'demo-farmer-seller-uid' },
             update: {},
             create: {
@@ -184,20 +185,21 @@ export async function POST(request: NextRequest) {
               isDemo: true,
             },
           });
-          targetUserId = demoUser.id;
         }
       } catch (demoErr) {
         console.error("ORDER_CREATE_ERROR (Demo User Fallback):", demoErr);
       }
     }
 
-    if (!targetUserId) {
+    if (!user) {
       console.error("ORDER_CREATE_ERROR: Could not resolve or seed a user account for this order.");
       return NextResponse.json(
         { success: false, error: 'Could not resolve user account for this order.' },
         { status: 500 }
       );
     }
+
+    const targetUserId = user.id;
 
     // Compute or validate totalAmount using normalizedItems
     const computedTotal = normalizedItems.reduce((sum: number, item: any) => {
@@ -218,8 +220,8 @@ export async function POST(request: NextRequest) {
           totalAmount: finalTotal,
           status: 'PENDING',
           shippingAddress: `${shippingAddress}${district ? `, ${district}` : ''}${pincode ? ` - ${pincode}` : ''}`,
-          customerName: customerName.trim(),
-          customerPhone: customerPhone.trim(),
+          customerName: cleanName,
+          customerPhone: cleanPhone || '',
           district: district || 'Uttar Pradesh',
           pincode: pincode || '250001',
           paymentMethod: paymentMethod || 'Cash on Delivery (COD)',
@@ -231,7 +233,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      console.log(`[API/Orders] Order ${createdOrder.id} created and persisted in Supabase with ${normalizedItems.length} items:`, JSON.stringify(createdOrder.items));
+      console.log("REAL_ORDER_CREATED:", createdOrder.id);
 
       return NextResponse.json(
         {
