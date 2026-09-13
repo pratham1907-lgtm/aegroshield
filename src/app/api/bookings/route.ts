@@ -99,72 +99,44 @@ export async function POST(request: NextRequest) {
       userEmail,
     } = body;
 
-    // Extract real authenticated user from headers or request payload
+    // Read the incoming Firebase UID and email
     const headerAuth = request.headers.get('authorization') || '';
     const bearerToken = headerAuth.startsWith('Bearer ') ? headerAuth.slice(7).trim() : null;
-    const headerFirebaseUid = request.headers.get('x-firebase-uid') || bearerToken;
+    const headerFirebaseUid = request.headers.get('x-firebase-uid');
     const headerEmail = request.headers.get('x-user-email');
     const headerNameRaw = request.headers.get('x-user-name');
     const headerName = headerNameRaw ? decodeURIComponent(headerNameRaw) : null;
     const headerPhone = request.headers.get('x-user-phone');
 
-    const realFirebaseUid = headerFirebaseUid || firebaseUid || (userId && !String(userId).startsWith('demo') ? userId : null);
-    const realEmail = headerEmail || body.email || userEmail || null;
-    const realName = (customerName || headerName || userName || body.name || 'AgriShield Farmer').trim();
-    const realPhone = (customerPhone || headerPhone || userPhone || contactPhone || body.phone || '').trim();
+    const uid = headerFirebaseUid || bearerToken || body.firebaseUid || body.userId;
+    const email = headerEmail || body.email || userEmail || null;
+    const name = headerName || body.customerName || body.userName || body.name || null;
+    const phone = headerPhone || body.customerPhone || body.userPhone || body.contactPhone || body.phone || null;
 
-    let user = null;
-
-    // 1. Dynamic User Upsert using real Firebase UID
-    if (realFirebaseUid) {
-      try {
-        user = await prisma.user.upsert({
-          where: { firebaseUid: realFirebaseUid },
-          update: {
-            ...(realEmail ? { email: realEmail } : {}),
-            ...(realName ? { name: realName } : {}),
-            ...(realPhone ? { phone: realPhone } : {}),
-          },
-          create: {
-            firebaseUid: realFirebaseUid,
-            email: realEmail,
-            name: realName,
-            phone: realPhone || null,
-            role: 'FARMER',
-          },
-        });
-      } catch (upsertErr) {
-        console.error("API Creation Error:", upsertErr);
-      }
-    }
-
-    // 2. If no firebaseUid or upsert failed, resolve/create by real phone
-    if (!user && realPhone) {
-      try {
-        user = await prisma.user.findFirst({ where: { phone: realPhone } });
-        if (!user) {
-          user = await prisma.user.create({
-            data: {
-              name: realName,
-              phone: realPhone,
-              email: realEmail,
-              role: 'FARMER',
-            },
-          });
-        }
-      } catch (phoneErr) {
-        console.error("API Creation Error:", phoneErr);
-      }
-    }
-
-    if (!user) {
-      const err = new Error('Could not resolve or authenticate user account for booking.');
+    if (!uid) {
+      const err = new Error('Authentication required: Missing real Firebase user UID.');
       console.error("API Creation Error:", err);
       return NextResponse.json(
         { success: false, error: err.message },
-        { status: 400 }
+        { status: 401 }
       );
     }
+
+    const dbUser = await prisma.user.upsert({
+      where: { firebaseUid: uid },
+      update: {
+        email: email,
+        name: name || undefined,
+        ...(phone ? { phone: phone } : {}),
+      },
+      create: {
+        firebaseUid: uid,
+        email: email,
+        name: name || 'Google User',
+        phone: phone || null,
+        role: 'FARMER',
+      },
+    });
 
     const parsedDate = startDate ? new Date(startDate) : (bookingDate ? new Date(bookingDate) : new Date());
     const validBookingDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
@@ -172,7 +144,7 @@ export async function POST(request: NextRequest) {
     try {
       const createdBooking = await prisma.booking.create({
         data: {
-          userId: user.id,
+          userId: dbUser.id,
           bookingType: String(bookingType || 'MACHINERY').toUpperCase(),
           targetId: String(targetId || 'ITEM-' + Date.now()),
           status: body.status || 'PENDING',

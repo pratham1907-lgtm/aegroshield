@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/context/AuthContext';
+import { auth, signInWithGoogle } from '@/lib/firebase';
 import { ALL_DISTRICTS } from '@/lib/marketplace-data';
 import {
   ShoppingBag,
@@ -93,6 +94,30 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!auth.currentUser) {
+      const wantsSignIn = confirm("A verified Google Account is required to place your order. Would you like to sign in with Google now?");
+      if (wantsSignIn) {
+        try {
+          await signInWithGoogle();
+        } catch (signInErr: any) {
+          if (signInErr?.code !== 'auth/popup-closed-by-user') {
+            alert("Google Sign-In failed: " + (signInErr?.message || "Please sign in to proceed."));
+          }
+          return;
+        }
+      } else {
+        const signinReqMsg = "Sign-in required: Please sign in with Google to confirm your order.";
+        setErrorMsg(signinReqMsg);
+        alert(signinReqMsg);
+        return;
+      }
+    }
+
+    if (!auth.currentUser) {
+      setErrorMsg("Sign-in required: Please sign in with Google to confirm your order.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -115,12 +140,13 @@ export default function CheckoutPage() {
         };
       });
 
-      const activeUid = user?.uid || userData?.uid || null;
-      const activeEmail = user?.email || userData?.email || null;
-      const activeName = formData.name.trim() || userData?.name || user?.displayName || 'AgriShield Farmer';
-      const activePhone = formData.phone.trim() || userData?.phone || user?.phoneNumber || '';
+      const token = await auth.currentUser?.getIdToken();
+      const activeUid = auth.currentUser?.uid || '';
+      const activeEmail = auth.currentUser?.email || '';
+      const activeName = auth.currentUser?.displayName || formData.name.trim() || 'Google User';
+      const activePhone = formData.phone.trim() || auth.currentUser?.phoneNumber || '';
 
-      const orderPayload = {
+      const payload = {
         customerName: activeName,
         customerPhone: activePhone,
         shippingAddress: formData.address.trim(),
@@ -136,18 +162,19 @@ export default function CheckoutPage() {
         phone: activePhone,
       };
 
-      console.log("[Checkout] Submitting order payload:", orderPayload);
+      console.log("[Checkout] Submitting order payload with Google user:", payload);
 
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(activeUid ? { 'x-firebase-uid': activeUid } : {}),
-          ...(activeEmail ? { 'x-user-email': activeEmail } : {}),
-          ...(activeName ? { 'x-user-name': encodeURIComponent(activeName) } : {}),
-          ...(activePhone ? { 'x-user-phone': activePhone } : {}),
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-firebase-uid': auth.currentUser?.uid || '',
+          'x-user-email': auth.currentUser?.email || '',
+          'x-user-name': encodeURIComponent(auth.currentUser?.displayName || formData.name || 'Google User'),
+          'x-user-phone': activePhone,
         },
-        body: JSON.stringify(orderPayload),
+        body: JSON.stringify(payload),
       });
 
       let json: any = null;

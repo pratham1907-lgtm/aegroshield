@@ -125,74 +125,46 @@ export async function POST(request: NextRequest) {
       vendorId: String(item.vendorId || ''),
     }));
 
-    // Extract real authenticated user from headers or request payload
+    // Read the incoming Firebase UID and email
     const headerAuth = request.headers.get('authorization') || '';
     const bearerToken = headerAuth.startsWith('Bearer ') ? headerAuth.slice(7).trim() : null;
-    const headerFirebaseUid = request.headers.get('x-firebase-uid') || bearerToken;
+    const headerFirebaseUid = request.headers.get('x-firebase-uid');
     const headerEmail = request.headers.get('x-user-email');
     const headerNameRaw = request.headers.get('x-user-name');
     const headerName = headerNameRaw ? decodeURIComponent(headerNameRaw) : null;
     const headerPhone = request.headers.get('x-user-phone');
 
-    const realFirebaseUid = headerFirebaseUid || firebaseUid || (userId && !String(userId).startsWith('demo') ? userId : null);
-    const realEmail = headerEmail || body.email || body.userEmail || null;
-    const realName = (customerName || headerName || body.name || body.userName || 'AgriShield Farmer').trim();
-    const realPhone = (customerPhone || headerPhone || body.phone || body.userPhone || '').trim();
+    const uid = headerFirebaseUid || bearerToken || body.firebaseUid || body.userId;
+    const email = headerEmail || body.email || body.userEmail || null;
+    const name = headerName || body.customerName || body.name || body.userName || null;
+    const phone = headerPhone || body.customerPhone || body.phone || body.userPhone || null;
 
-    let user = null;
-
-    // 1. Dynamic User Upsert using real Firebase UID
-    if (realFirebaseUid) {
-      try {
-        user = await prisma.user.upsert({
-          where: { firebaseUid: realFirebaseUid },
-          update: {
-            ...(realEmail ? { email: realEmail } : {}),
-            ...(realName ? { name: realName } : {}),
-            ...(realPhone ? { phone: realPhone } : {}),
-          },
-          create: {
-            firebaseUid: realFirebaseUid,
-            email: realEmail,
-            name: realName,
-            phone: realPhone || null,
-            role: 'FARMER',
-          },
-        });
-      } catch (upsertErr) {
-        console.error("API Creation Error:", upsertErr);
-      }
-    }
-
-    // 2. If no firebaseUid or upsert failed, resolve/create by real phone
-    if (!user && realPhone) {
-      try {
-        user = await prisma.user.findFirst({ where: { phone: realPhone } });
-        if (!user) {
-          user = await prisma.user.create({
-            data: {
-              name: realName,
-              phone: realPhone,
-              email: realEmail,
-              role: 'FARMER',
-            },
-          });
-        }
-      } catch (phoneErr) {
-        console.error("API Creation Error:", phoneErr);
-      }
-    }
-
-    if (!user) {
-      const err = new Error('Could not resolve or authenticate user account for order placement.');
+    if (!uid) {
+      const err = new Error('Authentication required: Missing real Firebase user UID.');
       console.error("API Creation Error:", err);
       return NextResponse.json(
         { success: false, error: err.message },
-        { status: 400 }
+        { status: 401 }
       );
     }
 
-    const targetUserId = user.id;
+    const dbUser = await prisma.user.upsert({
+      where: { firebaseUid: uid },
+      update: {
+        email: email,
+        name: name || undefined,
+        ...(phone ? { phone: phone } : {}),
+      },
+      create: {
+        firebaseUid: uid,
+        email: email,
+        name: name || 'Google User',
+        phone: phone || null,
+        role: 'FARMER',
+      },
+    });
+
+    const targetUserId = dbUser.id;
 
     // Compute or validate totalAmount using normalizedItems
     const computedTotal = normalizedItems.reduce((sum: number, item: any) => {
@@ -213,8 +185,8 @@ export async function POST(request: NextRequest) {
           totalAmount: finalTotal,
           status: 'PENDING',
           shippingAddress: `${shippingAddress}${district ? `, ${district}` : ''}${pincode ? ` - ${pincode}` : ''}`,
-          customerName: realName,
-          customerPhone: realPhone || '',
+          customerName: name || customerName || 'Google User',
+          customerPhone: phone || customerPhone || '',
           district: district || 'Uttar Pradesh',
           pincode: pincode || '250001',
           paymentMethod: paymentMethod || 'Cash on Delivery (COD)',

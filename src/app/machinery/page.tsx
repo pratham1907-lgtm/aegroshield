@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
+import { db, auth, signInWithGoogle } from "@/lib/firebase";
 import { collection, getDocs, addDoc } from "firebase/firestore";
 import { MOCK_MACHINERY } from "@/lib/mockData";
 
@@ -29,7 +29,8 @@ export default function Page() {
 
   const fetchBookings = async () => {
     try {
-      const res = await fetch(`/api/bookings?firebaseUid=${user?.uid || 'demo-farmer-seller-uid'}`);
+      const activeUid = auth.currentUser?.uid || user?.uid;
+      const res = await fetch(`/api/bookings?firebaseUid=${activeUid || 'demo-farmer-seller-uid'}`);
       const json = await res.json();
       if (json?.data) {
         setMyBookings(json.data.filter((b: any) => b.bookingType === 'MACHINERY' || !b.bookingType));
@@ -103,22 +104,50 @@ export default function Page() {
   const handleConfirmBooking = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!bookingMachine) return;
+
+    if (!auth.currentUser) {
+      const wantsSignIn = confirm("A verified Google Account is required to book farm machinery. Sign in with Google now?");
+      if (wantsSignIn) {
+        try {
+          await signInWithGoogle();
+        } catch (err: any) {
+          if (err?.code !== 'auth/popup-closed-by-user') {
+            alert("Google Sign-In failed: " + (err?.message || "Please sign in to proceed."));
+          }
+          return;
+        }
+      } else {
+        const msg = "Sign-in required: Please sign in with Google to confirm your machinery booking.";
+        setBookingErrorMessage(msg);
+        setBookingStatus('error');
+        alert(msg);
+        return;
+      }
+    }
+
+    if (!auth.currentUser) {
+      const msg = "Sign-in required: Please sign in with Google to confirm your machinery booking.";
+      setBookingErrorMessage(msg);
+      setBookingStatus('error');
+      return;
+    }
+
     setBookingStatus('booking');
     setBookingErrorMessage('');
     try {
       const rate = Number(bookingMachine.ratePerHour || bookingMachine.pricePerHour || bookingMachine.rate || 400);
       const targetId = String(bookingMachine.id || 'mach-' + Date.now());
-      const activeUid = user?.uid || userData?.uid || null;
-      const activeEmail = user?.email || userData?.email || null;
+      const token = await auth.currentUser?.getIdToken();
+      const activeUid = auth.currentUser.uid;
+      const activeEmail = auth.currentUser.email || null;
+      const customerName = (bookingCustomerName || auth.currentUser.displayName || userData?.name || user?.displayName || 'AgriShield Farmer').trim();
+      const customerPhone = (bookingContactPhone || auth.currentUser.phoneNumber || userData?.phone || user?.phoneNumber || '').trim();
       const totalAmount = rate * bookingHours;
 
       const startDateObj = bookingDate ? new Date(bookingDate) : new Date();
       const endDateObj = new Date(startDateObj.getTime() + bookingHours * 60 * 60 * 1000);
       const startDate = startDateObj.toISOString();
       const endDate = endDateObj.toISOString();
-
-      const customerName = (bookingCustomerName || userData?.name || user?.displayName || 'AgriShield Farmer').trim();
-      const customerPhone = (bookingContactPhone || userData?.phone || user?.phoneNumber || '').trim();
 
       const payload = {
         bookingType: 'MACHINERY',
@@ -143,9 +172,10 @@ export default function Page() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(activeUid ? { 'x-firebase-uid': activeUid } : {}),
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-firebase-uid': activeUid,
           ...(activeEmail ? { 'x-user-email': activeEmail } : {}),
-          ...(customerName ? { 'x-user-name': encodeURIComponent(customerName) } : {}),
+          'x-user-name': encodeURIComponent(customerName),
           ...(customerPhone ? { 'x-user-phone': customerPhone } : {}),
         },
         body: JSON.stringify(payload),
