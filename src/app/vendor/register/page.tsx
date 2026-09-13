@@ -6,11 +6,11 @@ import { useRouter } from 'next/navigation';
 export default function VendorRegisterRedirect() {
   const router = useRouter();
   useEffect(() => {
-    router.replace('/vendor/login?tab=signup');
+    router.replace('/seller/register');
   }, [router]);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif' }}>
       Redirecting to Seller Registration...
     </div>
   );
