@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { auth, signInWithGoogle } from '@/lib/firebase';
+import { auth, db, signInWithGoogle } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import {
   Store,
   Package,
@@ -76,6 +77,21 @@ const PRESET_IMAGES = [
 
 export default function SellerDashboardPage() {
   const { user, userData, isDemo } = useAuth();
+
+  // Seller Profile Doc from Firestore 'sellers' collection
+  const [sellerDoc, setSellerDoc] = useState<any | null>(null);
+
+  useEffect(() => {
+    const uid = auth.currentUser?.uid || user?.uid;
+    if (!uid) return;
+    getDoc(doc(db, 'sellers', uid))
+      .then(snap => {
+        if (snap.exists()) {
+          setSellerDoc(snap.data());
+        }
+      })
+      .catch(err => console.warn('[SellerDashboard] Error loading seller document from sellers collection:', err));
+  }, [user]);
 
   // Dashboard Tabs: 'products' | 'machinery' | 'labour'
   const [dashboardTab, setDashboardTab] = useState<'products' | 'machinery' | 'labour'>('products');
@@ -594,9 +610,9 @@ export default function SellerDashboardPage() {
     }
   };
 
-  const sellerStoreName = userData?.storeName || (user?.displayName ? `${user.displayName}'s Store` : 'Kisan Seva Kendra');
-  const sellerOwner = userData?.name || user?.displayName || 'Ramesh Patel';
-  const sellerDistrict = userData?.district || 'Ahmedabad';
+  const sellerStoreName = sellerDoc?.storeName || userData?.storeName || (user?.displayName ? `${user.displayName}'s Store` : 'Kisan Seva Kendra');
+  const sellerOwner = sellerDoc?.ownerName || userData?.name || user?.displayName || 'Ramesh Patel';
+  const sellerDistrict = sellerDoc?.district || userData?.district || 'Ahmedabad';
 
   return (
     <main className="vendor-dashboard-page" style={{ paddingBottom: '90px' }}>

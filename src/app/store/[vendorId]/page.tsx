@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { getVendorById, getProductsByVendorId } from '@/lib/ecommerce-service';
 import type { Vendor, Product } from '@/lib/marketplace-data';
 import { useCart } from '@/lib/cart-context';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { Store, ShieldCheck, MapPin, Phone, Star, ShoppingBag, ArrowLeft, Check } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -74,6 +76,26 @@ export default function VendorStorefrontPage({ params }: { params: Promise<{ ven
           }
       })
       .catch(err => console.warn('[Storefront] Error loading live vendor products:', err));
+
+    // Query Firestore sellers collection exclusively
+    getDoc(doc(db, 'sellers', vendorId))
+      .then(snap => {
+        if (snap.exists()) {
+          const s = snap.data();
+          setVendor(prev => ({
+            id: snap.id,
+            name: s.storeName || s.name || prev?.name || 'Verified Store',
+            ownerName: s.ownerName || prev?.ownerName || 'Verified Seller',
+            district: s.district || prev?.district || 'Local District',
+            phone: s.phone || prev?.phone || '',
+            rating: 4.9,
+            verified: Boolean(s.isVerified ?? true),
+            address: s.shopAddress || s.address || prev?.address || `${s.district || 'Market Yard'}`,
+            license: s.licenseOrGstin || s.license || prev?.license || 'VERIFIED-SELLER-01',
+          }));
+        }
+      })
+      .catch(err => console.warn('[Storefront] Firestore sellers fetch error:', err));
   }, [vendorId]);
 
   const handleAddToCart = (product: Product) => {

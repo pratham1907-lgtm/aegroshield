@@ -8,7 +8,7 @@ import {
 } from './mockData';
 import type { Category, Vendor, Product } from './marketplace-data';
 
-export type Role = 'user' | 'vendor' | 'admin';
+export type Role = 'user' | 'vendor' | 'seller' | 'admin';
 export type OrderStatus = 'Pending' | 'Accepted' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
 
 export interface ExtendedVendor extends Vendor {

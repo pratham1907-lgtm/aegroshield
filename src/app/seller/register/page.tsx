@@ -151,7 +151,7 @@ export default function SellerRegisterPage() {
       const fullPhone = '+91' + cleanPhone;
       const nowIso = new Date().toISOString();
 
-      // 1. Save document in Firestore sellers/{uid} (EXACT REQUIREMENT 4)
+      // 1. Save document in Firestore sellers/{uid}
       await setDoc(doc(db, 'sellers', cred.user.uid), {
         storeName: storeName.trim(),
         ownerName: ownerName.trim(),
@@ -165,28 +165,7 @@ export default function SellerRegisterPage() {
         createdAt: nowIso,
       });
 
-      // 2. Save document in Firestore vendors/{uid} (for platform compatibility)
-      await setDoc(doc(db, 'vendors', cred.user.uid), {
-        id: cred.user.uid,
-        name: storeName.trim(),
-        ownerName: ownerName.trim(),
-        email: email.trim(),
-        phone: fullPhone,
-        phoneVerified: true,
-        licenseOrGstin: licenseOrGstin.trim(),
-        license: licenseOrGstin.trim(),
-        district: district,
-        address: shopAddress.trim(),
-        shopAddress: shopAddress.trim(),
-        verificationLevel: 'tier_2_phone_and_license',
-        rating: 5.0,
-        verified: true,
-        accreditationStatus: 'Verified',
-        isDemo: false,
-        createdAt: nowIso,
-      });
-
-      // 3. Save document in Firestore users/{uid}
+      // 2. Save document in Firestore users/{uid}
       await setDoc(doc(db, 'users', cred.user.uid), {
         uid: cred.user.uid,
         name: ownerName.trim(),
@@ -198,7 +177,7 @@ export default function SellerRegisterPage() {
         address: shopAddress.trim(),
         license: licenseOrGstin.trim(),
         verificationLevel: 'tier_2_phone_and_license',
-        role: 'vendor',
+        role: 'seller',
         isDemo: false,
         createdAt: serverTimestamp(),
       });

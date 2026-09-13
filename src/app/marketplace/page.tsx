@@ -110,9 +110,24 @@ export default function MarketplacePage() {
           prodSnap.forEach(d => prods.push({ id: d.id, ...d.data() } as ExtendedProduct));
           setLiveProducts(prods);
 
-          const vSnap = await getDocs(collection(db, 'vendors'));
+          const sSnap = await getDocs(collection(db, 'sellers'));
           const vens: ExtendedVendor[] = [];
-          vSnap.forEach(d => vens.push({ id: d.id, ...d.data() } as ExtendedVendor));
+          sSnap.forEach(d => {
+            const data = d.data();
+            vens.push({
+              id: d.id,
+              name: data.storeName || data.name || 'AgriStore',
+              ownerName: data.ownerName || 'Verified Seller',
+              district: data.district || '',
+              phone: data.phone || '',
+              rating: 5.0,
+              verified: data.isVerified ?? true,
+              address: data.shopAddress || data.address || `${data.district || 'Local'}, Market Yard`,
+              license: data.licenseOrGstin || data.license || 'VERIFIED',
+              accreditationStatus: 'Verified',
+              ...data,
+            } as ExtendedVendor);
+          });
           setLiveVendors(vens);
         } catch (err) {
           console.warn('[Marketplace] Firestore fetch error:', err);

@@ -223,28 +223,7 @@ function VendorLoginPage() {
         district: regData.district,
         address: regData.address || `${regData.district} Main Market`,
         license: regData.license.trim(),
-        role: 'vendor',
-        isDemo: false,
-        createdAt: serverTimestamp(),
-      });
-
-      // Save Vendor Doc
-      await setDoc(doc(db, "vendors", cred.user.uid), {
-        id: cred.user.uid,
-        name: regData.name.trim(),
-        ownerName: regData.ownerName.trim(),
-        email: regData.email.trim(),
-        phone: fullPhone,
-        phoneVerified: true,
-        licenseOrGstin: regData.license.trim(),
-        license: regData.license.trim(),
-        district: regData.district,
-        address: regData.address || `${regData.district} Main Market`,
-        shopAddress: regData.address || `${regData.district} Main Market`,
-        verificationLevel: "tier_2_phone_and_license",
-        rating: 5.0,
-        verified: true,
-        accreditationStatus: 'Verified',
+        role: 'seller',
         isDemo: false,
         createdAt: serverTimestamp(),
       });

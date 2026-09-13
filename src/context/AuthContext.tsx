@@ -14,7 +14,7 @@ export interface FirestoreUserData {
   name: string;
   email: string;
   phone?: string;
-  role: 'farmer' | 'vendor' | 'admin';
+  role: 'farmer' | 'seller' | 'vendor' | 'admin';
   isDemo?: boolean;
   district?: string;
   address?: string;
@@ -29,7 +29,7 @@ export interface AuthContextType {
   userData: FirestoreUserData | null;
   loading: boolean;
   isDemo: boolean;
-  loginAsDemo: (role?: 'farmer' | 'vendor') => void;
+  loginAsDemo: (role?: 'farmer' | 'seller' | 'vendor') => void;
   logout: () => Promise<void>;
   setDemoMode: (val: boolean) => void;
 }
@@ -111,15 +111,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, []);
 
-  const loginAsDemo = (role: 'farmer' | 'vendor' = 'farmer') => {
+  const loginAsDemo = (role: 'farmer' | 'seller' | 'vendor' = 'farmer') => {
     enableDemoMode(true);
     setIsDemo(true);
-    if (role === 'vendor') {
+    if (role === 'vendor' || role === 'seller') {
       setUserData({
         uid: 'demo_vendor_123',
         name: 'Kisan Seva Kendra Owner',
-        email: 'vendor@aegroshield.in',
-        role: 'vendor',
+        email: 'seller@aegroshield.in',
+        role: 'seller',
         storeName: 'Kisan Seva Kendra',
         district: 'Meerut',
         isDemo: true,
