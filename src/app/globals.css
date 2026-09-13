@@ -4020,3 +4020,23 @@ footer a:hover {
 @media (max-width: 992px) {
   .gateway-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Cart Drawer Overlay & Animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.spin, .animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

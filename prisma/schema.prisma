@@ -23,6 +23,7 @@ model User {
   machineries Machinery[]
   labourPosts LabourPost[]
   bookings    Booking[]
+  orders      Order[]
 
   @@index([firebaseUid])
 }
@@ -102,4 +103,21 @@ model Booking {
   totalAmount Float
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items           Json
+  totalAmount     Float
+  status          String   @default("PENDING")
+  shippingAddress String
+  customerName    String?
+  customerPhone   String?
+  district        String?
+  pincode         String?
+  paymentMethod   String   @default("Cash on Delivery (COD)")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

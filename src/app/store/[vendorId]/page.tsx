@@ -23,7 +23,7 @@ const STOCK_COLORS: Record<string, string> = {
 
 export default function VendorStorefrontPage({ params }: { params: Promise<{ vendorId: string }> }) {
   const { vendorId } = use(params);
-  const { addToCart, cartCount } = useCart();
+  const { addToCart, cartCount, openCart } = useCart();
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [addedIds, setAddedIds] = useState<Record<string, boolean>>({});
@@ -159,9 +159,15 @@ export default function VendorStorefrontPage({ params }: { params: Promise<{ ven
 
       {/* Floating Cart Button */}
       {cartCount > 0 && (
-        <Link href="/cart" className="floating-cart-fab">
+        <button
+          onClick={() => openCart()}
+          className="floating-cart-fab"
+          style={{ border: 'none', cursor: 'pointer' }}
+          title="Open Shopping Cart"
+          type="button"
+        >
           <ShoppingBag size={20} /> View Cart ({cartCount})
-        </Link>
+        </button>
       )}
     </main>
   );

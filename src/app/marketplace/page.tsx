@@ -33,7 +33,7 @@ const STOCK_COLORS: Record<string, string> = {
 
 export default function MarketplacePage() {
   const { t, lang } = useLanguage();
-  const { addToCart, cartCount } = useCart();
+  const { addToCart, cartCount, openCart } = useCart();
   const { user, isDemo } = useAuth();
 
   const [district, setDistrict] = useState('All');
@@ -329,9 +329,15 @@ export default function MarketplacePage() {
 
       {/* Floating Cart FAB */}
       {cartCount > 0 && (
-        <Link href="/cart" className="floating-cart-fab">
+        <button
+          onClick={() => openCart()}
+          className="floating-cart-fab"
+          style={{ border: 'none', cursor: 'pointer' }}
+          title="Open Shopping Cart"
+          type="button"
+        >
           <ShoppingBag size={20} /> View Cart ({cartCount})
-        </Link>
+        </button>
       )}
     </main>
   );

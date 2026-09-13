@@ -16,6 +16,12 @@ interface CartContextValue {
   clearCart: () => void;
   cartCount: number;
   cartTotal: number;
+  deliveryFee: number;
+  grandTotal: number;
+  isCartOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
+  toggleCart: () => void;
 }
 
 const CartContext = createContext<CartContextValue>({
@@ -26,12 +32,19 @@ const CartContext = createContext<CartContextValue>({
   clearCart: () => {},
   cartCount: 0,
   cartTotal: 0,
+  deliveryFee: 0,
+  grandTotal: 0,
+  isCartOpen: false,
+  openCart: () => {},
+  closeCart: () => {},
+  toggleCart: () => {},
 });
 
 const CART_STORAGE_KEY = 'aegroshield_cart';
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Load saved cart from localStorage
   useEffect(() => {
@@ -87,11 +100,33 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     saveCart([]);
   };
 
+  const openCart = () => setIsCartOpen(true);
+  const closeCart = () => setIsCartOpen(false);
+  const toggleCart = () => setIsCartOpen(prev => !prev);
+
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+  const deliveryFee = cartTotal >= 500 || cartTotal === 0 ? 0 : 50;
+  const grandTotal = cartTotal + deliveryFee;
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, cartCount, cartTotal }}>
+    <CartContext.Provider
+      value={{
+        cart,
+        addToCart,
+        removeFromCart,
+        updateQuantity,
+        clearCart,
+        cartCount,
+        cartTotal,
+        deliveryFee,
+        grandTotal,
+        isCartOpen,
+        openCart,
+        closeCart,
+        toggleCart,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );

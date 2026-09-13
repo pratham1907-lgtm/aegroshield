@@ -6,7 +6,16 @@ import { getVendorById } from '@/lib/ecommerce-service';
 import { ShoppingBag, Trash2, Plus, Minus, ArrowRight, ArrowLeft, Store } from 'lucide-react';
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity, clearCart, cartTotal, cartCount } = useCart();
+  const {
+    cart,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    cartTotal,
+    cartCount,
+    deliveryFee,
+    grandTotal,
+  } = useCart();
 
   if (cart.length === 0) {
     return (
@@ -25,6 +34,9 @@ export default function CartPage() {
     );
   }
 
+  const freeDeliveryThreshold = 500;
+  const amountNeededForFree = Math.max(0, freeDeliveryThreshold - cartTotal);
+
   return (
     <main className="cart-page">
       <div className="container" style={{ padding: '40px 20px 80px', maxWidth: '960px' }}>
@@ -33,6 +45,31 @@ export default function CartPage() {
             <ArrowLeft size={16} /> Continue Shopping
           </Link>
           <h1>Shopping Cart ({cartCount} Items)</h1>
+        </div>
+
+        {/* Free Delivery Banner */}
+        <div
+          style={{
+            padding: '12px 18px',
+            backgroundColor: deliveryFee === 0 ? '#ecfdf5' : '#f0fdf4',
+            borderRadius: '12px',
+            border: '1px solid #bbf7d0',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '8px',
+          }}
+        >
+          <span style={{ fontSize: '0.88rem', fontWeight: '600', color: '#166534' }}>
+            {deliveryFee === 0
+              ? '🎉 You have qualified for FREE Farm Delivery (Orders ₹500+)'
+              : `🚚 Add ₹${amountNeededForFree} more to qualify for FREE Farm Delivery!`}
+          </span>
+          <span style={{ fontSize: '0.82rem', color: '#15803d', fontWeight: '700' }}>
+            {deliveryFee === 0 ? 'Delivery: ₹0' : 'Delivery: ₹50'}
+          </span>
         </div>
 
         <div className="cart-grid">
@@ -60,11 +97,11 @@ export default function CartPage() {
 
                   <div className="cart-item-actions">
                     <div className="qty-controls">
-                      <button onClick={() => updateQuantity(item.product.id, item.quantity - 1)} className="qty-btn">
+                      <button onClick={() => updateQuantity(item.product.id, item.quantity - 1)} className="qty-btn" title="Decrease">
                         <Minus size={14} />
                       </button>
                       <span className="qty-val">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.product.id, item.quantity + 1)} className="qty-btn">
+                      <button onClick={() => updateQuantity(item.product.id, item.quantity + 1)} className="qty-btn" title="Increase">
                         <Plus size={14} />
                       </button>
                     </div>
@@ -99,19 +136,23 @@ export default function CartPage() {
 
             <div className="summary-row">
               <span>Estimated Delivery:</span>
-              <strong style={{ color: '#22c55e' }}>FREE (Local Pickup / Delivery)</strong>
+              {deliveryFee === 0 ? (
+                <strong style={{ color: '#22c55e' }}>FREE (Orders ₹500+)</strong>
+              ) : (
+                <strong>₹{deliveryFee}</strong>
+              )}
             </div>
 
             <div className="summary-row">
               <span>Payment Mode:</span>
-              <strong>Cash on Delivery (COD)</strong>
+              <strong>Cash on Delivery (COD) / UPI</strong>
             </div>
 
             <div className="summary-divider"></div>
 
             <div className="summary-row total">
               <span>Total Payable:</span>
-              <strong className="total-price">₹{cartTotal.toLocaleString()}</strong>
+              <strong className="total-price">₹{grandTotal.toLocaleString()}</strong>
             </div>
 
             <Link href="/checkout" className="btn btn-primary btn-full btn-lg" style={{ marginTop: '20px' }}>
@@ -119,7 +160,7 @@ export default function CartPage() {
             </Link>
 
             <div className="cod-badge-box">
-              💵 <strong>Cash on Delivery Available</strong> — Pay at your doorstep or shop upon receiving products.
+              💵 <strong>Cash on Delivery & UPI Available</strong> — Pay at your doorstep or shop upon receiving products.
             </div>
           </div>
         </div>

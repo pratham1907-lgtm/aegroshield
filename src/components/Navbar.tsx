@@ -16,7 +16,7 @@ const LANG_OPTIONS: { value: Language; label: string }[] = [
 export default function Navbar() {
   const rawPathname = usePathname();
   const { lang, setLang, t } = useLanguage();
-  const { cartCount } = useCart();
+  const { cartCount, openCart, isCartOpen } = useCart();
   const { user, userData, isDemo, logout } = useAuth();
 
   const pathname = rawPathname || '';
@@ -32,6 +32,7 @@ export default function Navbar() {
     pathname.startsWith('/market') ||
     pathname.startsWith('/calculator') ||
     pathname.startsWith('/cart') ||
+    pathname.startsWith('/checkout') ||
     pathname.startsWith('/store');
 
   // Hide on login, vendor dashboard/login/register, and admin pages
@@ -74,19 +75,20 @@ export default function Navbar() {
           </Link>
         ))}
 
-        {/* ── Cart Icon ── */}
-        <Link
-          href="/cart"
+        {/* ── Cart Drawer Trigger ── */}
+        <button
+          onClick={() => openCart()}
+          type="button"
           style={{ cursor: 'pointer' }}
           className={`nav-cart-btn px-3.5 py-1.5 rounded-lg text-sm font-medium cursor-pointer flex items-center gap-1.5 ${
-            pathname.startsWith('/cart') ? 'active' : ''
+            isCartOpen || pathname.startsWith('/cart') ? 'active' : ''
           }`}
-          title="View Cart"
+          title="Open Cart Drawer"
         >
           <ShoppingBag size={18} />
           <span>Cart</span>
           {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
-        </Link>
+        </button>
 
         {/* ── Language Toggle ── */}
         <div className="lang-toggle-wrap">
