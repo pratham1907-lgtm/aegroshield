@@ -42,10 +42,10 @@ export default function Page() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/machinery?isDemo=${isDemoUser}`)
+    fetch('/api/machinery')
       .then((res) => res.json())
       .then((json) => {
-        if (json?.data) {
+        if (json?.data && json.data.length > 0) {
           setLiveMachinery(json.data);
         } else {
           setLiveMachinery(MOCK_MACHINERY);
@@ -64,7 +64,33 @@ export default function Page() {
 
   const handleRegisterEquipment = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!auth.currentUser) {
+      const wantsSignIn = confirm("A verified Google Account is required to register equipment. Sign in with Google now?");
+      if (wantsSignIn) {
+        try {
+          await signInWithGoogle();
+        } catch (err: any) {
+          if (err?.code !== 'auth/popup-closed-by-user') {
+            alert("Google Sign-In failed: " + (err?.message || "Please sign in to proceed."));
+          }
+          return;
+        }
+      } else {
+        alert("Sign-in required: Please sign in with Google to register machinery.");
+        return;
+      }
+    }
+
+    if (!auth.currentUser) return;
+
     const formData = new FormData(e.currentTarget);
+    const token = await auth.currentUser?.getIdToken();
+    const activeUid = auth.currentUser.uid;
+    const activeEmail = auth.currentUser.email || '';
+    const activeName = auth.currentUser.displayName || (formData.get('postOwnerName') as string) || 'Equipment Owner';
+    const activePhone = (formData.get('postPhone') as string) || auth.currentUser.phoneNumber || '';
+
     const newMachine = {
       title: (formData.get('postMachineName') as string) || '',
       model: (formData.get('postMachineName') as string) || '',
@@ -73,32 +99,38 @@ export default function Page() {
       ratePerHour: Number(formData.get('postHourlyRate')) || 400,
       district: (formData.get('postDistrict') as string) || 'Meerut',
       state: (formData.get('postState') as string) || 'Uttar Pradesh',
-      contactPhone: (formData.get('postPhone') as string) || '',
+      contactPhone: activePhone,
       chcName: (formData.get('postOwnerName') as string) || 'Private Owner',
-      firebaseUid: user?.uid || null,
+      ownerId: activeUid,
+      firebaseUid: activeUid,
       available: true,
-      createdAt: new Date().toISOString(),
     };
-
-    const newId = 'MCH-' + Math.floor(100000 + Math.random() * 900000);
-    setListingId(newId);
 
     try {
       const res = await fetch('/api/machinery', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-firebase-uid': activeUid,
+          ...(activeEmail ? { 'x-user-email': activeEmail } : {}),
+          'x-user-name': encodeURIComponent(activeName),
+          ...(activePhone ? { 'x-user-phone': activePhone } : {}),
+        },
         body: JSON.stringify(newMachine),
       });
       const data = await res.json();
-      if (data?.data?.id) {
+      if (res.ok && data?.success && data?.data?.id) {
         setListingId(data.data.id);
+        setLiveMachinery((prev) => [data.data, ...(prev || [])]);
+        setPostSubmitted(true);
+      } else {
+        alert("Failed to register machinery: " + (data?.error || `Server returned ${res.status}`));
       }
-    } catch (err) {
-      console.warn('[Machinery] Error saving equipment via API:', err);
+    } catch (err: any) {
+      console.error('[Machinery] Error saving equipment via API:', err);
+      alert("Error saving equipment: " + (err?.message || "Network error"));
     }
-
-    setLiveMachinery((prev) => [{ id: newId, ...newMachine }, ...(prev || [])]);
-    setPostSubmitted(true);
   };
 
   const handleConfirmBooking = async (e?: React.FormEvent) => {
@@ -151,7 +183,13 @@ export default function Page() {
 
       const payload = {
         bookingType: 'MACHINERY',
+        machineryId: targetId,
         targetId: targetId,
+        title: bookingMachine.title || bookingMachine.model || 'Tractor',
+        machineType: bookingMachine.machineType || bookingMachine.equipmentType || 'Tractor',
+        ratePerHour: rate,
+        district: bookingMachine.district || 'Meerut',
+        contactPhone: bookingMachine.contactPhone || customerPhone,
         startDate: startDate,
         endDate: endDate,
         bookingDate: startDate,

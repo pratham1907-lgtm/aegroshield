@@ -48,10 +48,10 @@ export default function Page() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/labour?isDemo=${isDemoUser}`)
+    fetch('/api/labour')
       .then((res) => res.json())
       .then((json) => {
-        if (json?.data) {
+        if (json?.data && json.data.length > 0) {
           setLiveLabour(json.data);
         } else {
           setLiveLabour(MOCK_LABOUR);
@@ -70,16 +70,42 @@ export default function Page() {
 
   const handlePostAvailability = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!auth.currentUser) {
+      const wantsSignIn = confirm("A verified Google Account is required to post labour availability. Sign in with Google now?");
+      if (wantsSignIn) {
+        try {
+          await signInWithGoogle();
+        } catch (err: any) {
+          if (err?.code !== 'auth/popup-closed-by-user') {
+            alert("Google Sign-In failed: " + (err?.message || "Please sign in to proceed."));
+          }
+          return;
+        }
+      } else {
+        alert("Sign-in required: Please sign in with Google to post labour availability.");
+        return;
+      }
+    }
+
+    if (!auth.currentUser) return;
+
     const formData = new FormData(e.currentTarget);
     const checkedTasks: string[] = [];
     const taskCheckboxes = e.currentTarget.querySelectorAll('input[name="tasks"]:checked');
     taskCheckboxes.forEach((cb: any) => checkedTasks.push(cb.value));
 
+    const token = await auth.currentUser?.getIdToken();
+    const activeUid = auth.currentUser.uid;
+    const activeEmail = auth.currentUser.email || '';
+    const activeName = auth.currentUser.displayName || (formData.get('postName') as string) || 'Labour Leader';
+    const activePhone = (formData.get('postPhone') as string) || auth.currentUser.phoneNumber || '';
+
     const newLabour = {
       leaderName: (formData.get('postName') as string) || 'Worker Group',
       teamLeaderName: (formData.get('postName') as string) || 'Worker Group',
-      phone: (formData.get('postPhone') as string) || '',
-      contactPhone: (formData.get('postPhone') as string) || '',
+      phone: activePhone,
+      contactPhone: activePhone,
       district: (formData.get('postDistrict') as string) || 'Meerut',
       wagePerDay: Number(formData.get('postRate')) || 400,
       dailyRatePerWorker: Number(formData.get('postRate')) || 400,
@@ -87,30 +113,37 @@ export default function Page() {
       teamSize: Number(formData.get('postGroupSize')) || 5,
       primarySkill: checkedTasks.join(', ') || 'Harvesting, Sowing',
       specialization: checkedTasks.join(', ') || 'Harvesting, Sowing',
-      firebaseUid: user?.uid || null,
+      userId: activeUid,
+      leaderId: activeUid,
+      firebaseUid: activeUid,
       available: true,
-      createdAt: new Date().toISOString(),
     };
-
-    const newId = 'LBR-' + Math.floor(100000 + Math.random() * 900000);
-    setListingId(newId);
 
     try {
       const res = await fetch('/api/labour', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-firebase-uid': activeUid,
+          ...(activeEmail ? { 'x-user-email': activeEmail } : {}),
+          'x-user-name': encodeURIComponent(activeName),
+          ...(activePhone ? { 'x-user-phone': activePhone } : {}),
+        },
         body: JSON.stringify(newLabour),
       });
       const data = await res.json();
-      if (data?.data?.id) {
+      if (res.ok && data?.success && data?.data?.id) {
         setListingId(data.data.id);
+        setLiveLabour((prev) => [data.data, ...(prev || [])]);
+        setPostSubmitted(true);
+      } else {
+        alert("Failed to post labour: " + (data?.error || `Server returned ${res.status}`));
       }
-    } catch (err) {
-      console.warn('[Labour] Error saving worker availability via API:', err);
+    } catch (err: any) {
+      console.error('[Labour] Error saving worker availability via API:', err);
+      alert("Error saving labour post: " + (err?.message || "Network error"));
     }
-
-    setLiveLabour((prev) => [{ id: newId, ...newLabour }, ...(prev || [])]);
-    setPostSubmitted(true);
   };
 
   const handleConfirmLabourBooking = async (e?: React.FormEvent) => {
@@ -164,7 +197,14 @@ export default function Page() {
 
       const payload = {
         bookingType: 'LABOUR',
+        labourPostId: targetId,
         targetId: targetId,
+        leaderName: bookingLabour.leaderName || bookingLabour.teamLeaderName || 'Worker Group',
+        groupSize: groupSize,
+        primarySkill: bookingLabour.primarySkill || bookingLabour.specialization || 'Harvesting, Sowing',
+        wagePerDay: dailyRate,
+        district: bookingLabour.district || 'Meerut',
+        leaderPhone: bookingLabour.phone || bookingLabour.contactPhone || customerPhone,
         startDate: startDate,
         endDate: endDate,
         bookingDate: startDate,

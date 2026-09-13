@@ -107,26 +107,52 @@ export async function POST(request: NextRequest) {
 
     let targetSellerId = sellerId;
 
-    if (!targetSellerId && firebaseUid) {
+    const headerAuth = request.headers.get('authorization') || '';
+    const bearerToken = headerAuth.startsWith('Bearer ') ? headerAuth.slice(7).trim() : null;
+    const headerFirebaseUid = request.headers.get('x-firebase-uid');
+    const headerEmail = request.headers.get('x-user-email');
+    const headerNameRaw = request.headers.get('x-user-name');
+    const headerName = headerNameRaw ? decodeURIComponent(headerNameRaw) : null;
+    const headerPhone = request.headers.get('x-user-phone');
+
+    const uid = headerFirebaseUid || bearerToken || body.firebaseUid || body.userId;
+    const email = headerEmail || body.email || null;
+    const userName = headerName || body.userName || body.name || null;
+    const userPhone = headerPhone || body.phone || null;
+
+    if (uid) {
       try {
-        const user = await prisma.user.findUnique({
-          where: { firebaseUid },
+        const dbUser = await prisma.user.upsert({
+          where: { firebaseUid: uid },
+          update: {
+            email: email || undefined,
+            name: userName || undefined,
+            phone: userPhone || undefined,
+          },
+          create: {
+            firebaseUid: uid,
+            email: email,
+            name: userName || 'Store Owner',
+            phone: userPhone || null,
+            role: 'SELLER',
+            isDemo: false,
+          },
           include: { sellers: true },
         });
 
-        if (user && user.sellers.length > 0) {
-          targetSellerId = user.sellers[0].id;
-        } else if (user) {
-          // Auto-create seller profile for this authenticated user if none exists
+        if (dbUser.sellers && dbUser.sellers.length > 0) {
+          targetSellerId = dbUser.sellers[0].id;
+        } else {
+          const storeName = body.storeName || (dbUser.name ? `${dbUser.name}'s Farm Store` : 'AgriStore Official');
           const newSeller = await prisma.seller.create({
             data: {
-              userId: user.id,
-              storeName: (user.name || 'AgriStore') + ' Official Store',
-              ownerName: user.name || 'Store Owner',
-              phone: user.phone || '9876543210',
-              licenseOrGstin: 'VERIFIED-SELLER-01',
-              district: 'Ahmedabad',
-              shopAddress: 'Market Yard Complex',
+              userId: dbUser.id,
+              storeName: storeName,
+              ownerName: dbUser.name || 'Store Owner',
+              phone: dbUser.phone || userPhone || '9876543210',
+              licenseOrGstin: body.licenseOrGstin || 'VERIFIED-SELLER-01',
+              district: body.district || 'Meerut',
+              shopAddress: body.shopAddress || 'Market Complex',
               isVerified: true,
               isDemo: false,
             },
@@ -134,11 +160,11 @@ export async function POST(request: NextRequest) {
           targetSellerId = newSeller.id;
         }
       } catch (err) {
-        console.warn('[API/Products] Could not find seller by firebaseUid:', err);
+        console.warn('[API/Products] User/Seller upsert warning:', err);
       }
     }
 
-    // Fallback to active demo seller or first seller in DB so creation never fails silently
+    // Fallback to active demo seller or first seller in DB so creation never fails
     if (!targetSellerId) {
       try {
         const demoSeller = await prisma.seller.findFirst({

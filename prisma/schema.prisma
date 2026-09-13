@@ -75,6 +75,8 @@ model Machinery {
   isDemo       Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  bookings     Booking[]
 }
 
 model LabourPost {
@@ -90,19 +92,25 @@ model LabourPost {
   isDemo       Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  bookings     Booking[]
 }
 
 model Booking {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bookingType String // MACHINERY / LABOUR
-  targetId    String
-  status      String   @default("PENDING")
-  bookingDate DateTime @default(now())
-  totalAmount Float
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookingType  String // MACHINERY / LABOUR
+  targetId     String?
+  machineryId  String?
+  machinery    Machinery?  @relation(fields: [machineryId], references: [id], onDelete: SetNull)
+  labourPostId String?
+  labourPost   LabourPost? @relation(fields: [labourPostId], references: [id], onDelete: SetNull)
+  status       String      @default("PENDING")
+  bookingDate  DateTime    @default(now())
+  totalAmount  Float
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 }
 
 model Order {

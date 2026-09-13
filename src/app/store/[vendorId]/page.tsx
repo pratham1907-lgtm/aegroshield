@@ -34,6 +34,47 @@ export default function VendorStorefrontPage({ params }: { params: Promise<{ ven
       setVendor(v);
       setProducts(getProductsByVendorId(vendorId));
     }
+
+    // Fetch live products for this vendor directly from Supabase PostgreSQL
+    fetch('/api/products')
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && Array.isArray(json.data)) {
+          const matching = json.data.filter((p: any) => p.sellerId === vendorId || p.seller?.id === vendorId);
+          if (matching.length > 0) {
+            const first = matching[0];
+            if (first.seller) {
+              setVendor({
+                id: first.seller.id,
+                name: first.seller.storeName,
+                ownerName: first.seller.ownerName || 'Verified Seller',
+                district: first.seller.district,
+                phone: first.seller.phone,
+                rating: 4.9,
+                verified: Boolean(first.seller.isVerified),
+                address: first.seller.shopAddress || `${first.seller.district}, Market Yard`,
+                license: first.seller.licenseOrGstin || 'VERIFIED-SELLER-01',
+              });
+            }
+            const mapped: Product[] = matching.map((p: any) => ({
+              id: p.id,
+              vendorId: p.sellerId || vendorId,
+              name: p.name,
+              nameHi: p.name,
+              category: (p.category || 'Fertilizer') as any,
+              price: Number(p.price) || 0,
+              unit: p.unit || 'per unit',
+              stock: Number(p.stock) === 0 ? 'Out of Stock' : Number(p.stock) <= 5 ? 'Low Stock' : 'In Stock',
+              brand: p.seller?.storeName || 'AgriStore',
+              description: p.description || '',
+              forCrops: ['All Crops'],
+              imageUrl: p.imageUrl || '',
+            }));
+            setProducts(mapped);
+          }
+        }
+      })
+      .catch(err => console.warn('[Storefront] Error loading live vendor products:', err));
   }, [vendorId]);
 
   const handleAddToCart = (product: Product) => {

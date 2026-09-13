@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { auth, signInWithGoogle } from '@/lib/firebase';
 import {
   Store,
   Package,
@@ -23,6 +24,10 @@ import {
   Image as ImageIcon,
   Check,
   Building2,
+  Tractor,
+  Users,
+  Phone,
+  MapPin,
 } from 'lucide-react';
 
 export interface SellerProduct {
@@ -72,6 +77,32 @@ const PRESET_IMAGES = [
 export default function SellerDashboardPage() {
   const { user, userData, isDemo } = useAuth();
 
+  // Dashboard Tabs: 'products' | 'machinery' | 'labour'
+  const [dashboardTab, setDashboardTab] = useState<'products' | 'machinery' | 'labour'>('products');
+  const [machineryList, setMachineryList] = useState<any[]>([]);
+  const [labourList, setLabourList] = useState<any[]>([]);
+  const [showAddMachineryModal, setShowAddMachineryModal] = useState(false);
+  const [showAddLabourModal, setShowAddLabourModal] = useState(false);
+
+  // Machinery form state
+  const [machineryForm, setMachineryForm] = useState({
+    title: '',
+    machineType: 'Tractor',
+    ratePerHour: '',
+    district: '',
+    contactPhone: '',
+  });
+
+  // Labour form state
+  const [labourForm, setLabourForm] = useState({
+    leaderName: '',
+    groupSize: '5',
+    primarySkill: 'Harvesting, Sowing',
+    wagePerDay: '400',
+    district: '',
+    phone: '',
+  });
+
   // Inventory State
   const [products, setProducts] = useState<SellerProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,8 +150,7 @@ export default function SellerDashboardPage() {
     setError(null);
 
     try {
-      // Query /api/products
-      const uid = user?.uid || (isDemo ? 'demo-farmer-seller-uid' : '');
+      const uid = auth.currentUser?.uid || user?.uid || (isDemo ? 'demo-farmer-seller-uid' : '');
       const url = uid
         ? `/api/products?firebaseUid=${encodeURIComponent(uid)}`
         : '/api/products';
@@ -143,9 +173,39 @@ export default function SellerDashboardPage() {
     }
   }, [user, isDemo]);
 
+  // Fetch machinery from PostgreSQL database API
+  const fetchMachinery = useCallback(async () => {
+    const uid = auth.currentUser?.uid || user?.uid;
+    try {
+      const res = await fetch(`/api/machinery?firebaseUid=${uid || ''}`, { cache: 'no-store' });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setMachineryList(json.data);
+      }
+    } catch (err) {
+      console.warn('[SellerDashboard] Failed to fetch machinery:', err);
+    }
+  }, [user]);
+
+  // Fetch labour posts from PostgreSQL database API
+  const fetchLabour = useCallback(async () => {
+    const uid = auth.currentUser?.uid || user?.uid;
+    try {
+      const res = await fetch(`/api/labour?firebaseUid=${uid || ''}`, { cache: 'no-store' });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setLabourList(json.data);
+      }
+    } catch (err) {
+      console.warn('[SellerDashboard] Failed to fetch labour:', err);
+    }
+  }, [user]);
+
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts]);
+    fetchMachinery();
+    fetchLabour();
+  }, [fetchProducts, fetchMachinery, fetchLabour]);
 
   // Inventory Metrics
   const metrics = useMemo(() => {
@@ -270,9 +330,37 @@ export default function SellerDashboardPage() {
         }
       } else {
         // POST create
+        if (!auth.currentUser) {
+          const wantsSignIn = confirm("A verified Google Account is required to add inventory. Sign in with Google now?");
+          if (wantsSignIn) {
+            try {
+              await signInWithGoogle();
+            } catch (err: any) {
+              if (err?.code !== 'auth/popup-closed-by-user') {
+                showToast("Google Sign-In failed: " + (err?.message || "Please sign in."), 'error');
+              }
+              return;
+            }
+          } else {
+            showToast("Sign-in required: Please sign in with Google to add products.", 'error');
+            return;
+          }
+        }
+
+        const token = await auth.currentUser?.getIdToken();
+        const activeUid = auth.currentUser?.uid || user?.uid;
+        const activeEmail = auth.currentUser?.email || user?.email || '';
+        const activeName = auth.currentUser?.displayName || user?.displayName || 'Store Owner';
+
         const res = await fetch('/api/products', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : '',
+            'x-firebase-uid': activeUid || '',
+            'x-user-email': activeEmail,
+            'x-user-name': encodeURIComponent(activeName),
+          },
           body: JSON.stringify({
             name: formData.name.trim(),
             category: formData.category,
@@ -281,7 +369,8 @@ export default function SellerDashboardPage() {
             unit: formData.unit.trim(),
             description: formData.description.trim() || null,
             imageUrl: formData.imageUrl.trim() || null,
-            firebaseUid: user?.uid || (isDemo ? 'demo-farmer-seller-uid' : undefined),
+            userId: activeUid,
+            firebaseUid: activeUid,
           }),
         });
 
@@ -297,6 +386,160 @@ export default function SellerDashboardPage() {
     } catch (err: any) {
       console.error('[SellerDashboard] Save error:', err);
       showToast(err?.message || 'Network error saving product', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Add Machinery to Supabase (POST /api/machinery)
+  const handleSaveMachinery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!machineryForm.title.trim() || !machineryForm.ratePerHour) {
+      showToast('Please provide an equipment name and hourly rate.', 'error');
+      return;
+    }
+
+    if (!auth.currentUser) {
+      const wantsSignIn = confirm("A verified Google Account is required to add machinery. Sign in with Google now?");
+      if (wantsSignIn) {
+        try {
+          await signInWithGoogle();
+        } catch (err: any) {
+          if (err?.code !== 'auth/popup-closed-by-user') {
+            showToast("Google Sign-In failed: " + (err?.message || "Please sign in."), 'error');
+          }
+          return;
+        }
+      } else {
+        showToast("Sign-in required: Please sign in with Google to add machinery.", 'error');
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const activeUid = auth.currentUser?.uid || user?.uid;
+      const activeEmail = auth.currentUser?.email || user?.email || '';
+      const activeName = auth.currentUser?.displayName || user?.displayName || 'Equipment Partner';
+
+      const res = await fetch('/api/machinery', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-firebase-uid': activeUid || '',
+          'x-user-email': activeEmail,
+          'x-user-name': encodeURIComponent(activeName),
+        },
+        body: JSON.stringify({
+          title: machineryForm.title.trim(),
+          machineType: machineryForm.machineType,
+          ratePerHour: Number(machineryForm.ratePerHour),
+          district: machineryForm.district.trim() || 'Meerut',
+          contactPhone: machineryForm.contactPhone.trim(),
+          ownerId: activeUid,
+          userId: activeUid,
+          firebaseUid: activeUid,
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success && json.data) {
+        showToast(`Added machinery "${json.data.title}" successfully!`);
+        setMachineryList(prev => [json.data, ...prev]);
+        setShowAddMachineryModal(false);
+        setMachineryForm({
+          title: '',
+          machineType: 'Tractor',
+          ratePerHour: '',
+          district: '',
+          contactPhone: '',
+        });
+      } else {
+        showToast(json.error || 'Failed to add machinery to database', 'error');
+      }
+    } catch (err: any) {
+      console.error('[SellerDashboard] Machinery save error:', err);
+      showToast(err?.message || 'Network error saving machinery', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Add Labour Post to Supabase (POST /api/labour)
+  const handleSaveLabour = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!labourForm.leaderName.trim() || !labourForm.wagePerDay) {
+      showToast('Please provide a team leader name and daily wage.', 'error');
+      return;
+    }
+
+    if (!auth.currentUser) {
+      const wantsSignIn = confirm("A verified Google Account is required to post labour. Sign in with Google now?");
+      if (wantsSignIn) {
+        try {
+          await signInWithGoogle();
+        } catch (err: any) {
+          if (err?.code !== 'auth/popup-closed-by-user') {
+            showToast("Google Sign-In failed: " + (err?.message || "Please sign in."), 'error');
+          }
+          return;
+        }
+      } else {
+        showToast("Sign-in required: Please sign in with Google to post labour.", 'error');
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const activeUid = auth.currentUser?.uid || user?.uid;
+      const activeEmail = auth.currentUser?.email || user?.email || '';
+      const activeName = auth.currentUser?.displayName || user?.displayName || 'Labour Leader';
+
+      const res = await fetch('/api/labour', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+          'x-firebase-uid': activeUid || '',
+          'x-user-email': activeEmail,
+          'x-user-name': encodeURIComponent(activeName),
+        },
+        body: JSON.stringify({
+          leaderName: labourForm.leaderName.trim(),
+          groupSize: Number(labourForm.groupSize) || 5,
+          primarySkill: labourForm.primarySkill.trim() || 'Harvesting, Sowing',
+          wagePerDay: Number(labourForm.wagePerDay) || 400,
+          district: labourForm.district.trim() || 'Meerut',
+          phone: labourForm.phone.trim(),
+          userId: activeUid,
+          leaderId: activeUid,
+          firebaseUid: activeUid,
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success && json.data) {
+        showToast(`Added labour group "${json.data.leaderName}" successfully!`);
+        setLabourList(prev => [json.data, ...prev]);
+        setShowAddLabourModal(false);
+        setLabourForm({
+          leaderName: '',
+          groupSize: '5',
+          primarySkill: 'Harvesting, Sowing',
+          wagePerDay: '400',
+          district: '',
+          phone: '',
+        });
+      } else {
+        showToast(json.error || 'Failed to add labour post to database', 'error');
+      }
+    } catch (err: any) {
+      console.error('[SellerDashboard] Labour save error:', err);
+      showToast(err?.message || 'Network error saving labour post', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -440,18 +683,109 @@ export default function SellerDashboardPage() {
               <ExternalLink size={15} /> Public Storefront
             </Link>
 
-            <button
-              onClick={handleOpenAddModal}
-              className="btn btn-primary btn-sm"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <Plus size={16} /> Add New Product
-            </button>
+            {dashboardTab === 'products' && (
+              <button
+                onClick={handleOpenAddModal}
+                className="btn btn-primary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Plus size={16} /> Add Product
+              </button>
+            )}
+            {dashboardTab === 'machinery' && (
+              <button
+                onClick={() => setShowAddMachineryModal(true)}
+                className="btn btn-primary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#15803d', color: '#fff' }}
+              >
+                <Plus size={16} /> Add Machinery
+              </button>
+            )}
+            {dashboardTab === 'labour' && (
+              <button
+                onClick={() => setShowAddLabourModal(true)}
+                className="btn btn-primary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#15803d', color: '#fff' }}
+              >
+                <Plus size={16} /> Add Labour Post
+              </button>
+            )}
           </div>
         </div>
       </header>
 
       <div className="container" style={{ paddingTop: '28px' }}>
+        {/* ── Dashboard Navigation Tabs ── */}
+        <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid #e2e8f0', marginBottom: '28px', overflowX: 'auto' }}>
+          <button
+            onClick={() => setDashboardTab('products')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 20px',
+              fontWeight: 700,
+              fontSize: '0.95rem',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: dashboardTab === 'products' ? '#15803d' : '#64748b',
+              borderBottom: dashboardTab === 'products' ? '3px solid #15803d' : '3px solid transparent',
+              marginBottom: '-2px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Package size={18} />
+            Products Inventory ({products.length})
+          </button>
+
+          <button
+            onClick={() => setDashboardTab('machinery')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 20px',
+              fontWeight: 700,
+              fontSize: '0.95rem',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: dashboardTab === 'machinery' ? '#15803d' : '#64748b',
+              borderBottom: dashboardTab === 'machinery' ? '3px solid #15803d' : '3px solid transparent',
+              marginBottom: '-2px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Tractor size={18} />
+            CHC Machinery ({machineryList.length})
+          </button>
+
+          <button
+            onClick={() => setDashboardTab('labour')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 20px',
+              fontWeight: 700,
+              fontSize: '0.95rem',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              color: dashboardTab === 'labour' ? '#15803d' : '#64748b',
+              borderBottom: dashboardTab === 'labour' ? '3px solid #15803d' : '3px solid transparent',
+              marginBottom: '-2px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Users size={18} />
+            Labour Workforce ({labourList.length})
+          </button>
+        </div>
+
+        {dashboardTab === 'products' && (
+          <>
         {/* ── Metric Summary Cards ── */}
         <div
           style={{
@@ -881,6 +1215,203 @@ export default function SellerDashboardPage() {
             </table>
           </div>
         )}
+        </>
+        )}
+
+        {dashboardTab === 'machinery' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', margin: '0 0 4px 0' }}>
+                  Your Custom Hiring Centre (CHC) Machinery
+                </h3>
+                <p style={{ color: '#64748b', fontSize: '0.88rem', margin: 0 }}>
+                  Equipment registered here is saved in Supabase and available for farmers to book on <Link href="/machinery" style={{ color: '#15803d', fontWeight: 600 }}>/machinery</Link>.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddMachineryModal(true)}
+                className="btn btn-primary"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#15803d', color: '#fff' }}
+              >
+                <Plus size={16} /> Add Machinery
+              </button>
+            </div>
+
+            {machineryList.length === 0 ? (
+              <div style={{ background: '#fff', border: '1px dashed #cbd5e1', borderRadius: '12px', padding: '60px 20px', textAlign: 'center' }}>
+                <Tractor size={48} color="#94a3b8" style={{ margin: '0 auto 16px' }} />
+                <h4 style={{ color: '#1e293b', fontSize: '1.1rem', fontWeight: 700, margin: '0 0 8px 0' }}>
+                  No machinery registered yet
+                </h4>
+                <p style={{ color: '#64748b', fontSize: '0.9rem', maxWidth: '420px', margin: '0 auto 20px' }}>
+                  List your tractors, harvesters, or tillers to start receiving hourly bookings from farmers across your district.
+                </p>
+                <button
+                  onClick={() => setShowAddMachineryModal(true)}
+                  className="btn btn-primary"
+                  style={{ background: '#15803d', color: '#fff' }}
+                >
+                  <Plus size={16} /> Register First Equipment
+                </button>
+              </div>
+            ) : (
+              <div className="vd-table-card">
+                <table className="vd-table">
+                  <thead>
+                    <tr>
+                      <th>Equipment / Model</th>
+                      <th>Machine Type</th>
+                      <th>Rate per Hour</th>
+                      <th>District</th>
+                      <th>Contact Phone</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {machineryList.map((m: any) => (
+                      <tr key={m.id}>
+                        <td>
+                          <div style={{ fontWeight: 700, color: '#1e293b' }}>
+                            {m.title}
+                            <span style={{ marginLeft: '8px', fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '6px', fontWeight: 700 }}>
+                              ✓ Supabase Live
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>ID: {m.id}</div>
+                        </td>
+                        <td>
+                          <span className="cat-pill">{m.machineType}</span>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 700, color: '#15803d', fontSize: '1.05rem' }}>
+                            ₹{m.ratePerHour}
+                            <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 400 }}> / hr</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#475569', fontSize: '0.88rem' }}>
+                            <MapPin size={14} /> {m.district}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#475569', fontSize: '0.88rem' }}>
+                            <Phone size={14} /> {m.contactPhone || '—'}
+                          </div>
+                        </td>
+                        <td>
+                          <span className="stock-pill in-stock">
+                            {m.available ? 'Available' : 'Booked'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {dashboardTab === 'labour' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', margin: '0 0 4px 0' }}>
+                  Your Agricultural Labour Workforce Posts
+                </h3>
+                <p style={{ color: '#64748b', fontSize: '0.88rem', margin: 0 }}>
+                  Labour groups registered here are saved in Supabase and available for hiring on <Link href="/labour" style={{ color: '#15803d', fontWeight: 600 }}>/labour</Link>.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddLabourModal(true)}
+                className="btn btn-primary"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#15803d', color: '#fff' }}
+              >
+                <Plus size={16} /> Add Labour Post
+              </button>
+            </div>
+
+            {labourList.length === 0 ? (
+              <div style={{ background: '#fff', border: '1px dashed #cbd5e1', borderRadius: '12px', padding: '60px 20px', textAlign: 'center' }}>
+                <Users size={48} color="#94a3b8" style={{ margin: '0 auto 16px' }} />
+                <h4 style={{ color: '#1e293b', fontSize: '1.1rem', fontWeight: 700, margin: '0 0 8px 0' }}>
+                  No labour groups listed yet
+                </h4>
+                <p style={{ color: '#64748b', fontSize: '0.9rem', maxWidth: '420px', margin: '0 auto 20px' }}>
+                  Post availability for your farm labour squad or harvesting team to receive verified bookings from farmers.
+                </p>
+                <button
+                  onClick={() => setShowAddLabourModal(true)}
+                  className="btn btn-primary"
+                  style={{ background: '#15803d', color: '#fff' }}
+                >
+                  <Plus size={16} /> Post Worker Availability
+                </button>
+              </div>
+            ) : (
+              <div className="vd-table-card">
+                <table className="vd-table">
+                  <thead>
+                    <tr>
+                      <th>Leader / Squad Name</th>
+                      <th>Group Size</th>
+                      <th>Primary Specialization</th>
+                      <th>Daily Wage / Worker</th>
+                      <th>District</th>
+                      <th>Contact Phone</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {labourList.map((l: any) => (
+                      <tr key={l.id}>
+                        <td>
+                          <div style={{ fontWeight: 700, color: '#1e293b' }}>
+                            {l.leaderName || l.teamLeaderName}
+                            <span style={{ marginLeft: '8px', fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '6px', fontWeight: 700 }}>
+                              ✓ Supabase Live
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>ID: {l.id}</div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                            <Users size={14} color="#15803d" />
+                            {l.groupSize || l.teamSize} workers
+                          </div>
+                        </td>
+                        <td>
+                          <span className="cat-pill">{l.primarySkill || l.specialization}</span>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 700, color: '#15803d', fontSize: '1.05rem' }}>
+                            ₹{l.wagePerDay || l.dailyRatePerWorker}
+                            <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 400 }}> / day</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#475569', fontSize: '0.88rem' }}>
+                            <MapPin size={14} /> {l.district}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#475569', fontSize: '0.88rem' }}>
+                            <Phone size={14} /> {l.phone || l.contactPhone || '—'}
+                          </div>
+                        </td>
+                        <td>
+                          <span className="stock-pill in-stock">Available</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Add / Edit Product Modal ── */}
@@ -1192,6 +1723,332 @@ export default function SellerDashboardPage() {
                 {isSubmitting ? 'Deleting...' : 'Confirm Delete'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Machinery Modal (POST /api/machinery) ── */}
+      {showAddMachineryModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '560px' }}>
+            <div className="modal-header">
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                  Register CHC Farm Machinery
+                </h3>
+                <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                  Persists to Supabase Machinery table linked to your authenticated owner account.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddMachineryModal(false)}
+                className="close-modal-btn"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveMachinery} className="modal-form">
+              <div className="form-group">
+                <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#334155' }}>
+                  Equipment Model / Title <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Mahindra 575 DI Tractor with Rotavator"
+                  value={machineryForm.title}
+                  onChange={e => setMachineryForm({ ...machineryForm, title: e.target.value })}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="form-group">
+                  <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#334155' }}>
+                    Machine Type
+                  </label>
+                  <select
+                    value={machineryForm.machineType}
+                    onChange={e => setMachineryForm({ ...machineryForm, machineType: e.target.value })}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                      background: '#fff',
+                    }}
+                  >
+                    <option value="Tractor">Tractor</option>
+                    <option value="Combine Harvester">Combine Harvester</option>
+                    <option value="Rotavator">Rotavator</option>
+                    <option value="Power Tiller">Power Tiller</option>
+                    <option value="Laser Land Leveller">Laser Land Leveller</option>
+                    <option value="Seed Drill">Seed Drill</option>
+                    <option value="Boom Sprayer">Boom Sprayer</option>
+                    <option value="Agri Drone">Agri Drone</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#334155' }}>
+                    Hourly Rate (₹) <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="50"
+                    placeholder="e.g. 500"
+                    value={machineryForm.ratePerHour}
+                    onChange={e => setMachineryForm({ ...machineryForm, ratePerHour: e.target.value })}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="form-group">
+                  <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#334155' }}>
+                    District / Operating Area
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Meerut"
+                    value={machineryForm.district}
+                    onChange={e => setMachineryForm({ ...machineryForm, district: e.target.value })}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#334155' }}>
+                    Contact Phone Number <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="e.g. 9876543210"
+                    value={machineryForm.contactPhone}
+                    onChange={e => setMachineryForm({ ...machineryForm, contactPhone: e.target.value })}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-actions" style={{ marginTop: '20px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddMachineryModal(false)}
+                  className="btn btn-outline"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isSubmitting}
+                  style={{ minWidth: '150px', background: '#15803d', color: '#fff' }}
+                >
+                  {isSubmitting ? 'Saving...' : 'Register Machinery'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Labour Post Modal (POST /api/labour) ── */}
+      {showAddLabourModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '560px' }}>
+            <div className="modal-header">
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                  Post Farm Labour Squad
+                </h3>
+                <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                  Persists to Supabase LabourPost table linked to your authenticated provider account.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddLabourModal(false)}
+                className="close-modal-btn"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveLabour} className="modal-form">
+              <div className="form-group">
+                <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#334155' }}>
+                  Squad / Team Leader Name <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Suresh Kumar Harvesting Team"
+                  value={labourForm.leaderName}
+                  onChange={e => setLabourForm({ ...labourForm, leaderName: e.target.value })}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="form-group">
+                  <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#334155' }}>
+                    Group Size (Workers) <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    placeholder="e.g. 6"
+                    value={labourForm.groupSize}
+                    onChange={e => setLabourForm({ ...labourForm, groupSize: e.target.value })}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#334155' }}>
+                    Wage per Worker/Day (₹) <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="100"
+                    placeholder="e.g. 400"
+                    value={labourForm.wagePerDay}
+                    onChange={e => setLabourForm({ ...labourForm, wagePerDay: e.target.value })}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#334155' }}>
+                  Primary Specialization / Skills <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Wheat Harvesting, Paddy Transplantation, Weeding"
+                  value={labourForm.primarySkill}
+                  onChange={e => setLabourForm({ ...labourForm, primarySkill: e.target.value })}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="form-group">
+                  <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#334155' }}>
+                    District / Operating Area
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Meerut"
+                    value={labourForm.district}
+                    onChange={e => setLabourForm({ ...labourForm, district: e.target.value })}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#334155' }}>
+                    Contact Phone Number <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="e.g. 9876543210"
+                    value={labourForm.phone}
+                    onChange={e => setLabourForm({ ...labourForm, phone: e.target.value })}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-actions" style={{ marginTop: '20px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddLabourModal(false)}
+                  className="btn btn-outline"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isSubmitting}
+                  style={{ minWidth: '150px', background: '#15803d', color: '#fff' }}
+                >
+                  {isSubmitting ? 'Posting...' : 'Post Availability'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -46,8 +46,10 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
         include: {
           user: {
-            select: { name: true, email: true, phone: true },
+            select: { id: true, name: true, email: true, phone: true },
           },
+          machinery: true,
+          labourPost: true,
         },
       });
       if (userBookings.length > 0) {
@@ -61,8 +63,10 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
       include: {
         user: {
-          select: { name: true, email: true, phone: true },
+          select: { id: true, name: true, email: true, phone: true },
         },
+        machinery: true,
+        labourPost: true,
       },
     });
 
@@ -85,6 +89,8 @@ export async function POST(request: NextRequest) {
     const {
       bookingType,
       targetId,
+      machineryId,
+      labourPostId,
       totalAmount,
       startDate,
       endDate,
@@ -125,7 +131,7 @@ export async function POST(request: NextRequest) {
     const dbUser = await prisma.user.upsert({
       where: { firebaseUid: uid },
       update: {
-        email: email,
+        email: email || undefined,
         name: name || undefined,
         ...(phone ? { phone: phone } : {}),
       },
@@ -141,12 +147,82 @@ export async function POST(request: NextRequest) {
     const parsedDate = startDate ? new Date(startDate) : (bookingDate ? new Date(bookingDate) : new Date());
     const validBookingDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
 
+    const rawType = String(bookingType || 'MACHINERY').toUpperCase();
+    const isLabour = rawType === 'LABOUR';
+
+    let machineryIdToLink: string | null = null;
+    let labourPostIdToLink: string | null = null;
+
+    if (isLabour) {
+      const targetLabourId = labourPostId || targetId;
+      if (targetLabourId) {
+        let existingLabour = await prisma.labourPost.findUnique({
+          where: { id: targetLabourId },
+        });
+
+        if (!existingLabour) {
+          try {
+            existingLabour = await prisma.labourPost.create({
+              data: {
+                leaderId: dbUser.id,
+                leaderName: body.leaderName || body.teamLeaderName || 'Labour Squad Leader',
+                groupSize: Number(body.groupSize || body.teamSize || 5),
+                primarySkill: body.primarySkill || body.specialization || 'General Agricultural Operations',
+                wagePerDay: Number(body.wagePerDay || body.dailyRatePerWorker || body.pricePerHour || 400),
+                district: body.district || 'Meerut',
+                phone: body.phone || body.contactPhone || phone || '',
+                isDemo: false,
+              },
+            });
+          } catch (autoErr) {
+            console.warn('[API/Bookings] Auto-create LabourPost note:', autoErr);
+          }
+        }
+
+        if (existingLabour) {
+          labourPostIdToLink = existingLabour.id;
+        }
+      }
+    } else {
+      const targetMachId = machineryId || targetId;
+      if (targetMachId) {
+        let existingMach = await prisma.machinery.findUnique({
+          where: { id: targetMachId },
+        });
+
+        if (!existingMach) {
+          try {
+            existingMach = await prisma.machinery.create({
+              data: {
+                ownerId: dbUser.id,
+                title: body.title || body.model || 'Agricultural Machinery',
+                machineType: body.machineType || body.equipmentType || 'Tractor',
+                ratePerHour: Number(body.ratePerHour || body.pricePerHour || 500),
+                district: body.district || 'Meerut',
+                contactPhone: body.contactPhone || phone || '',
+                available: true,
+                isDemo: false,
+              },
+            });
+          } catch (autoErr) {
+            console.warn('[API/Bookings] Auto-create Machinery note:', autoErr);
+          }
+        }
+
+        if (existingMach) {
+          machineryIdToLink = existingMach.id;
+        }
+      }
+    }
+
     try {
       const createdBooking = await prisma.booking.create({
         data: {
           userId: dbUser.id,
-          bookingType: String(bookingType || 'MACHINERY').toUpperCase(),
-          targetId: String(targetId || 'ITEM-' + Date.now()),
+          bookingType: rawType,
+          targetId: String(targetId || labourPostIdToLink || machineryIdToLink || 'ITEM-' + Date.now()),
+          machineryId: machineryIdToLink,
+          labourPostId: labourPostIdToLink,
           status: body.status || 'PENDING',
           bookingDate: validBookingDate,
           totalAmount: Number(totalAmount ?? body.pricePerHour ?? 0),
@@ -160,10 +236,12 @@ export async function POST(request: NextRequest) {
               phone: true,
             },
           },
+          machinery: true,
+          labourPost: true,
         },
       });
 
-      console.log("REAL_BOOKING_CREATED:", createdBooking.id);
+      console.log("REAL_BOOKING_CREATED:", createdBooking.id, "Type:", rawType);
 
       return NextResponse.json(
         {
