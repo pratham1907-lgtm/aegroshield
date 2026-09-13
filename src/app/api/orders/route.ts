@@ -70,6 +70,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log("Incoming Order Payload:", body);
+
     const {
       customerName,
       customerPhone,
@@ -90,12 +92,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!Array.isArray(items) || items.length === 0) {
+    // Parse items if passed as stringified JSON or an array
+    let rawItems = items;
+    if (typeof rawItems === 'string') {
+      try {
+        rawItems = JSON.parse(rawItems);
+      } catch (err) {
+        console.warn('[API/Orders] Warning parsing stringified items:', err);
+      }
+    }
+
+    if (!Array.isArray(rawItems) || rawItems.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Cannot create an order with an empty cart.' },
         { status: 400 }
       );
     }
+
+    // Normalize each item to guarantee { productId, title, price, quantity, image }
+    const normalizedItems = rawItems.map((item: any) => ({
+      productId: String(item.productId || item.id || ''),
+      title: String(item.title || item.name || 'Product'),
+      price: Number(item.price || item.unitPrice || 0),
+      quantity: Number(item.quantity || 1),
+      image: String(item.image || item.imageUrl || ''),
+      // Secondary fields for compatibility
+      id: String(item.id || item.productId || ''),
+      name: String(item.name || item.title || 'Product'),
+      category: String(item.category || 'General'),
+      brand: String(item.brand || ''),
+      unit: String(item.unit || 'unit'),
+      vendorId: String(item.vendorId || ''),
+    }));
 
     let targetUserId: string | null = null;
     const lookupKey = firebaseUid || userId;
@@ -175,9 +203,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Compute or validate totalAmount
-    const computedTotal = items.reduce((sum: number, item: any) => {
-      const price = Number(item.price || item.unitPrice || 0);
+    // Compute or validate totalAmount using normalizedItems
+    const computedTotal = normalizedItems.reduce((sum: number, item: any) => {
+      const price = Number(item.price || 0);
       const qty = Number(item.quantity || 1);
       return sum + price * qty;
     }, 0);
@@ -189,7 +217,7 @@ export async function POST(request: NextRequest) {
     const createdOrder = await prisma.order.create({
       data: {
         userId: targetUserId,
-        items: items,
+        items: normalizedItems,
         totalAmount: finalTotal,
         status: 'PENDING',
         shippingAddress: `${shippingAddress}${district ? `, ${district}` : ''}${pincode ? ` - ${pincode}` : ''}`,
@@ -205,6 +233,8 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    console.log(`[API/Orders] Order ${createdOrder.id} created and persisted in Supabase with ${normalizedItems.length} items:`, JSON.stringify(createdOrder.items));
 
     return NextResponse.json(
       {

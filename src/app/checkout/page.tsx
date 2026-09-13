@@ -77,9 +77,33 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!cart || cart.length === 0) {
+      setErrorMsg('Your cart is empty. Please add products to your cart before proceeding.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      // Snapshot cart items with complete product details: productId, title, price, quantity, image
+      const itemsSnapshot = cart.map(item => {
+        const p = item.product;
+        const imageUrl = (p as any).imageUrl || (p as any).image || '';
+        return {
+          productId: p.id,
+          title: p.name,
+          price: Number(p.price),
+          quantity: Number(item.quantity),
+          image: imageUrl,
+          id: p.id,
+          name: p.name,
+          category: p.category || 'General',
+          brand: p.brand || '',
+          unit: p.unit || 'unit',
+          vendorId: p.vendorId || '',
+        };
+      });
+
       const orderPayload = {
         customerName: formData.name.trim(),
         customerPhone: formData.phone.trim(),
@@ -87,16 +111,7 @@ export default function CheckoutPage() {
         district: formData.district,
         pincode: formData.pincode.trim() || '250001',
         paymentMethod: paymentMethod,
-        items: cart.map(item => ({
-          id: item.product.id,
-          name: item.product.name,
-          category: item.product.category,
-          brand: item.product.brand,
-          price: item.product.price,
-          unit: item.product.unit,
-          quantity: item.quantity,
-          vendorId: item.product.vendorId,
-        })),
+        items: itemsSnapshot,
         totalAmount: grandTotal,
         userId: user?.uid || null,
         firebaseUid: user?.uid || null,
@@ -115,6 +130,7 @@ export default function CheckoutPage() {
       }
 
       setPlacedOrder(json.data);
+      // Clear cart only after confirmed API success
       clearCart();
     } catch (err: any) {
       console.error('[Checkout] Order placement error:', err);
