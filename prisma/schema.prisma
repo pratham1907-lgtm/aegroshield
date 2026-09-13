@@ -98,7 +98,7 @@ model Booking {
   bookingType String // MACHINERY / LABOUR
   targetId    String
   status      String   @default("PENDING")
-  bookingDate DateTime
+  bookingDate DateTime @default(now())
   totalAmount Float
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
