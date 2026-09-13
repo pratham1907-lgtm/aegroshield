@@ -15,6 +15,12 @@ export default function Page() {
   const [listingId, setListingId] = useState('');
   const [userBookings, setUserBookings] = useState<any[]>([]);
 
+  // Booking Modal State
+  const [bookingLabour, setBookingLabour] = useState<any | null>(null);
+  const [bookingDays, setBookingDays] = useState<number>(1);
+  const [bookingStatus, setBookingStatus] = useState<'idle' | 'booking' | 'success' | 'error'>('idle');
+  const [confirmedBookingId, setConfirmedBookingId] = useState<string>('');
+
   const isDemoUser = Boolean(isDemo || !user);
 
   useEffect(() => {
@@ -36,23 +42,24 @@ export default function Page() {
         setLoading(false);
       });
 
-    if (user && !isDemo) {
-      const fetchUserBookings = async () => {
-        try {
+    // Fetch user bookings from Prisma API
+    fetch(`/api/bookings?firebaseUid=${user?.uid || ''}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json?.data && json.data.length > 0) {
+          setUserBookings(json.data);
+        } else if (user && !isDemo) {
           const q = query(collection(db, 'labourBookings'), where('userId', '==', user.uid));
-          const snap = await getDocs(q);
-          const items: any[] = [];
-          snap.forEach((d) => items.push({ id: d.id, ...d.data() }));
-          setUserBookings(items);
-        } catch (err) {
-          console.warn('[Labour] Error fetching user bookings:', err);
-          setUserBookings([]);
+          getDocs(q).then((snap) => {
+            const items: any[] = [];
+            snap.forEach((d) => items.push({ id: d.id, ...d.data() }));
+            setUserBookings(items);
+          }).catch(() => {});
         }
-      };
-      fetchUserBookings();
-    } else {
-      setUserBookings([]);
-    }
+      })
+      .catch((err) => {
+        console.warn('[Labour] Error fetching bookings:', err);
+      });
   }, [user, isDemo, isDemoUser]);
 
   const handlePostAvailability = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -98,6 +105,56 @@ export default function Page() {
 
     setLiveLabour((prev) => [{ id: newId, ...newLabour }, ...(prev || [])]);
     setPostSubmitted(true);
+  };
+
+  const handleConfirmLabourBooking = async () => {
+    if (!bookingLabour) return;
+    setBookingStatus('booking');
+    try {
+      const dailyRate = bookingLabour.dailyRatePerWorker || bookingLabour.wagePerDay || bookingLabour.dailyRate || 400;
+      const groupSize = bookingLabour.teamSize || bookingLabour.groupSize || 5;
+      const totalAmount = dailyRate * groupSize * bookingDays;
+
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingType: 'LABOUR',
+          targetId: String(bookingLabour.id || 'lab-' + Date.now()),
+          totalAmount,
+          bookingDate: new Date().toISOString(),
+          firebaseUid: user?.uid || null,
+          userName: userData?.name || user?.displayName || 'Farmer',
+          userPhone: userData?.phone || user?.phoneNumber || '',
+          userEmail: user?.email || '',
+        }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setConfirmedBookingId(data.data.id);
+        setBookingStatus('success');
+        setUserBookings((prev) => [
+          {
+            id: data.data.id,
+            teamLeaderName: bookingLabour.teamLeaderName || bookingLabour.leaderName,
+            workerName: bookingLabour.teamLeaderName || bookingLabour.leaderName,
+            task: bookingLabour.specialization || bookingLabour.primarySkill || 'Agricultural Labour',
+            status: data.data.status,
+            totalPaid: totalAmount,
+            totalAmount,
+            hours: 8 * bookingDays,
+            teamSize: groupSize,
+            createdAt: new Date().toISOString(),
+          },
+          ...(prev || []),
+        ]);
+      } else {
+        setBookingStatus('error');
+      }
+    } catch (err) {
+      console.warn('Booking labour error:', err);
+      setBookingStatus('error');
+    }
   };
 
   const displayLabour = useMemo(() => {
@@ -262,8 +319,24 @@ export default function Page() {
                 <div className="lc-info-item">📞 <span className="li-val">{item.contactPhone || item.phone || 'Contact Provider'}</span></div>
               </div>
               <div className="lc-actions" style={{ marginTop: '12px' }}>
-                <button className="btn-send-request">📩 Send Request</button>
-                <button className="btn-call">📞 Call</button>
+                <button
+                  onClick={() => {
+                    setBookingLabour(item);
+                    setBookingStatus('idle');
+                    setConfirmedBookingId('');
+                  }}
+                  className="btn-send-request cursor-pointer"
+                  style={{ cursor: 'pointer' }}
+                >
+                  📩 Book Workers
+                </button>
+                <a
+                  href={`tel:${item.contactPhone || item.phone || '9876543210'}`}
+                  className="btn-call cursor-pointer"
+                  style={{ cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  📞 Call
+                </a>
               </div>
             </div>
           </div>
@@ -556,6 +629,91 @@ export default function Page() {
 </div>
 
 
+
+{/*  ── Labour Booking Modal ──  */}
+{bookingLabour && (
+  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
+    <div style={{ background: '#fff', borderRadius: '20px', maxWidth: '480px', width: '100%', padding: '28px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+      {bookingStatus === 'success' ? (
+        <div style={{ textAlign: 'center', padding: '16px 0' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '12px' }}>👥</div>
+          <h3 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#166534', marginBottom: '8px' }}>Labour Request Confirmed!</h3>
+          <p style={{ color: '#475569', fontSize: '0.95rem', marginBottom: '16px' }}>
+            Your request for <strong>{bookingLabour.teamLeaderName || bookingLabour.leaderName || 'Worker Group'}</strong> has been sent and registered in <strong>PENDING</strong> status.
+          </p>
+          <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '12px', border: '1px solid #bbf7d0', marginBottom: '20px' }}>
+            <span style={{ fontSize: '0.85rem', color: '#15803d' }}>Booking Reference: <strong>{confirmedBookingId}</strong></span>
+          </div>
+          <button
+            onClick={() => setBookingLabour(null)}
+            className="btn btn-primary cursor-pointer"
+            style={{ width: '100%', padding: '12px', cursor: 'pointer' }}
+          >
+            Done
+          </button>
+        </div>
+      ) : (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b' }}>Book Farm Labour Squad</h3>
+            <button onClick={() => setBookingLabour(null)} style={{ border: 'none', background: 'transparent', fontSize: '1.4rem', cursor: 'pointer', color: '#64748b' }}>✕</button>
+          </div>
+
+          <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '14px', marginBottom: '16px', border: '1px solid #e2e8f0' }}>
+            <h4 style={{ fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>{bookingLabour.teamLeaderName || bookingLabour.leaderName || 'Agricultural Worker Squad'}</h4>
+            <p style={{ fontSize: '0.88rem', color: '#64748b' }}>📍 {bookingLabour.district || 'Nearby'} • 👥 Group of {bookingLabour.teamSize || bookingLabour.groupSize || 5} workers</p>
+            <div style={{ marginTop: '8px', fontSize: '1.1rem', fontWeight: 700, color: '#16a34a' }}>
+              ₹{bookingLabour.dailyRatePerWorker || bookingLabour.wagePerDay || bookingLabour.dailyRate || 400}<span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#64748b' }}>/day per worker</span>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+              Select Number of Days:
+            </label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {[1, 2, 3, 5, 7].map(d => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setBookingDays(d)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 4px',
+                    borderRadius: '8px',
+                    border: bookingDays === d ? '2px solid #16a34a' : '1px solid #cbd5e1',
+                    background: bookingDays === d ? '#f0fdf4' : '#fff',
+                    fontWeight: 600,
+                    color: bookingDays === d ? '#166534' : '#475569',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {d} {d === 1 ? 'day' : 'days'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: '1px solid #e2e8f0', marginBottom: '16px' }}>
+            <span style={{ color: '#64748b', fontSize: '0.95rem' }}>Estimated Total:</span>
+            <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>
+              ₹{(bookingLabour.dailyRatePerWorker || bookingLabour.wagePerDay || bookingLabour.dailyRate || 400) * (bookingLabour.teamSize || bookingLabour.groupSize || 5) * bookingDays}
+            </span>
+          </div>
+
+          <button
+            onClick={handleConfirmLabourBooking}
+            disabled={bookingStatus === 'booking'}
+            className="btn btn-primary cursor-pointer"
+            style={{ width: '100%', padding: '12px', fontSize: '1rem', cursor: 'pointer' }}
+          >
+            {bookingStatus === 'booking' ? 'Booking Labour Squad...' : '⚡ Confirm & Send Booking'}
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
     </main>
   );

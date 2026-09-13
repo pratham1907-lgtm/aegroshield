@@ -14,6 +14,12 @@ export default function Page() {
   const [postSubmitted, setPostSubmitted] = useState(false);
   const [listingId, setListingId] = useState('');
 
+  // Booking Modal State
+  const [bookingMachine, setBookingMachine] = useState<any | null>(null);
+  const [bookingHours, setBookingHours] = useState<number>(4);
+  const [bookingStatus, setBookingStatus] = useState<'idle' | 'booking' | 'success' | 'error'>('idle');
+  const [confirmedBookingId, setConfirmedBookingId] = useState<string>('');
+
   const isDemoUser = Boolean(isDemo || !user);
 
   useEffect(() => {
@@ -73,6 +79,38 @@ export default function Page() {
 
     setLiveMachinery((prev) => [{ id: newId, ...newMachine }, ...(prev || [])]);
     setPostSubmitted(true);
+  };
+
+  const handleConfirmBooking = async () => {
+    if (!bookingMachine) return;
+    setBookingStatus('booking');
+    try {
+      const rate = bookingMachine.ratePerHour || bookingMachine.rate || 400;
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingType: 'MACHINERY',
+          targetId: String(bookingMachine.id || 'mach-' + Date.now()),
+          totalAmount: rate * bookingHours,
+          bookingDate: new Date().toISOString(),
+          firebaseUid: user?.uid || null,
+          userName: userData?.name || user?.displayName || 'Farmer',
+          userPhone: userData?.phone || user?.phoneNumber || '',
+          userEmail: user?.email || '',
+        }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setConfirmedBookingId(data.data.id);
+        setBookingStatus('success');
+      } else {
+        setBookingStatus('error');
+      }
+    } catch (err) {
+      console.warn('Booking error:', err);
+      setBookingStatus('error');
+    }
   };
 
   const displayMachinery = useMemo(() => {
@@ -230,7 +268,17 @@ export default function Page() {
           </div>
           <div className="mc-foot">
             <div className="mc-rating">⭐ 4.8 <span>(42)</span></div>
-            <button className="btn btn-primary btn-sm cursor-pointer" style={{ cursor: 'pointer' }}>⚡ Book Now</button>
+            <button
+              onClick={() => {
+                setBookingMachine(machine);
+                setBookingStatus('idle');
+                setConfirmedBookingId('');
+              }}
+              className="btn btn-primary btn-sm cursor-pointer"
+              style={{ cursor: 'pointer' }}
+            >
+              ⚡ Book Now
+            </button>
           </div>
         </div>
       ))
@@ -420,6 +468,91 @@ export default function Page() {
 </div>
 
 
+
+{/*  ── Machinery Booking Modal ──  */}
+{bookingMachine && (
+  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
+    <div style={{ background: '#fff', borderRadius: '20px', maxWidth: '480px', width: '100%', padding: '28px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+      {bookingStatus === 'success' ? (
+        <div style={{ textAlign: 'center', padding: '16px 0' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🎉</div>
+          <h3 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#166534', marginBottom: '8px' }}>Booking Request Sent!</h3>
+          <p style={{ color: '#475569', fontSize: '0.95rem', marginBottom: '16px' }}>
+            Your machinery booking for <strong>{bookingMachine.title || bookingMachine.equipmentType}</strong> has been registered in <strong>PENDING</strong> status.
+          </p>
+          <div style={{ background: '#f0fdf4', padding: '12px', borderRadius: '12px', border: '1px solid #bbf7d0', marginBottom: '20px' }}>
+            <span style={{ fontSize: '0.85rem', color: '#15803d' }}>Booking Reference: <strong>{confirmedBookingId}</strong></span>
+          </div>
+          <button
+            onClick={() => setBookingMachine(null)}
+            className="btn btn-primary cursor-pointer"
+            style={{ width: '100%', padding: '12px', cursor: 'pointer' }}
+          >
+            Done
+          </button>
+        </div>
+      ) : (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b' }}>Book Farm Machinery</h3>
+            <button onClick={() => setBookingMachine(null)} style={{ border: 'none', background: 'transparent', fontSize: '1.4rem', cursor: 'pointer', color: '#64748b' }}>✕</button>
+          </div>
+
+          <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '14px', marginBottom: '16px', border: '1px solid #e2e8f0' }}>
+            <h4 style={{ fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>{bookingMachine.title || bookingMachine.equipmentType}</h4>
+            <p style={{ fontSize: '0.88rem', color: '#64748b' }}>📍 {bookingMachine.district} • 📞 {bookingMachine.contactPhone || 'Contact CHC'}</p>
+            <div style={{ marginTop: '8px', fontSize: '1.1rem', fontWeight: 700, color: '#16a34a' }}>
+              ₹{bookingMachine.ratePerHour || bookingMachine.rate || 400}<span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#64748b' }}>/hour</span>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+              Select Required Hours:
+            </label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {[2, 4, 6, 8].map(h => (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => setBookingHours(h)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 4px',
+                    borderRadius: '8px',
+                    border: bookingHours === h ? '2px solid #16a34a' : '1px solid #cbd5e1',
+                    background: bookingHours === h ? '#f0fdf4' : '#fff',
+                    fontWeight: 600,
+                    color: bookingHours === h ? '#166534' : '#475569',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {h} hrs
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: '1px solid #e2e8f0', marginBottom: '16px' }}>
+            <span style={{ color: '#64748b', fontSize: '0.95rem' }}>Estimated Total:</span>
+            <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>
+              ₹{(bookingMachine.ratePerHour || bookingMachine.rate || 400) * bookingHours}
+            </span>
+          </div>
+
+          <button
+            onClick={handleConfirmBooking}
+            disabled={bookingStatus === 'booking'}
+            className="btn btn-primary cursor-pointer"
+            style={{ width: '100%', padding: '12px', fontSize: '1rem', cursor: 'pointer' }}
+          >
+            {bookingStatus === 'booking' ? 'Confirming Booking...' : '⚡ Confirm & Place Booking'}
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
     </main>
   );
