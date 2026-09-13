@@ -45,8 +45,65 @@ export default function MarketplacePage() {
   const [liveVendors, setLiveVendors] = useState<ExtendedVendor[] | null>(null);
 
   useEffect(() => {
-    if (user && !isDemo) {
-      const loadLiveStore = async () => {
+    const loadStoreData = async () => {
+      try {
+        const res = await fetch('/api/products');
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          const pgProducts = json.data;
+          const mapped: ExtendedProduct[] = pgProducts.map((p: any) => {
+            let cat: Category = 'Fertilizer';
+            if (/seed/i.test(p.category)) cat = 'Seed';
+            else if (/pesticide/i.test(p.category)) cat = 'Pesticide';
+            else if (/equipment/i.test(p.category)) cat = 'Equipment';
+            else if (/fertilizer/i.test(p.category)) cat = 'Fertilizer';
+
+            return {
+              id: p.id,
+              vendorId: p.sellerId || (p.seller ? p.seller.id : 'v1'),
+              name: p.name,
+              nameHi: p.name,
+              category: cat,
+              price: Number(p.price) || 0,
+              unit: p.unit || 'per unit',
+              stock: Number(p.stock) === 0 ? 'Out of Stock' : Number(p.stock) <= 5 ? 'Low Stock' : 'In Stock',
+              brand: p.seller?.storeName || 'AgriStore',
+              description: p.description || '',
+              forCrops: ['All Crops'],
+              imageUrl: p.imageUrl || '',
+              banned: false,
+              isDemo: Boolean(p.isDemo),
+            };
+          });
+
+          // Extract unique vendors
+          const vendorMap = new Map<string, ExtendedVendor>();
+          pgProducts.forEach((p: any) => {
+            if (p.seller && !vendorMap.has(p.seller.id)) {
+              vendorMap.set(p.seller.id, {
+                id: p.seller.id,
+                name: p.seller.storeName,
+                ownerName: p.seller.ownerName || 'Verified Store Owner',
+                district: p.seller.district || 'Ahmedabad',
+                address: p.seller.district || 'Market Yard',
+                phone: p.seller.phone || '9876543210',
+                license: 'AGR-SELLER-VERIFIED',
+                rating: 4.8,
+                verified: p.seller.isVerified ?? true,
+                accreditationStatus: 'Verified',
+              });
+            }
+          });
+
+          setLiveProducts(mapped);
+          setLiveVendors(Array.from(vendorMap.values()));
+          return;
+        }
+      } catch (err) {
+        console.warn('[Marketplace] Could not load from /api/products, checking fallbacks:', err);
+      }
+
+      if (user && !isDemo) {
         try {
           const prodSnap = await getDocs(collection(db, 'products'));
           const prods: ExtendedProduct[] = [];
@@ -60,27 +117,35 @@ export default function MarketplacePage() {
         } catch (err) {
           console.warn('[Marketplace] Firestore fetch error:', err);
         }
-      };
-      loadLiveStore();
-    } else {
-      setLiveProducts(null);
-      setLiveVendors(null);
-    }
+      } else {
+        setLiveProducts(null);
+        setLiveVendors(null);
+      }
+    };
+
+    loadStoreData();
   }, [user, isDemo]);
 
   const allActiveProducts = useMemo(() => {
-    if (user && !isDemo && liveProducts !== null) {
-      return liveProducts.filter(p => !p.banned);
+    if (liveProducts && liveProducts.length > 0) {
+      const activeLive = liveProducts.filter(p => !p.banned);
+      // Merge with default mock products to provide rich catalog while prioritizing live items
+      const existingIds = new Set(activeLive.map(p => p.id));
+      const fallbackItems = getProducts().filter(p => !p.banned && !existingIds.has(p.id));
+      return [...activeLive, ...fallbackItems];
     }
     return getProducts().filter(p => !p.banned);
-  }, [user, isDemo, liveProducts]);
+  }, [liveProducts]);
 
   const allVendors = useMemo(() => {
-    if (user && !isDemo && liveVendors !== null) {
-      return liveVendors;
+    const defaultVendors = getVendors();
+    if (liveVendors && liveVendors.length > 0) {
+      const existingVendorIds = new Set(liveVendors.map(v => v.id));
+      const filteredDefaults = defaultVendors.filter(v => !existingVendorIds.has(v.id));
+      return [...liveVendors, ...filteredDefaults];
     }
-    return getVendors();
-  }, [user, isDemo, liveVendors]);
+    return defaultVendors;
+  }, [liveVendors]);
 
   const filtered = useMemo(() => {
     let districtVendorIds = district === 'All'
