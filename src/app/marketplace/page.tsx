@@ -49,8 +49,8 @@ export default function MarketplacePage() {
       try {
         const res = await fetch('/api/products');
         const json = await res.json();
-        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-          const pgProducts = json.data;
+        const pgProducts = Array.isArray(json) ? json : (json?.data || []);
+        if (pgProducts.length > 0) {
           const mapped: ExtendedProduct[] = pgProducts.map((p: any) => {
             let cat: Category = 'Fertilizer';
             if (/seed/i.test(p.category)) cat = 'Seed';

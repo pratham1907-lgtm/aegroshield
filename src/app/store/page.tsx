@@ -3,60 +3,30 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/lib/cart-context';
-import { useAuth } from '@/context/AuthContext';
-import { signInWithGoogle } from '@/lib/firebase';
-import { Store, ShieldCheck, MapPin, ShoppingBag, Search, Plus, ExternalLink, Check, Lock } from 'lucide-react';
+import { Store, ShoppingBag, Search, Plus, Check } from 'lucide-react';
 
 export default function StoreCatalogPage() {
   const { addToCart, cartCount, openCart } = useCart();
-  const { user, isDemo, loginAsDemo } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [addedIds, setAddedIds] = useState<Record<string, boolean>>({});
 
-  const isGuest = !user && !isDemo;
-  const isRealUser = Boolean(user && !isDemo);
-
   useEffect(() => {
-    if (isGuest) {
-      setProducts([]);
-      setLoading(false);
-      return;
-    }
-
-    if (isDemo) {
-      setLoading(true);
-      fetch('/api/products?isDemo=true')
-        .then(res => res.json())
-        .then(json => {
-          if (json.success && Array.isArray(json.data)) {
-            setProducts(json.data);
-          }
-        })
-        .catch(err => console.warn('[Store] Failed to fetch demo products:', err))
-        .finally(() => setLoading(false));
-      return;
-    }
-
-    // Authenticated real user: fetch ONLY from database via Prisma
     setLoading(true);
-    fetch('/api/products?isDemo=false')
+    fetch('/api/products', { cache: 'no-store' })
       .then(res => res.json())
-      .then(json => {
-        if (json.success && Array.isArray(json.data)) {
-          setProducts(json.data);
-        } else {
-          setProducts([]);
-        }
+      .then(data => {
+        const items = Array.isArray(data) ? data : (data?.data || []);
+        setProducts(items);
       })
       .catch(err => {
         console.warn('[Store] Failed to fetch live products:', err);
         setProducts([]);
       })
       .finally(() => setLoading(false));
-  }, [user, isDemo, isGuest]);
+  }, []);
 
   const handleAddToCart = (p: any) => {
     const cartProduct = {
@@ -115,26 +85,6 @@ export default function StoreCatalogPage() {
         </div>
       </section>
 
-      {/* ── Demo Notice ── */}
-      {isDemo && (
-        <div className="container" style={{ maxWidth: '1200px', margin: '20px auto 0', padding: '0 20px' }}>
-          <div style={{ padding: '14px 20px', background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#92400e', fontSize: '0.92rem' }}>
-              <span style={{ fontSize: '1.4rem' }}>🧪</span>
-              <div>
-                <strong>Demo Mode Active</strong>: Viewing sample evaluation catalog.
-                <div style={{ fontSize: '0.82rem', color: '#b45309' }}>Actions taken in demo mode are simulated and isolated from the Supabase database.</div>
-              </div>
-            </div>
-            <button
-              onClick={() => signInWithGoogle()}
-              style={{ background: '#d97706', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
-            >
-              Sign in with Google
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ── Search & Filter Controls ── */}
       <div className="container" style={{ maxWidth: '1200px', margin: '30px auto 20px', padding: '0 20px' }}>
@@ -178,44 +128,16 @@ export default function StoreCatalogPage() {
       <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
-            Available Products ({isGuest ? 0 : filtered.length})
+            Available Products ({filtered.length})
           </h2>
-          <span style={{ fontSize: '0.85rem', color: isDemo ? '#b45309' : '#15803d', fontWeight: 600 }}>
-            {isDemo ? '🧪 Demo Sample Inventory' : '⚡ Supabase Live Inventory'}
+          <span style={{ fontSize: '0.85rem', color: '#15803d', fontWeight: 600 }}>
+            ⚡ Supabase Live Inventory
           </span>
         </div>
 
-        {isGuest ? (
-          <div style={{ padding: '60px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1.5px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '1.8rem' }}>
-              🔒
-            </div>
-            <h3 style={{ fontSize: '1.35rem', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
-              Sign in to view verified agri-store products
-            </h3>
-            <p style={{ color: '#64748b', fontSize: '0.95rem', maxWidth: '480px', margin: '0 auto 24px' }}>
-              Connect with licensed input dealers, official fertilizer distributors, and seed suppliers in your district.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => signInWithGoogle()}
-                className="btn btn-primary cursor-pointer"
-                style={{ padding: '10px 22px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer', background: '#15803d', color: '#fff', border: 'none' }}
-              >
-                Sign in with Google
-              </button>
-              <button
-                onClick={() => loginAsDemo('farmer')}
-                className="btn btn-outline cursor-pointer"
-                style={{ padding: '10px 22px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer', border: '1px solid #cbd5e1', background: '#fff', color: '#334155' }}
-              >
-                Explore in Demo Mode
-              </button>
-            </div>
-          </div>
-        ) : loading ? (
+        {loading ? (
           <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-            <p>Loading {isDemo ? 'sample demo products' : 'live catalog from database'}...</p>
+            <p>Loading live catalog from database...</p>
           </div>
         ) : filtered.length === 0 ? (
           <div style={{ padding: '60px', textAlign: 'center', background: '#fff', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>

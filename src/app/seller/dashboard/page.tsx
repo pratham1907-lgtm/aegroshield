@@ -158,7 +158,9 @@ export default function SellerDashboardPage() {
       const res = await fetch(url, { cache: 'no-store' });
       const json = await res.json();
 
-      if (json.success && Array.isArray(json.data)) {
+      if (Array.isArray(json)) {
+        setProducts(json);
+      } else if (json.success && Array.isArray(json.data)) {
         setProducts(json.data);
       } else {
         setProducts([]);

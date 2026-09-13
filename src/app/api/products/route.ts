@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const items = await prisma.product.findMany({
+    const products = await prisma.product.findMany({
       where: whereClause,
       include: {
         seller: {
@@ -69,15 +69,12 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({ success: true, data: items || [], source: 'postgres' });
+    console.log("STORE_FETCHED_PRODUCTS_COUNT:", products.length);
+
+    return NextResponse.json(products);
   } catch (error: any) {
     console.warn('[API/Products] Database query failed:', error);
-    return NextResponse.json({
-      success: false,
-      data: [],
-      source: 'postgres_error',
-      warning: error?.message || 'Could not query products from database',
-    });
+    return NextResponse.json([]);
   }
 }
 

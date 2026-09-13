@@ -39,8 +39,8 @@ export default function VendorStorefrontPage({ params }: { params: Promise<{ ven
     fetch('/api/products')
       .then(res => res.json())
       .then(json => {
-        if (json.success && Array.isArray(json.data)) {
-          const matching = json.data.filter((p: any) => p.sellerId === vendorId || p.seller?.id === vendorId);
+        const list = Array.isArray(json) ? json : (json?.data || []);
+        const matching = list.filter((p: any) => p.sellerId === vendorId || p.seller?.id === vendorId);
           if (matching.length > 0) {
             const first = matching[0];
             if (first.seller) {
@@ -72,7 +72,6 @@ export default function VendorStorefrontPage({ params }: { params: Promise<{ ven
             }));
             setProducts(mapped);
           }
-        }
       })
       .catch(err => console.warn('[Storefront] Error loading live vendor products:', err));
   }, [vendorId]);
