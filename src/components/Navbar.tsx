@@ -28,6 +28,7 @@ export default function Navbar() {
     pathname.startsWith('/marketplace') ||
     pathname.startsWith('/machinery') ||
     pathname.startsWith('/labour') ||
+    pathname.startsWith('/mandi') ||
     pathname.startsWith('/market') ||
     pathname.startsWith('/calculator') ||
     pathname.startsWith('/cart') ||
@@ -46,7 +47,7 @@ export default function Navbar() {
     { href: '/marketplace', label: t('nav.store'), isActive: pathname.startsWith('/marketplace') || pathname.startsWith('/store') },
     { href: '/machinery', label: t('nav.machinery'), isActive: pathname.startsWith('/machinery') },
     { href: '/labour', label: t('nav.labour'), isActive: pathname.startsWith('/labour') },
-    { href: '/market', label: t('nav.market'), isActive: pathname.startsWith('/market') },
+    { href: '/mandi', label: t('nav.mandi') || 'Mandi Rates', isActive: pathname.startsWith('/mandi') || pathname.startsWith('/market') },
     { href: '/calculator', label: t('nav.calculator'), isActive: pathname.startsWith('/calculator') },
   ];
 

@@ -18,6 +18,7 @@ export const TRANSLATIONS: Record<string, Record<Language, string>> = {
   'nav.labour':      { en: 'Labour',       hi: 'मजदूर',     'hi-en': 'Labour' },
   'nav.store':       { en: 'Store',        hi: 'स्टोर',     'hi-en': 'Store' },
   'nav.market':      { en: 'Market Price', hi: 'बाजार भाव', 'hi-en': 'Market Price' },
+  'nav.mandi':       { en: 'Mandi Rates',  hi: 'मंडी भाव',  'hi-en': 'Mandi Rates' },
   'nav.calculator':  { en: 'Calculator',   hi: 'कैलकुलेटर', 'hi-en': 'Calculator' },
   'nav.signin':      { en: 'Sign In',      hi: 'लॉगिन करें', 'hi-en': 'Sign In' },
 
