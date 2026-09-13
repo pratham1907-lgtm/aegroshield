@@ -21,16 +21,6 @@ export interface FirestoreUserData {
   license?: string;
   storeName?: string;
   createdAt?: any;
-  stats?: {
-    referrals?: number;
-    active_states?: number;
-    total_orders?: number;
-    tools_used?: number;
-    pending_orders?: number;
-    pending_enquiries?: number;
-    shop_views?: number;
-    [key: string]: any;
-  };
   [key: string]: any;
 }
 
@@ -38,7 +28,6 @@ export interface AuthContextType {
   user: User | null;
   userData: FirestoreUserData | null;
   loading: boolean;
-  isLoading: boolean;
   isDemo: boolean;
   loginAsDemo: (role?: 'farmer' | 'vendor') => void;
   logout: () => Promise<void>;
@@ -49,7 +38,6 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   userData: null,
   loading: true,
-  isLoading: true,
   isDemo: false,
   loginAsDemo: () => {},
   logout: async () => {},
@@ -73,15 +61,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         role: 'farmer',
         district: 'Meerut',
         isDemo: true,
-        stats: {
-          referrals: 12,
-          active_states: 3,
-          total_orders: 8,
-          tools_used: 5,
-          pending_orders: 2,
-          pending_enquiries: 3,
-          shop_views: 45
-        }
       });
     }
 
@@ -186,7 +165,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user,
         userData,
         loading,
-        isLoading: loading,
         isDemo,
         loginAsDemo,
         logout,
