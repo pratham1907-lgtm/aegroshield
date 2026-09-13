@@ -48,23 +48,14 @@ export async function GET(request: NextRequest) {
     }
 
     const products = await prisma.product.findMany({
-      where: whereClause,
+      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
       include: {
-        seller: {
-          select: {
-            id: true,
-            storeName: true,
-            ownerName: true,
-            district: true,
-            phone: true,
-            isVerified: true,
-          },
-        },
+        seller: true,
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    console.log("STORE_FETCHED_PRODUCTS_COUNT:", products.length);
+    console.log("FARMER_STORE_ACTIVE_PRODUCTS:", products.length);
 
     return NextResponse.json(products);
   } catch (error: any) {
@@ -85,19 +76,15 @@ export async function POST(request: NextRequest) {
       stock,
       imageUrl,
       description,
-      sellerId,
-      firebaseUid,
     } = body;
 
-    const productName = name || title;
+    const productName = (name || title || '').trim();
     if (!productName) {
       return NextResponse.json(
         { success: false, error: 'Product name/title is required' },
         { status: 400 }
       );
     }
-
-    let targetSellerId = sellerId;
 
     const headerAuth = request.headers.get('authorization') || '';
     const bearerToken = headerAuth.startsWith('Bearer ') ? headerAuth.slice(7).trim() : null;
@@ -109,111 +96,120 @@ export async function POST(request: NextRequest) {
 
     const uid = headerFirebaseUid || bearerToken || body.firebaseUid || body.userId;
     const email = headerEmail || body.email || null;
-    const userName = headerName || body.userName || body.name || null;
-    const userPhone = headerPhone || body.phone || null;
+    const userName = headerName || body.userName || body.name || 'Store Owner';
+    const userPhone = headerPhone || body.phone || body.sellerPhone || null;
+    const cleanPhone = userPhone ? String(userPhone).replace(/\D/g, '').trim() : null;
 
-    if (uid) {
-      try {
-        const dbUser = await prisma.user.upsert({
-          where: { firebaseUid: uid },
-          update: {
-            email: email || undefined,
-            name: userName || undefined,
-            phone: userPhone || undefined,
-          },
-          create: {
-            firebaseUid: uid,
-            email: email,
-            name: userName || 'Store Owner',
-            phone: userPhone || null,
-            role: 'SELLER',
+    let sellerId = body.sellerId;
+
+    // 1. If explicit sellerId provided, check if it exists in Prisma Seller table
+    if (sellerId) {
+      const existingSeller = await prisma.seller.findUnique({ where: { id: sellerId } });
+      if (!existingSeller) {
+        sellerId = null;
+      }
+    }
+
+    // 2. Resolve by clean phone number
+    if (!sellerId && cleanPhone && cleanPhone.length >= 10) {
+      const userByPhone = await prisma.user.findFirst({
+        where: { phone: cleanPhone },
+        include: { sellers: true },
+      });
+      if (userByPhone?.sellers?.length) {
+        sellerId = userByPhone.sellers[0].id;
+        if (uid && !userByPhone.firebaseUid) {
+          await prisma.user.update({
+            where: { id: userByPhone.id },
+            data: { firebaseUid: uid },
+          }).catch(() => {});
+        }
+      }
+    }
+
+    // 3. Resolve by firebaseUid
+    if (!sellerId && uid) {
+      const userByUid = await prisma.user.findUnique({
+        where: { firebaseUid: uid },
+        include: { sellers: true },
+      });
+      if (userByUid?.sellers?.length) {
+        sellerId = userByUid.sellers[0].id;
+      } else if (userByUid) {
+        const storeName = body.storeName || (userByUid.name ? `${userByUid.name}'s Farm Store` : 'Pratham Agro shop');
+        const newSeller = await prisma.seller.create({
+          data: {
+            userId: userByUid.id,
+            storeName: storeName,
+            ownerName: userByUid.name || 'Store Owner',
+            phone: userByUid.phone || cleanPhone || '9876543210',
+            district: body.district || 'Meerut',
+            category: category || 'General',
+            isVerified: true,
             isDemo: false,
           },
-          include: { sellers: true },
         });
-
-        if (dbUser.sellers && dbUser.sellers.length > 0) {
-          targetSellerId = dbUser.sellers[0].id;
-        } else {
-          const storeName = body.storeName || (dbUser.name ? `${dbUser.name}'s Farm Store` : 'AgriStore Official');
-          const newSeller = await prisma.seller.create({
-            data: {
-              userId: dbUser.id,
-              storeName: storeName,
-              ownerName: dbUser.name || 'Store Owner',
-              phone: dbUser.phone || userPhone || '9876543210',
-              licenseOrGstin: body.licenseOrGstin || 'VERIFIED-SELLER-01',
-              district: body.district || 'Meerut',
-              shopAddress: body.shopAddress || 'Market Complex',
-              isVerified: true,
-              isDemo: false,
-            },
-          });
-          targetSellerId = newSeller.id;
-        }
-      } catch (err) {
-        console.warn('[API/Products] User/Seller upsert warning:', err);
+        sellerId = newSeller.id;
       }
     }
 
-    // Resolve by seller phone if provided
-    if (!targetSellerId && (body.phone || body.sellerPhone || headerPhone)) {
-      try {
-        const cleanPhone = String(body.sellerPhone || body.phone || headerPhone).replace(/\D/g, '').trim();
-        if (cleanPhone.length >= 10) {
-          const userByPhone = await prisma.user.findFirst({
-            where: { phone: cleanPhone },
-            include: { sellers: true },
-          });
-          if (userByPhone && userByPhone.sellers.length > 0) {
-            targetSellerId = userByPhone.sellers[0].id;
-          }
-        }
-      } catch (phoneErr) {
-        console.warn('[API/Products] Phone seller lookup warning:', phoneErr);
+    // 4. Fallback: Any active seller in database
+    if (!sellerId) {
+      const anySeller = await prisma.seller.findFirst({
+        orderBy: { createdAt: 'desc' },
+      });
+      if (anySeller) {
+        sellerId = anySeller.id;
       }
     }
 
-    // Fallback to active verified seller in DB
-    if (!targetSellerId) {
-      try {
-        const anySeller = await prisma.seller.findFirst({
-          where: { isVerified: true },
-        });
-        if (anySeller) {
-          targetSellerId = anySeller.id;
-        }
-      } catch (err) {
-        console.warn('[API/Products] Seller lookup skipped:', err);
-      }
+    // 5. If 0 sellers exist in DB, create primary seller so creation succeeds without foreign key failure
+    if (!sellerId) {
+      const newUser = await prisma.user.create({
+        data: {
+          firebaseUid: uid || undefined,
+          email: email || undefined,
+          name: userName || 'Pratham Agro',
+          phone: cleanPhone && cleanPhone.length >= 10 ? cleanPhone : '9876543210',
+          role: 'SELLER',
+          isDemo: false,
+        },
+      });
+      const newSeller = await prisma.seller.create({
+        data: {
+          userId: newUser.id,
+          storeName: body.storeName || 'Pratham Agro shop',
+          ownerName: newUser.name || 'Pratham',
+          phone: newUser.phone || '9876543210',
+          district: body.district || 'Meerut',
+          category: category || 'General',
+          isVerified: true,
+          isDemo: false,
+        },
+      });
+      sellerId = newSeller.id;
     }
 
-    const created = await prisma.product.create({
+    const newProduct = await prisma.product.create({
       data: {
-        sellerId: targetSellerId,
         name: productName,
         category: category || 'General',
-        price: Number(price) || 0,
-        unit: unit || 'Unit',
-        stock: Number(stock) || 0,
+        price: parseFloat(body.price),
+        unit: body.unit || 'per unit',
+        stock: parseInt(body.stock) || 10,
+        sellerId: sellerId,
         imageUrl: imageUrl || null,
         description: description || null,
-        isDemo: false, // Newly created products are real items!
+        isDemo: false,
       },
       include: {
-        seller: {
-          select: {
-            id: true,
-            storeName: true,
-            ownerName: true,
-            district: true,
-            phone: true,
-          },
-        },
+        seller: true,
       },
     });
 
-    return NextResponse.json({ success: true, data: created }, { status: 201 });
+    console.log("SELLER_PRODUCT_CREATED_IN_DB:", newProduct.name, "ID:", newProduct.id, "SELLER_ID:", sellerId);
+
+    return NextResponse.json({ success: true, data: newProduct }, { status: 201 });
   } catch (error: any) {
     console.error('[API/Products] Error creating product:', error);
     return NextResponse.json(

@@ -432,6 +432,16 @@ export default function SellerDashboardPage() {
         if (json.success && json.data) {
           showToast(`Added "${json.data.name}" to your live inventory!`);
           setProducts(prev => [json.data, ...prev]);
+          if (json.data.seller && !sessionSeller?.id) {
+            const updated = {
+              user: { id: json.data.seller.userId, name: json.data.seller.ownerName, phone: json.data.seller.phone },
+              seller: json.data.seller,
+            };
+            setSellerSession(updated);
+            try {
+              localStorage.setItem('aegroshield_seller_session', JSON.stringify(updated));
+            } catch (e) {}
+          }
           setShowAddModal(false);
         } else {
           showToast(json.error || 'Failed to create product', 'error');

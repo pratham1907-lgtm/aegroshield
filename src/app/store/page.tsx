@@ -31,6 +31,7 @@ export default function StoreCatalogPage() {
       .then(res => res.json())
       .then(data => {
         const items = Array.isArray(data) ? data : (data?.data || []);
+        console.log("FARMER_STORE_ACTIVE_PRODUCTS:", items.length);
         setProducts(items);
       })
       .catch(err => {
