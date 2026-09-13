@@ -7,7 +7,7 @@ import { collection, getDocs, addDoc } from "firebase/firestore";
 import { MOCK_MACHINERY } from "@/lib/mockData";
 
 export default function Page() {
-  const { user, userData, isDemo } = useAuth();
+  const { user, userData, isDemo, loginAsDemo } = useAuth();
   const [liveMachinery, setLiveMachinery] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'find' | 'register'>('find');
@@ -25,12 +25,14 @@ export default function Page() {
   const [confirmedBookingId, setConfirmedBookingId] = useState<string>('');
   const [myBookings, setMyBookings] = useState<any[]>([]);
 
-  const isDemoUser = Boolean(isDemo || !user);
+  const isGuest = !user && !isDemo;
+  const isRealUser = Boolean(user && !isDemo);
 
   const fetchBookings = async () => {
+    if (!user?.uid && !auth.currentUser?.uid) return;
     try {
       const activeUid = auth.currentUser?.uid || user?.uid;
-      const res = await fetch(`/api/bookings?firebaseUid=${activeUid || 'demo-farmer-seller-uid'}`);
+      const res = await fetch(`/api/bookings?firebaseUid=${activeUid}`);
       const json = await res.json();
       if (json?.data) {
         setMyBookings(json.data.filter((b: any) => b.bookingType === 'MACHINERY' || !b.bookingType));
@@ -41,29 +43,49 @@ export default function Page() {
   };
 
   useEffect(() => {
+    if (isGuest) {
+      setLiveMachinery([]);
+      setLoading(false);
+      return;
+    }
+
+    if (isDemo) {
+      setLiveMachinery(MOCK_MACHINERY);
+      setLoading(false);
+      return;
+    }
+
+    // Authenticated Real User: Query ONLY live database records via Prisma
     setLoading(true);
-    fetch('/api/machinery')
+    fetch('/api/machinery?isDemo=false')
       .then((res) => res.json())
       .then((json) => {
-        if (json?.data && json.data.length > 0) {
+        if (json?.success && Array.isArray(json.data)) {
           setLiveMachinery(json.data);
         } else {
-          setLiveMachinery(MOCK_MACHINERY);
+          setLiveMachinery([]);
         }
       })
       .catch((err) => {
         console.warn('[Machinery] Error fetching machinery from API:', err);
-        setLiveMachinery(MOCK_MACHINERY);
+        setLiveMachinery([]);
       })
       .finally(() => {
         setLoading(false);
       });
 
     fetchBookings();
-  }, [user, isDemo, isDemoUser]);
+  }, [user, isDemo, isGuest]);
 
   const handleRegisterEquipment = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (isDemo) {
+      const demoListingId = 'DEMO-MCH-' + Math.floor(100000 + Math.random() * 900000);
+      setListingId(demoListingId);
+      setPostSubmitted(true);
+      return;
+    }
 
     if (!auth.currentUser) {
       const wantsSignIn = confirm("A verified Google Account is required to register equipment. Sign in with Google now?");
@@ -122,8 +144,13 @@ export default function Page() {
       const data = await res.json();
       if (res.ok && data?.success && data?.data?.id) {
         setListingId(data.data.id);
-        setLiveMachinery((prev) => [data.data, ...(prev || [])]);
         setPostSubmitted(true);
+        // Refresh catalog immediately from database
+        fetch('/api/machinery?isDemo=false')
+          .then((r) => r.json())
+          .then((d) => {
+            if (d?.success && Array.isArray(d.data)) setLiveMachinery(d.data);
+          });
       } else {
         alert("Failed to register machinery: " + (data?.error || `Server returned ${res.status}`));
       }
@@ -136,6 +163,33 @@ export default function Page() {
   const handleConfirmBooking = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!bookingMachine) return;
+
+    const rate = Number(bookingMachine.ratePerHour || bookingMachine.pricePerHour || bookingMachine.rate || 400);
+    const targetId = String(bookingMachine.id || 'mach-' + Date.now());
+    const startDateObj = bookingDate ? new Date(bookingDate) : new Date();
+    const endDateObj = new Date(startDateObj.getTime() + bookingHours * 60 * 60 * 1000);
+    const startDate = startDateObj.toISOString();
+    const endDate = endDateObj.toISOString();
+    const totalAmount = rate * bookingHours;
+
+    // In demo mode: simulate booking locally without polluting PostgreSQL
+    if (isDemo) {
+      const demoBkId = 'DEMO-BK-' + Math.floor(100000 + Math.random() * 900000);
+      setConfirmedBookingId(demoBkId);
+      setBookingStatus('success');
+      setBookingErrorMessage('');
+      setMyBookings((prev) => [
+        {
+          id: demoBkId,
+          targetId: bookingMachine.title || bookingMachine.model || 'Demo Equipment',
+          totalAmount: totalAmount,
+          bookingDate: startDate,
+          status: 'CONFIRMED (DEMO)',
+        },
+        ...prev,
+      ]);
+      return;
+    }
 
     if (!auth.currentUser) {
       const wantsSignIn = confirm("A verified Google Account is required to book farm machinery. Sign in with Google now?");
@@ -244,11 +298,14 @@ export default function Page() {
   };
 
   const displayMachinery = useMemo(() => {
-    if (liveMachinery !== null) {
-      return liveMachinery;
+    if (isGuest) {
+      return [];
     }
-    return MOCK_MACHINERY;
-  }, [liveMachinery]);
+    if (isDemo) {
+      return MOCK_MACHINERY;
+    }
+    return liveMachinery || [];
+  }, [isGuest, isDemo, liveMachinery]);
 
   return (
     <main>
@@ -316,6 +373,26 @@ export default function Page() {
   {activeTab === 'find' && (
     <div className="tab-content active" id="findSection">
 
+  {/*  ── Demo Mode Notice ──  */}
+  {isDemo && (
+    <div style={{ marginBottom: '20px', padding: '14px 20px', background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#92400e', fontSize: '0.92rem' }}>
+        <span style={{ fontSize: '1.4rem' }}>🧪</span>
+        <div>
+          <strong>Demo Mode Active</strong>: Viewing sample evaluation listings (Mahindra 575 DI, John Deere, etc.).
+          <div style={{ fontSize: '0.82rem', color: '#b45309' }}>Actions and bookings taken in demo mode are simulated locally and isolated from the database.</div>
+        </div>
+      </div>
+      <button
+        onClick={() => signInWithGoogle()}
+        className="cursor-pointer"
+        style={{ background: '#d97706', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
+      >
+        Sign in with Google
+      </button>
+    </div>
+  )}
+
   {/*  ── Search Card ───────────────────────────────────────────  */}
   <div className="search-card">
     <h2>🔍 Search Available Machinery</h2>
@@ -371,7 +448,40 @@ export default function Page() {
 
   {/*  ── Machinery Grid ────────────────────────────────────────  */}
   <div className="machinery-grid" id="machineryGrid">
-    {displayMachinery.length > 0 ? (
+    {isGuest ? (
+      <div style={{ gridColumn: '1 / -1', padding: '56px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1.5px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
+        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '1.8rem' }}>
+          🔒
+        </div>
+        <h3 style={{ fontSize: '1.35rem', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
+          Sign in to view local listings
+        </h3>
+        <p style={{ color: '#64748b', fontSize: '0.95rem', maxWidth: '480px', margin: '0 auto 24px' }}>
+          Connect with verified tractor owners, harvesters, and Custom Hiring Centres across your district with genuine pricing and live bookings.
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => signInWithGoogle()}
+            className="btn btn-primary cursor-pointer"
+            style={{ padding: '10px 22px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}
+          >
+            Sign in with Google
+          </button>
+          <button
+            onClick={() => loginAsDemo('farmer')}
+            className="btn btn-outline cursor-pointer"
+            style={{ padding: '10px 22px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}
+          >
+            Explore in Demo Mode
+          </button>
+        </div>
+      </div>
+    ) : loading ? (
+      <div style={{ gridColumn: '1 / -1', padding: '60px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '10px' }}>⏳</div>
+        <p style={{ color: '#64748b', fontSize: '1rem', fontWeight: 500 }}>Querying live machinery records from Supabase...</p>
+      </div>
+    ) : displayMachinery.length > 0 ? (
       displayMachinery.map((machine, idx) => (
         <div key={machine.id || idx} className="machine-card">
           <div className="mc-head">
@@ -382,10 +492,10 @@ export default function Page() {
             </div>
           </div>
           <div className="mc-body">
-            <h3 className="mc-title">{machine.equipmentType || machine.model || 'Farm Machine'}</h3>
-            <p className="mc-chc">🏭 {machine.chcName || 'Local Hiring Centre'}</p>
+            <h3 className="mc-title">{machine.equipmentType || machine.model || machine.title || 'Farm Machine'}</h3>
+            <p className="mc-chc">🏭 {machine.chcName || (machine.owner?.name ? `${machine.owner.name}'s Centre` : 'Local Hiring Centre')}</p>
             <div className="mc-specs">
-              <span className="spec-pill">⚙️ {machine.model || 'Standard'}</span>
+              <span className="spec-pill">⚙️ {machine.model || machine.title || 'Standard'}</span>
               <span className="spec-pill">📍 {machine.district || 'Meerut'}</span>
             </div>
             <div className="mc-pricing">
@@ -415,12 +525,19 @@ export default function Page() {
         </div>
       ))
     ) : (
-      <div style={{ gridColumn: '1 / -1', padding: '48px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
+      <div style={{ gridColumn: '1 / -1', padding: '56px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1.5px dashed #cbd5e1' }}>
         <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>🚜</div>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>No machinery listings available yet</h3>
-        <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto' }}>
-          Be the first to list your tractor or harvester using the Register Equipment tab.
+        <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>No machinery listings available yet in your area</h3>
+        <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 20px' }}>
+          There are currently 0 records in the live database. Be the first to register equipment or view your listings from the seller dashboard.
         </p>
+        <button
+          onClick={() => setActiveTab('register')}
+          className="btn btn-primary cursor-pointer"
+          style={{ padding: '9px 20px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
+        >
+          + Register Equipment
+        </button>
       </div>
     )}
   </div>

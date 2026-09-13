@@ -4,8 +4,14 @@ import { MOCK_MACHINERY } from '@/lib/mockData';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
+  const isDemo = searchParams.get('isDemo') === 'true';
   const ownerId = searchParams.get('ownerId');
   const firebaseUid = searchParams.get('firebaseUid');
+
+  // Explicit demo mode returns sample evaluation data strictly
+  if (isDemo && !ownerId && !firebaseUid) {
+    return NextResponse.json({ success: true, data: MOCK_MACHINERY, source: 'demo' });
+  }
 
   try {
     const whereClause: any = { available: true };
@@ -27,25 +33,14 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    if (items && items.length > 0) {
-      // If filtering by owner, return user's items directly
-      if (ownerId || (firebaseUid && firebaseUid !== 'demo-farmer-seller-uid')) {
-        return NextResponse.json({ success: true, data: items, source: 'postgres' });
-      }
-      // For general catalog, ensure live database rows take top priority and merge with starter catalog
-      const dbIds = new Set(items.map((m) => m.id));
-      const combined = [...items, ...MOCK_MACHINERY.filter((m) => !dbIds.has(m.id))];
-      return NextResponse.json({ success: true, data: combined, source: 'postgres' });
-    }
-
-    // Default to mock catalog if database has no records yet
-    return NextResponse.json({ success: true, data: MOCK_MACHINERY, source: 'mock_fallback' });
+    // Pure real database rows - never merge or fallback to mock data
+    return NextResponse.json({ success: true, data: items || [], source: 'postgres' });
   } catch (error: any) {
-    console.warn('[API/Machinery] Database query failed, using fallback:', error);
+    console.warn('[API/Machinery] Database query failed:', error);
     return NextResponse.json({
-      success: true,
-      data: MOCK_MACHINERY,
-      source: 'fallback',
+      success: false,
+      data: [],
+      source: 'postgres_error',
       warning: error?.message || 'Could not query machinery from database',
     });
   }

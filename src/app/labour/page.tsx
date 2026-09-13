@@ -7,7 +7,7 @@ import { collection, getDocs, query, where, addDoc } from "firebase/firestore";
 import { MOCK_LABOUR } from "@/lib/mockData";
 
 export default function Page() {
-  const { user, userData, isDemo } = useAuth();
+  const { user, userData, isDemo, loginAsDemo } = useAuth();
   const [liveLabour, setLiveLabour] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'find' | 'register'>('find');
@@ -25,21 +25,17 @@ export default function Page() {
   const [bookingErrorMessage, setBookingErrorMessage] = useState<string>('');
   const [confirmedBookingId, setConfirmedBookingId] = useState<string>('');
 
-  const isDemoUser = Boolean(isDemo || !user);
+  const isGuest = !user && !isDemo;
+  const isRealUser = Boolean(user && !isDemo);
 
   const fetchUserBookings = async () => {
+    if (!user?.uid && !auth.currentUser?.uid) return;
     try {
       const activeUid = auth.currentUser?.uid || user?.uid;
-      const res = await fetch(`/api/bookings?firebaseUid=${activeUid || 'demo-farmer-seller-uid'}`);
+      const res = await fetch(`/api/bookings?firebaseUid=${activeUid}`);
       const json = await res.json();
       if (json?.data && json.data.length > 0) {
         setUserBookings(json.data.filter((b: any) => b.bookingType === 'LABOUR' || !b.bookingType));
-      } else if (user && !isDemo) {
-        const q = query(collection(db, 'labourBookings'), where('userId', '==', user.uid));
-        const snap = await getDocs(q);
-        const items: any[] = [];
-        snap.forEach((d) => items.push({ id: d.id, ...d.data() }));
-        setUserBookings(items);
       }
     } catch (err) {
       console.warn('[Labour] Error fetching bookings:', err);
@@ -47,29 +43,49 @@ export default function Page() {
   };
 
   useEffect(() => {
+    if (isGuest) {
+      setLiveLabour([]);
+      setLoading(false);
+      return;
+    }
+
+    if (isDemo) {
+      setLiveLabour(MOCK_LABOUR);
+      setLoading(false);
+      return;
+    }
+
+    // Authenticated Real User: Query ONLY live database records via Prisma
     setLoading(true);
-    fetch('/api/labour')
+    fetch('/api/labour?isDemo=false')
       .then((res) => res.json())
       .then((json) => {
-        if (json?.data && json.data.length > 0) {
+        if (json?.success && Array.isArray(json.data)) {
           setLiveLabour(json.data);
         } else {
-          setLiveLabour(MOCK_LABOUR);
+          setLiveLabour([]);
         }
       })
       .catch((err) => {
         console.warn('[Labour] Error fetching labour from API:', err);
-        setLiveLabour(MOCK_LABOUR);
+        setLiveLabour([]);
       })
       .finally(() => {
         setLoading(false);
       });
 
     fetchUserBookings();
-  }, [user, isDemo, isDemoUser]);
+  }, [user, isDemo, isGuest]);
 
   const handlePostAvailability = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (isDemo) {
+      const demoListingId = 'DEMO-LBR-' + Math.floor(100000 + Math.random() * 900000);
+      setListingId(demoListingId);
+      setPostSubmitted(true);
+      return;
+    }
 
     if (!auth.currentUser) {
       const wantsSignIn = confirm("A verified Google Account is required to post labour availability. Sign in with Google now?");
@@ -135,8 +151,13 @@ export default function Page() {
       const data = await res.json();
       if (res.ok && data?.success && data?.data?.id) {
         setListingId(data.data.id);
-        setLiveLabour((prev) => [data.data, ...(prev || [])]);
         setPostSubmitted(true);
+        // Refresh catalog immediately from database
+        fetch('/api/labour?isDemo=false')
+          .then((r) => r.json())
+          .then((d) => {
+            if (d?.success && Array.isArray(d.data)) setLiveLabour(d.data);
+          });
       } else {
         alert("Failed to post labour: " + (data?.error || `Server returned ${res.status}`));
       }
@@ -149,6 +170,34 @@ export default function Page() {
   const handleConfirmLabourBooking = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!bookingLabour) return;
+
+    const dailyRate = Number(bookingLabour.dailyRatePerWorker || bookingLabour.wagePerDay || bookingLabour.dailyRate || 400);
+    const groupSize = Number(bookingLabour.teamSize || bookingLabour.groupSize || 5);
+    const totalAmount = dailyRate * groupSize * bookingDays;
+    const targetId = String(bookingLabour.id || 'lab-' + Date.now());
+    const startDateObj = bookingDate ? new Date(bookingDate) : new Date();
+    const endDateObj = new Date(startDateObj.getTime() + bookingDays * 24 * 60 * 60 * 1000);
+    const startDate = startDateObj.toISOString();
+    const endDate = endDateObj.toISOString();
+
+    // In demo mode: simulate booking locally without polluting PostgreSQL
+    if (isDemo) {
+      const demoBkId = 'DEMO-LBR-BK-' + Math.floor(100000 + Math.random() * 900000);
+      setConfirmedBookingId(demoBkId);
+      setBookingStatus('success');
+      setBookingErrorMessage('');
+      setUserBookings((prev) => [
+        {
+          id: demoBkId,
+          teamLeaderName: bookingLabour.leaderName || bookingLabour.teamLeaderName || 'Demo Squad',
+          totalAmount: totalAmount,
+          bookingDate: startDate,
+          status: 'CONFIRMED (DEMO)',
+        },
+        ...prev,
+      ]);
+      return;
+    }
 
     if (!auth.currentUser) {
       const wantsSignIn = confirm("A verified Google Account is required to book farm labour. Sign in with Google now?");
@@ -180,20 +229,11 @@ export default function Page() {
     setBookingStatus('booking');
     setBookingErrorMessage('');
     try {
-      const dailyRate = Number(bookingLabour.dailyRatePerWorker || bookingLabour.wagePerDay || bookingLabour.dailyRate || 400);
-      const groupSize = Number(bookingLabour.teamSize || bookingLabour.groupSize || 5);
-      const totalAmount = dailyRate * groupSize * bookingDays;
-      const targetId = String(bookingLabour.id || 'lab-' + Date.now());
       const token = await auth.currentUser?.getIdToken();
       const activeUid = auth.currentUser.uid;
       const activeEmail = auth.currentUser.email || null;
       const customerName = (bookingCustomerName || auth.currentUser.displayName || userData?.name || user?.displayName || 'AgriShield Farmer').trim();
       const customerPhone = (bookingPhone || auth.currentUser.phoneNumber || userData?.phone || user?.phoneNumber || '').trim();
-
-      const startDateObj = bookingDate ? new Date(bookingDate) : new Date();
-      const endDateObj = new Date(startDateObj.getTime() + bookingDays * 24 * 60 * 60 * 1000);
-      const startDate = startDateObj.toISOString();
-      const endDate = endDateObj.toISOString();
 
       const payload = {
         bookingType: 'LABOUR',
@@ -241,7 +281,7 @@ export default function Page() {
         setBookingErrorMessage('');
         fetchUserBookings();
       } else {
-        const reason = data?.error || `Labour request failed with status ${res.status}`;
+        const reason = data?.error || `Booking failed with status ${res.status}`;
         const formatted = `Failed: ${reason}`;
         setBookingErrorMessage(formatted);
         setBookingStatus('error');
@@ -258,11 +298,14 @@ export default function Page() {
   };
 
   const displayLabour = useMemo(() => {
-    if (liveLabour !== null) {
-      return liveLabour;
+    if (isGuest) {
+      return [];
     }
-    return MOCK_LABOUR;
-  }, [liveLabour]);
+    if (isDemo) {
+      return MOCK_LABOUR;
+    }
+    return liveLabour || [];
+  }, [isGuest, isDemo, liveLabour]);
 
   return (
     <main>
@@ -329,6 +372,26 @@ export default function Page() {
 
   {activeTab === 'find' && (
     <div className="tab-content active" id="findLabourSection">
+
+    {/*  ── Demo Mode Notice ──  */}
+    {isDemo && (
+      <div style={{ marginBottom: '20px', padding: '14px 20px', background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#92400e', fontSize: '0.92rem' }}>
+          <span style={{ fontSize: '1.4rem' }}>🧪</span>
+          <div>
+            <strong>Demo Mode Active</strong>: Viewing sample labour squads (Surendra Pal & Group, Ram Prasad & Team, etc.).
+            <div style={{ fontSize: '0.82rem', color: '#b45309' }}>Actions and bookings taken in demo mode are simulated locally and isolated from the database.</div>
+          </div>
+        </div>
+        <button
+          onClick={() => signInWithGoogle()}
+          className="cursor-pointer"
+          style={{ background: '#d97706', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
+        >
+          Sign in with Google
+        </button>
+      </div>
+    )}
 
     {/*  Search Card  */}
     <div className="search-card">
@@ -398,24 +461,57 @@ export default function Page() {
 
     {/*  Labour Results  */}
     <div id="labourResults">
-      {displayLabour.length > 0 ? (
+      {isGuest ? (
+        <div style={{ padding: '56px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1.5px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', margin: '20px 0' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '1.8rem' }}>
+            🔒
+          </div>
+          <h3 style={{ fontSize: '1.35rem', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
+            Sign in to view local labour squads
+          </h3>
+          <p style={{ color: '#64748b', fontSize: '0.95rem', maxWidth: '480px', margin: '0 auto 24px' }}>
+            Connect with verified agricultural workers, harvesting groups, and sowing teams across your district with real wages and transparent booking.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => signInWithGoogle()}
+              className="btn btn-primary cursor-pointer"
+              style={{ padding: '10px 22px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Sign in with Google
+            </button>
+            <button
+              onClick={() => loginAsDemo('farmer')}
+              className="btn btn-outline cursor-pointer"
+              style={{ padding: '10px 22px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Explore in Demo Mode
+            </button>
+          </div>
+        </div>
+      ) : loading ? (
+        <div style={{ padding: '60px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', margin: '20px 0' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '10px' }}>⏳</div>
+          <p style={{ color: '#64748b', fontSize: '1rem', fontWeight: 500 }}>Querying live labour squads from Supabase...</p>
+        </div>
+      ) : displayLabour.length > 0 ? (
         displayLabour.map((item, idx) => (
           <div key={item.id || idx} className="labour-card">
             <div className="lc-avatar">{(item.teamLeaderName || item.workerName || 'WK').slice(0, 2).toUpperCase()}</div>
             <div className="lc-body">
               <div className="lc-top">
                 <div>
-                  <div className="lc-name">{item.teamLeaderName || item.workerName || 'Work Group'}</div>
+                  <div className="lc-name">{item.teamLeaderName || item.workerName || item.leaderName || 'Work Group'}</div>
                   <div className="lc-location">📍 {item.district || 'Nearby'}</div>
                 </div>
                 <span className="lc-avail available">● Available</span>
               </div>
               <div className="lc-skills">
-                <span className="skill-pill">🌾 {item.specialization || item.tasks || 'Farm Work'}</span>
+                <span className="skill-pill">🌾 {item.specialization || item.primarySkill || 'Farm Work'}</span>
               </div>
               <div className="lc-info">
                 <div className="lc-info-item">👥 Group of <span className="li-val">{item.teamSize || item.groupSize || 1}</span></div>
-                <div className="lc-info-item">💰 <span className="li-val">₹{item.dailyRatePerWorker || item.dailyRate || 400}</span>/day</div>
+                <div className="lc-info-item">💰 <span className="li-val">₹{item.dailyRatePerWorker || item.wagePerDay || 400}</span>/day</div>
                 <div className="lc-info-item">📞 <span className="li-val">{item.contactPhone || item.phone || 'Contact Provider'}</span></div>
               </div>
               <div className="lc-actions" style={{ marginTop: '12px' }}>
@@ -444,12 +540,19 @@ export default function Page() {
           </div>
         ))
       ) : (
-        <div style={{ padding: '48px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px dashed #cbd5e1', margin: '20px 0' }}>
+        <div style={{ padding: '56px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1.5px dashed #cbd5e1', margin: '20px 0' }}>
           <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>👥</div>
           <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>No labour postings available in your area yet</h3>
-          <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 16px' }}>
-            Post your availability or request workers for harvesting, weeding, or sowing using the Post Availability tab.
+          <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 20px' }}>
+            There are currently 0 records in the live database. Be the first to list your squad or post worker availability.
           </p>
+          <button
+            onClick={() => setActiveTab('register')}
+            className="btn btn-primary cursor-pointer"
+            style={{ padding: '9px 20px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
+          >
+            + Post Worker Availability
+          </button>
         </div>
       )}
     </div>

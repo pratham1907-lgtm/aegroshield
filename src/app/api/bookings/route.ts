@@ -150,34 +150,31 @@ export async function POST(request: NextRequest) {
     const rawType = String(bookingType || 'MACHINERY').toUpperCase();
     const isLabour = rawType === 'LABOUR';
 
+    if (body.isDemo === true) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          id: 'demo_booking_' + Date.now(),
+          targetId: String(targetId || 'DEMO-TARGET'),
+          bookingType: rawType,
+          status: 'CONFIRMED',
+          bookingDate: validBookingDate,
+          totalAmount: Number(totalAmount ?? body.pricePerHour ?? 0),
+          isDemo: true,
+        },
+        message: 'Demo booking simulated successfully (isolated from database)',
+      });
+    }
+
     let machineryIdToLink: string | null = null;
     let labourPostIdToLink: string | null = null;
 
     if (isLabour) {
       const targetLabourId = labourPostId || targetId;
       if (targetLabourId) {
-        let existingLabour = await prisma.labourPost.findUnique({
+        const existingLabour = await prisma.labourPost.findUnique({
           where: { id: targetLabourId },
         });
-
-        if (!existingLabour) {
-          try {
-            existingLabour = await prisma.labourPost.create({
-              data: {
-                leaderId: dbUser.id,
-                leaderName: body.leaderName || body.teamLeaderName || 'Labour Squad Leader',
-                groupSize: Number(body.groupSize || body.teamSize || 5),
-                primarySkill: body.primarySkill || body.specialization || 'General Agricultural Operations',
-                wagePerDay: Number(body.wagePerDay || body.dailyRatePerWorker || body.pricePerHour || 400),
-                district: body.district || 'Meerut',
-                phone: body.phone || body.contactPhone || phone || '',
-                isDemo: false,
-              },
-            });
-          } catch (autoErr) {
-            console.warn('[API/Bookings] Auto-create LabourPost note:', autoErr);
-          }
-        }
 
         if (existingLabour) {
           labourPostIdToLink = existingLabour.id;
@@ -186,28 +183,9 @@ export async function POST(request: NextRequest) {
     } else {
       const targetMachId = machineryId || targetId;
       if (targetMachId) {
-        let existingMach = await prisma.machinery.findUnique({
+        const existingMach = await prisma.machinery.findUnique({
           where: { id: targetMachId },
         });
-
-        if (!existingMach) {
-          try {
-            existingMach = await prisma.machinery.create({
-              data: {
-                ownerId: dbUser.id,
-                title: body.title || body.model || 'Agricultural Machinery',
-                machineType: body.machineType || body.equipmentType || 'Tractor',
-                ratePerHour: Number(body.ratePerHour || body.pricePerHour || 500),
-                district: body.district || 'Meerut',
-                contactPhone: body.contactPhone || phone || '',
-                available: true,
-                isDemo: false,
-              },
-            });
-          } catch (autoErr) {
-            console.warn('[API/Bookings] Auto-create Machinery note:', autoErr);
-          }
-        }
 
         if (existingMach) {
           machineryIdToLink = existingMach.id;

@@ -4,14 +4,21 @@ import { MOCK_LABOUR } from '@/lib/mockData';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
+  const isDemo = searchParams.get('isDemo') === 'true';
   const userId = searchParams.get('userId');
   const leaderId = searchParams.get('leaderId');
   const firebaseUid = searchParams.get('firebaseUid');
 
+  const targetLeader = leaderId || userId;
+
+  // Explicit demo mode returns sample evaluation data strictly
+  if (isDemo && !targetLeader && !firebaseUid) {
+    return NextResponse.json({ success: true, data: MOCK_LABOUR, source: 'demo' });
+  }
+
   try {
     const whereClause: any = {};
 
-    const targetLeader = leaderId || userId;
     if (targetLeader) {
       whereClause.leaderId = targetLeader;
     } else if (firebaseUid && firebaseUid !== 'demo-farmer-seller-uid') {
@@ -29,44 +36,32 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    if (items && items.length > 0) {
-      const mapped = items.map((p) => ({
-        id: p.id,
-        teamLeaderName: p.leaderName,
-        leaderName: p.leaderName,
-        teamSize: p.groupSize,
-        groupSize: p.groupSize,
-        specialization: p.primarySkill,
-        primarySkill: p.primarySkill,
-        dailyRatePerWorker: p.wagePerDay,
-        wagePerDay: p.wagePerDay,
-        district: p.district,
-        contactPhone: p.phone,
-        phone: p.phone,
-        available: true,
-        isDemo: p.isDemo,
-        createdAt: p.createdAt,
-      }));
+    const mapped = (items || []).map((p) => ({
+      id: p.id,
+      teamLeaderName: p.leaderName,
+      leaderName: p.leaderName,
+      teamSize: p.groupSize,
+      groupSize: p.groupSize,
+      specialization: p.primarySkill,
+      primarySkill: p.primarySkill,
+      dailyRatePerWorker: p.wagePerDay,
+      wagePerDay: p.wagePerDay,
+      district: p.district,
+      contactPhone: p.phone,
+      phone: p.phone,
+      available: true,
+      isDemo: p.isDemo,
+      createdAt: p.createdAt,
+    }));
 
-      // If filtering by provider, return their posts directly
-      if (targetLeader || (firebaseUid && firebaseUid !== 'demo-farmer-seller-uid')) {
-        return NextResponse.json({ success: true, data: mapped, source: 'postgres' });
-      }
-
-      // For general catalog, ensure live database rows take top priority and merge with starter catalog
-      const dbIds = new Set(mapped.map((m) => m.id));
-      const combined = [...mapped, ...MOCK_LABOUR.filter((m) => !dbIds.has(m.id))];
-      return NextResponse.json({ success: true, data: combined, source: 'postgres' });
-    }
-
-    // Default to mock catalog if database has no records yet
-    return NextResponse.json({ success: true, data: MOCK_LABOUR, source: 'mock_fallback' });
+    // Pure real database rows - never merge or fallback to mock data
+    return NextResponse.json({ success: true, data: mapped, source: 'postgres' });
   } catch (error: any) {
-    console.warn('[API/Labour] Database query failed, using fallback:', error);
+    console.warn('[API/Labour] Database query failed:', error);
     return NextResponse.json({
-      success: true,
-      data: MOCK_LABOUR,
-      source: 'fallback',
+      success: false,
+      data: [],
+      source: 'postgres_error',
       warning: error?.message || 'Could not query labour posts from database',
     });
   }

@@ -10,12 +10,21 @@ export async function GET(request: NextRequest) {
   const category = searchParams.get('category');
   const search = searchParams.get('search');
 
+  // Explicit demo mode returns sample evaluation products strictly
+  if (isDemoParam === 'true' && !sellerId && !firebaseUid) {
+    let demoList = MOCK_PRODUCTS;
+    if (category && category !== 'All') {
+      demoList = demoList.filter(p => p.category.toLowerCase() === category.toLowerCase());
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      demoList = demoList.filter(p => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q));
+    }
+    return NextResponse.json({ success: true, data: demoList, source: 'demo' });
+  }
+
   try {
     const whereClause: any = {};
-
-    if (isDemoParam !== null) {
-      whereClause.isDemo = isDemoParam === 'true';
-    }
 
     if (sellerId) {
       whereClause.sellerId = sellerId;
@@ -60,23 +69,14 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    if (items && items.length > 0) {
-      return NextResponse.json({ success: true, data: items, source: 'postgres' });
-    }
-
-    // Fallback if no postgres products match and demo is requested or seller not found
-    if (isDemoParam === 'true' && !sellerId && !firebaseUid) {
-      return NextResponse.json({ success: true, data: MOCK_PRODUCTS, source: 'mock_fallback' });
-    }
-
-    return NextResponse.json({ success: true, data: items, source: 'postgres' });
+    return NextResponse.json({ success: true, data: items || [], source: 'postgres' });
   } catch (error: any) {
-    console.warn('[API/Products] Database query failed, using fallback:', error);
+    console.warn('[API/Products] Database query failed:', error);
     return NextResponse.json({
-      success: true,
-      data: isDemoParam === 'true' ? MOCK_PRODUCTS : [],
-      source: 'fallback',
-      warning: 'PostgreSQL connection not reachable or credentials pending',
+      success: false,
+      data: [],
+      source: 'postgres_error',
+      warning: error?.message || 'Could not query products from database',
     });
   }
 }
