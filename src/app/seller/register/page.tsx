@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { auth, db, signInWithGoogle } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import {
   createUserWithEmailAndPassword,
   updateProfile,
@@ -123,91 +123,6 @@ export default function SellerRegisterPage() {
         showMessage('✓ Phone Verified successfully (Test Mode)!', 'success');
       } else {
         showMessage(err?.message || 'Incorrect OTP code. Please try again.');
-      }
-    }
-  };
-
-  // ── GOOGLE SELLER AUTHENTICATION HANDLER ──
-  const handleGoogleSignIn = async () => {
-    hideMessage();
-    setLoading(true);
-    try {
-      const cred = await signInWithGoogle();
-      const sellerRef = doc(db, 'sellers', cred.user.uid);
-      const sellerSnap = await getDoc(sellerRef);
-
-      // Case 1: Existing verified seller -> direct login to dashboard
-      if (sellerSnap.exists() && sellerSnap.data()?.isVerified) {
-        showMessage('🎉 Welcome back, Verified Seller! Opening Seller Dashboard…', 'success');
-        setTimeout(() => router.push('/seller/dashboard'), 500);
-        return;
-      }
-
-      // Case 2: Verification complete on current form -> link Google & save document
-      if (isPhoneVerified && isLicenseValid) {
-        const nowIso = new Date().toISOString();
-        const fullPhone = '+91' + cleanPhone;
-
-        // Save Seller Record in Firestore sellers/{uid}
-        await setDoc(doc(db, 'sellers', cred.user.uid), {
-          storeName: storeName.trim() || cred.user.displayName || 'Agri Dealer Store',
-          ownerName: ownerName.trim() || cred.user.displayName || 'Store Owner',
-          phone: fullPhone,
-          phoneVerified: true,
-          licenseOrGstin: licenseOrGstin.trim(),
-          district: district,
-          shopAddress: shopAddress.trim() || `${district} Main Market`,
-          verificationLevel: 'tier_2_phone_and_license',
-          isVerified: true,
-          createdAt: nowIso,
-        });
-
-        // Save Vendor Record in Firestore vendors/{uid}
-        await setDoc(doc(db, 'vendors', cred.user.uid), {
-          id: cred.user.uid,
-          name: storeName.trim() || cred.user.displayName || 'Agri Dealer Store',
-          ownerName: ownerName.trim() || cred.user.displayName || 'Store Owner',
-          email: cred.user.email || '',
-          phone: fullPhone,
-          phoneVerified: true,
-          licenseOrGstin: licenseOrGstin.trim(),
-          license: licenseOrGstin.trim(),
-          district: district,
-          address: shopAddress.trim() || `${district} Main Market`,
-          shopAddress: shopAddress.trim() || `${district} Main Market`,
-          verificationLevel: 'tier_2_phone_and_license',
-          rating: 5.0,
-          verified: true,
-          accreditationStatus: 'Verified',
-          isDemo: false,
-          createdAt: nowIso,
-        });
-
-        registerVendor({
-          name: storeName.trim() || 'Agri Dealer Store',
-          ownerName: ownerName.trim() || 'Store Owner',
-          district: district,
-          address: shopAddress.trim() || `${district} Main Market`,
-          phone: fullPhone,
-          license: licenseOrGstin.trim(),
-        });
-
-        showMessage('🎉 Verified Google Account Linked! Redirecting to Seller Dashboard…', 'success');
-        setTimeout(() => router.push('/seller/dashboard'), 500);
-        return;
-      }
-
-      // Case 3: Google account connected, but License / Phone OTP not completed yet -> auto-fill details & prompt seller
-      if (cred.user.displayName) setOwnerName(cred.user.displayName);
-      if (cred.user.email) setEmail(cred.user.email);
-      setLoading(false);
-      showMessage(`🔗 Google account connected (${cred.user.email}). Please enter your Business License / GSTIN and verify Phone (+91 OTP) below to activate your store.`, 'success');
-    } catch (err: any) {
-      setLoading(false);
-      if (err?.code === 'auth/popup-closed-by-user') {
-        showMessage('Google Sign-In window was closed. Please try again.');
-      } else {
-        showMessage(err?.message || 'Failed to authenticate with Google.');
       }
     }
   };
@@ -537,41 +452,6 @@ export default function SellerRegisterPage() {
                 </div>
               )}
             </div>
-
-            {/* ── GOOGLE REGISTRATION BUTTON (Restricted until phone & license verified) ── */}
-            <button
-              type="button"
-              className="btn-auth btn-google"
-              onClick={handleGoogleSignIn}
-              disabled={!isPhoneVerified || !isLicenseValid || loading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '10px',
-                background: isPhoneVerified && isLicenseValid ? '#ffffff' : '#f1f5f9',
-                color: isPhoneVerified && isLicenseValid ? '#374151' : '#94a3b8',
-                border: '1px solid #cbd5e1',
-                fontWeight: '600',
-                cursor: isPhoneVerified && isLicenseValid ? 'pointer' : 'not-allowed',
-                width: '100%',
-                padding: '11px 16px',
-                borderRadius: '10px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                marginTop: '16px',
-                marginBottom: '10px',
-                fontSize: '0.9rem',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.62z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-              </svg>
-              Link Verified Google Account
-            </button>
 
             {/* ── FINAL RESTRICTED SUBMIT BUTTON ── */}
             <button
