@@ -21,6 +21,7 @@ export default function Page() {
   const [bookingCustomerName, setBookingCustomerName] = useState<string>('');
   const [bookingContactPhone, setBookingContactPhone] = useState<string>('');
   const [bookingStatus, setBookingStatus] = useState<'idle' | 'booking' | 'success' | 'error'>('idle');
+  const [bookingErrorMessage, setBookingErrorMessage] = useState<string>('');
   const [confirmedBookingId, setConfirmedBookingId] = useState<string>('');
   const [myBookings, setMyBookings] = useState<any[]>([]);
 
@@ -103,10 +104,12 @@ export default function Page() {
     if (e) e.preventDefault();
     if (!bookingMachine) return;
     setBookingStatus('booking');
+    setBookingErrorMessage('');
     try {
       const rate = Number(bookingMachine.ratePerHour || bookingMachine.pricePerHour || bookingMachine.rate || 400);
       const targetId = String(bookingMachine.id || 'mach-' + Date.now());
-      const effectiveUserId = user?.uid || 'demo-farmer-seller-uid';
+      const activeUid = user?.uid || userData?.uid || null;
+      const activeEmail = user?.email || userData?.email || null;
       const totalAmount = rate * bookingHours;
 
       const startDateObj = bookingDate ? new Date(bookingDate) : new Date();
@@ -115,7 +118,7 @@ export default function Page() {
       const endDate = endDateObj.toISOString();
 
       const customerName = (bookingCustomerName || userData?.name || user?.displayName || 'AgriShield Farmer').trim();
-      const customerPhone = (bookingContactPhone || userData?.phone || user?.phoneNumber || '9876543210').trim();
+      const customerPhone = (bookingContactPhone || userData?.phone || user?.phoneNumber || '').trim();
 
       const payload = {
         bookingType: 'MACHINERY',
@@ -129,16 +132,22 @@ export default function Page() {
         status: 'PENDING',
         customerName: customerName,
         customerPhone: customerPhone,
-        userId: effectiveUserId,
-        firebaseUid: effectiveUserId,
-        userName: customerName,
-        userPhone: customerPhone,
-        userEmail: user?.email || 'demo@aegroshield.com',
+        userId: activeUid,
+        firebaseUid: activeUid,
+        email: activeEmail,
+        name: customerName,
+        phone: customerPhone,
       };
 
       const res = await fetch('/api/bookings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(activeUid ? { 'x-firebase-uid': activeUid } : {}),
+          ...(activeEmail ? { 'x-user-email': activeEmail } : {}),
+          ...(customerName ? { 'x-user-name': encodeURIComponent(customerName) } : {}),
+          ...(customerPhone ? { 'x-user-phone': customerPhone } : {}),
+        },
         body: JSON.stringify(payload),
       });
 
@@ -146,17 +155,23 @@ export default function Page() {
       if (res.ok && data?.success && data?.data?.id) {
         setConfirmedBookingId(data.data.id);
         setBookingStatus('success');
+        setBookingErrorMessage('');
         // Refresh My Bookings immediately from database
         fetchBookings();
       } else {
-        const errorMsg = data?.error || 'Failed to register booking in database.';
+        const reason = data?.error || `Booking failed with status ${res.status}`;
+        const formatted = `Failed: ${reason}`;
+        setBookingErrorMessage(formatted);
         setBookingStatus('error');
-        alert('Booking failed: ' + errorMsg);
+        alert(formatted);
       }
     } catch (err: any) {
       console.error('Booking error:', err);
+      const rawReason = err?.message || 'Network error occurred. Please try again.';
+      const formatted = rawReason.startsWith('Failed:') ? rawReason : `Failed: ${rawReason}`;
+      setBookingErrorMessage(formatted);
       setBookingStatus('error');
-      alert('Booking failed: ' + (err?.message || 'Network error occurred. Please try again.'));
+      alert(formatted);
     }
   };
 
@@ -671,8 +686,8 @@ export default function Page() {
           </div>
 
           {bookingStatus === 'error' && (
-            <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#b91c1c', fontSize: '0.85rem', marginBottom: '12px' }}>
-              ⚠️ Failed to register booking. Please try again.
+            <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1.5px solid #ef4444', borderRadius: '10px', color: '#991b1b', fontSize: '0.88rem', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>⚠️ <strong>{bookingErrorMessage || 'Failed: Booking could not be registered.'}</strong></span>
             </div>
           )}
 

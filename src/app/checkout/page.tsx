@@ -115,26 +115,38 @@ export default function CheckoutPage() {
         };
       });
 
-      const activeUserId = user?.uid || userData?.uid || null;
+      const activeUid = user?.uid || userData?.uid || null;
+      const activeEmail = user?.email || userData?.email || null;
+      const activeName = formData.name.trim() || userData?.name || user?.displayName || 'AgriShield Farmer';
+      const activePhone = formData.phone.trim() || userData?.phone || user?.phoneNumber || '';
 
       const orderPayload = {
-        customerName: formData.name.trim(),
-        customerPhone: formData.phone.trim(),
+        customerName: activeName,
+        customerPhone: activePhone,
         shippingAddress: formData.address.trim(),
         district: formData.district,
         pincode: formData.pincode.trim() || '250001',
         paymentMethod: paymentMethod,
         items: itemsSnapshot,
         totalAmount: grandTotal,
-        userId: activeUserId,
-        firebaseUid: activeUserId,
+        userId: activeUid,
+        firebaseUid: activeUid,
+        email: activeEmail,
+        name: activeName,
+        phone: activePhone,
       };
 
       console.log("[Checkout] Submitting order payload:", orderPayload);
 
       const res = await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(activeUid ? { 'x-firebase-uid': activeUid } : {}),
+          ...(activeEmail ? { 'x-user-email': activeEmail } : {}),
+          ...(activeName ? { 'x-user-name': encodeURIComponent(activeName) } : {}),
+          ...(activePhone ? { 'x-user-phone': activePhone } : {}),
+        },
         body: JSON.stringify(orderPayload),
       });
 
@@ -158,8 +170,10 @@ export default function CheckoutPage() {
       clearCart();
     } catch (err: any) {
       console.error('[Checkout] Order placement error:', err);
-      const message = err?.message || 'An unexpected error occurred while placing your order.';
-      setErrorMsg(message);
+      const rawReason = err?.message || 'An unexpected error occurred while placing your order.';
+      const formattedMessage = rawReason.startsWith('Failed:') ? rawReason : `Failed: ${rawReason}`;
+      setErrorMsg(formattedMessage);
+      alert(formattedMessage);
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }

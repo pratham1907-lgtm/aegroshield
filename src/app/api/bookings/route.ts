@@ -99,107 +99,120 @@ export async function POST(request: NextRequest) {
       userEmail,
     } = body;
 
-    // Resolve or auto-create User record for this booking
-    const cleanPhone = customerPhone || userPhone || contactPhone ? String(customerPhone || userPhone || contactPhone).trim() : null;
-    const cleanName = customerName || userName ? String(customerName || userName).trim() : 'AgriShield Farmer';
-    const lookupKey = firebaseUid || userId;
+    // Extract real authenticated user from headers or request payload
+    const headerAuth = request.headers.get('authorization') || '';
+    const bearerToken = headerAuth.startsWith('Bearer ') ? headerAuth.slice(7).trim() : null;
+    const headerFirebaseUid = request.headers.get('x-firebase-uid') || bearerToken;
+    const headerEmail = request.headers.get('x-user-email');
+    const headerNameRaw = request.headers.get('x-user-name');
+    const headerName = headerNameRaw ? decodeURIComponent(headerNameRaw) : null;
+    const headerPhone = request.headers.get('x-user-phone');
+
+    const realFirebaseUid = headerFirebaseUid || firebaseUid || (userId && !String(userId).startsWith('demo') ? userId : null);
+    const realEmail = headerEmail || body.email || userEmail || null;
+    const realName = (customerName || headerName || userName || body.name || 'AgriShield Farmer').trim();
+    const realPhone = (customerPhone || headerPhone || userPhone || contactPhone || body.phone || '').trim();
 
     let user = null;
 
-    // 1. Look up user by phone if available
-    if (cleanPhone) {
+    // 1. Dynamic User Upsert using real Firebase UID
+    if (realFirebaseUid) {
       try {
-        user = await prisma.user.findFirst({ where: { phone: cleanPhone } });
-      } catch (err) {
-        console.warn('[API/Bookings] Phone lookup warning:', err);
-      }
-    }
-
-    // 2. Look up user by lookupKey (id or firebaseUid) if not found by phone
-    if (!user && lookupKey && typeof lookupKey === 'string' && lookupKey.trim() !== '') {
-      try {
-        user = (await prisma.user.findUnique({ where: { id: lookupKey } })) ||
-               (await prisma.user.findUnique({ where: { firebaseUid: lookupKey } }));
-      } catch (err) {
-        console.warn('[API/Bookings] User ID lookup warning:', err);
-      }
-    }
-
-    // 3. If user doesn't exist, create a new User record for this farmer
-    if (!user) {
-      try {
-        user = await prisma.user.create({
-          data: {
-            name: cleanName,
-            phone: cleanPhone,
+        user = await prisma.user.upsert({
+          where: { firebaseUid: realFirebaseUid },
+          update: {
+            ...(realEmail ? { email: realEmail } : {}),
+            ...(realName ? { name: realName } : {}),
+            ...(realPhone ? { phone: realPhone } : {}),
+          },
+          create: {
+            firebaseUid: realFirebaseUid,
+            email: realEmail,
+            name: realName,
+            phone: realPhone || null,
             role: 'FARMER',
-            ...(lookupKey && lookupKey !== 'demo-farmer-seller-uid' ? { firebaseUid: lookupKey } : {}),
           },
         });
-      } catch (createErr) {
-        console.warn('[API/Bookings] Auto user creation warning:', createErr);
+      } catch (upsertErr) {
+        console.error("API Creation Error:", upsertErr);
       }
     }
 
-    // 4. Fallback to existing demo user or any user in DB
-    if (!user) {
+    // 2. If no firebaseUid or upsert failed, resolve/create by real phone
+    if (!user && realPhone) {
       try {
-        user =
-          (await prisma.user.findFirst({ where: { isDemo: true } })) ||
-          (await prisma.user.findFirst());
-      } catch (demoErr) {
-        console.warn('[API/Bookings] Demo user fallback error:', demoErr);
+        user = await prisma.user.findFirst({ where: { phone: realPhone } });
+        if (!user) {
+          user = await prisma.user.create({
+            data: {
+              name: realName,
+              phone: realPhone,
+              email: realEmail,
+              role: 'FARMER',
+            },
+          });
+        }
+      } catch (phoneErr) {
+        console.error("API Creation Error:", phoneErr);
       }
     }
 
-    // 5. Ultimate fallback if DB has 0 users
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          name: cleanName,
-          phone: cleanPhone,
-          role: 'FARMER',
-          isDemo: true,
-        },
-      });
+      const err = new Error('Could not resolve or authenticate user account for booking.');
+      console.error("API Creation Error:", err);
+      return NextResponse.json(
+        { success: false, error: err.message },
+        { status: 400 }
+      );
     }
 
     const parsedDate = startDate ? new Date(startDate) : (bookingDate ? new Date(bookingDate) : new Date());
     const validBookingDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
 
-    const createdBooking = await prisma.booking.create({
-      data: {
-        userId: user.id,
-        bookingType: String(bookingType || 'MACHINERY').toUpperCase(),
-        targetId: String(targetId || 'ITEM-' + Date.now()),
-        status: body.status || 'PENDING',
-        bookingDate: validBookingDate,
-        totalAmount: Number(totalAmount ?? body.pricePerHour ?? 0),
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
+    try {
+      const createdBooking = await prisma.booking.create({
+        data: {
+          userId: user.id,
+          bookingType: String(bookingType || 'MACHINERY').toUpperCase(),
+          targetId: String(targetId || 'ITEM-' + Date.now()),
+          status: body.status || 'PENDING',
+          bookingDate: validBookingDate,
+          totalAmount: Number(totalAmount ?? body.pricePerHour ?? 0),
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    console.log("REAL_BOOKING_CREATED:", createdBooking.id);
+      console.log("REAL_BOOKING_CREATED:", createdBooking.id);
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: createdBooking,
-        message: 'Booking successfully confirmed in Supabase database.',
-      },
-      { status: 201 }
-    );
+      return NextResponse.json(
+        {
+          success: true,
+          data: createdBooking,
+          message: 'Booking successfully confirmed in Supabase database.',
+        },
+        { status: 201 }
+      );
+    } catch (createErr) {
+      console.error("API Creation Error:", createErr);
+      return NextResponse.json(
+        {
+          success: false,
+          error: (createErr as any)?.message || 'Database error: Failed to insert booking into Supabase',
+        },
+        { status: 500 }
+      );
+    }
   } catch (error: any) {
-    console.error('[API/Bookings] Error creating booking:', error);
+    console.error("API Creation Error:", error);
     return NextResponse.json(
       {
         success: false,

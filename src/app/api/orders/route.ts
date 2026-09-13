@@ -125,77 +125,70 @@ export async function POST(request: NextRequest) {
       vendorId: String(item.vendorId || ''),
     }));
 
-    // Resolve or auto-create User record for this customer
+    // Extract real authenticated user from headers or request payload
+    const headerAuth = request.headers.get('authorization') || '';
+    const bearerToken = headerAuth.startsWith('Bearer ') ? headerAuth.slice(7).trim() : null;
+    const headerFirebaseUid = request.headers.get('x-firebase-uid') || bearerToken;
+    const headerEmail = request.headers.get('x-user-email');
+    const headerNameRaw = request.headers.get('x-user-name');
+    const headerName = headerNameRaw ? decodeURIComponent(headerNameRaw) : null;
+    const headerPhone = request.headers.get('x-user-phone');
+
+    const realFirebaseUid = headerFirebaseUid || firebaseUid || (userId && !String(userId).startsWith('demo') ? userId : null);
+    const realEmail = headerEmail || body.email || body.userEmail || null;
+    const realName = (customerName || headerName || body.name || body.userName || 'AgriShield Farmer').trim();
+    const realPhone = (customerPhone || headerPhone || body.phone || body.userPhone || '').trim();
+
     let user = null;
-    const cleanPhone = customerPhone ? String(customerPhone).trim() : null;
-    const cleanName = customerName ? String(customerName).trim() : 'AgriShield Farmer';
-    const lookupKey = firebaseUid || userId;
 
-    // 1. Look up user by phone if available
-    if (cleanPhone) {
+    // 1. Dynamic User Upsert using real Firebase UID
+    if (realFirebaseUid) {
       try {
-        user = await prisma.user.findFirst({ where: { phone: cleanPhone } });
-      } catch (err) {
-        console.warn('[API/Orders] Phone lookup warning:', err);
-      }
-    }
-
-    // 2. Look up user by lookupKey (id or firebaseUid) if not found by phone
-    if (!user && lookupKey && typeof lookupKey === 'string' && lookupKey.trim() !== '') {
-      try {
-        user = (await prisma.user.findUnique({ where: { id: lookupKey } })) ||
-               (await prisma.user.findUnique({ where: { firebaseUid: lookupKey } }));
-      } catch (err) {
-        console.warn('[API/Orders] User ID lookup warning:', err);
-      }
-    }
-
-    // 3. If user doesn't exist, create a new User record for this farmer
-    if (!user) {
-      try {
-        user = await prisma.user.create({
-          data: {
-            name: cleanName,
-            phone: cleanPhone,
+        user = await prisma.user.upsert({
+          where: { firebaseUid: realFirebaseUid },
+          update: {
+            ...(realEmail ? { email: realEmail } : {}),
+            ...(realName ? { name: realName } : {}),
+            ...(realPhone ? { phone: realPhone } : {}),
+          },
+          create: {
+            firebaseUid: realFirebaseUid,
+            email: realEmail,
+            name: realName,
+            phone: realPhone || null,
             role: 'FARMER',
-            ...(lookupKey ? { firebaseUid: lookupKey } : {}),
           },
         });
-      } catch (createErr) {
-        console.warn('[API/Orders] Auto user creation warning:', createErr);
+      } catch (upsertErr) {
+        console.error("API Creation Error:", upsertErr);
       }
     }
 
-    // 4. Fallback: Seeded Demo User ID or any existing user in DB
-    if (!user) {
+    // 2. If no firebaseUid or upsert failed, resolve/create by real phone
+    if (!user && realPhone) {
       try {
-        user =
-          (await prisma.user.findFirst({ where: { isDemo: true } })) ||
-          (await prisma.user.findFirst());
-
+        user = await prisma.user.findFirst({ where: { phone: realPhone } });
         if (!user) {
-          user = await prisma.user.upsert({
-            where: { firebaseUid: 'demo-farmer-seller-uid' },
-            update: {},
-            create: {
-              firebaseUid: 'demo-farmer-seller-uid',
-              email: 'demo@aegroshield.com',
-              name: 'Demo Account (Kisan Seva Kendra)',
+          user = await prisma.user.create({
+            data: {
+              name: realName,
+              phone: realPhone,
+              email: realEmail,
               role: 'FARMER',
-              isDemo: true,
             },
           });
         }
-      } catch (demoErr) {
-        console.error("ORDER_CREATE_ERROR (Demo User Fallback):", demoErr);
+      } catch (phoneErr) {
+        console.error("API Creation Error:", phoneErr);
       }
     }
 
     if (!user) {
-      console.error("ORDER_CREATE_ERROR: Could not resolve or seed a user account for this order.");
+      const err = new Error('Could not resolve or authenticate user account for order placement.');
+      console.error("API Creation Error:", err);
       return NextResponse.json(
-        { success: false, error: 'Could not resolve user account for this order.' },
-        { status: 500 }
+        { success: false, error: err.message },
+        { status: 400 }
       );
     }
 
@@ -211,7 +204,7 @@ export async function POST(request: NextRequest) {
     const deliveryCharge = computedTotal >= 500 ? 0 : 50;
     const finalTotal = Number(totalAmount || (computedTotal + deliveryCharge));
 
-    // Persist order in Supabase PostgreSQL with explicit try-catch logging
+    // Persist order in Supabase PostgreSQL
     try {
       const createdOrder = await prisma.order.create({
         data: {
@@ -220,8 +213,8 @@ export async function POST(request: NextRequest) {
           totalAmount: finalTotal,
           status: 'PENDING',
           shippingAddress: `${shippingAddress}${district ? `, ${district}` : ''}${pincode ? ` - ${pincode}` : ''}`,
-          customerName: cleanName,
-          customerPhone: cleanPhone || '',
+          customerName: realName,
+          customerPhone: realPhone || '',
           district: district || 'Uttar Pradesh',
           pincode: pincode || '250001',
           paymentMethod: paymentMethod || 'Cash on Delivery (COD)',
@@ -244,7 +237,7 @@ export async function POST(request: NextRequest) {
         { status: 201 }
       );
     } catch (createError: any) {
-      console.error("ORDER_CREATE_ERROR:", createError);
+      console.error("API Creation Error:", createError);
       return NextResponse.json(
         {
           success: false,
@@ -254,7 +247,7 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error: any) {
-    console.error("ORDER_CREATE_ERROR:", error);
+    console.error("API Creation Error:", error);
     return NextResponse.json(
       {
         success: false,
