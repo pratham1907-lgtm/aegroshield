@@ -277,39 +277,85 @@ function VendorLoginPage() {
     setLoading(true);
     try {
       const cred = await signInWithGoogle();
-      const userRef = doc(db, "users", cred.user.uid);
-      const userSnap = await getDoc(userRef);
+      const sellerRef = doc(db, 'sellers', cred.user.uid);
+      const sellerSnap = await getDoc(sellerRef);
 
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          uid: cred.user.uid,
-          name: cred.user.displayName || cred.user.email?.split('@')[0] || "Vendor Store Owner",
-          email: cred.user.email || "",
-          phone: cred.user.phoneNumber || "",
-          role: "vendor",
-          isDemo: false,
-          createdAt: serverTimestamp(),
+      // Case 1: Existing verified seller in sellers/{uid} or vendors/{uid} -> login directly
+      if (sellerSnap.exists() && sellerSnap.data()?.isVerified) {
+        showMessage("🎉 Welcome back, Verified Seller! Opening Vendor Dashboard…", "success");
+        setTimeout(() => router.push("/vendor/dashboard"), 500);
+        return;
+      }
+
+      const vendorRef = doc(db, 'vendors', cred.user.uid);
+      const vendorSnap = await getDoc(vendorRef);
+      if (vendorSnap.exists() && vendorSnap.data()?.verified && vendorSnap.data()?.license !== 'VERIFIED-GOOGLE-AUTH') {
+        showMessage("🎉 Welcome back, Verified Seller! Opening Vendor Dashboard…", "success");
+        setTimeout(() => router.push("/vendor/dashboard"), 500);
+        return;
+      }
+
+      // Case 2: Verification complete on current form -> link Google & create verified store record
+      if (isPhoneVerified && isLicenseValid) {
+        const fullPhone = '+91' + cleanRegPhone;
+        const nowIso = new Date().toISOString();
+
+        await setDoc(doc(db, "sellers", cred.user.uid), {
+          storeName: regData.name.trim() || cred.user.displayName || 'Agri Dealer Store',
+          ownerName: regData.ownerName.trim() || cred.user.displayName || 'Store Owner',
+          phone: fullPhone,
+          phoneVerified: true,
+          licenseOrGstin: regData.license.trim(),
+          district: regData.district,
+          shopAddress: regData.address.trim() || `${regData.district} Main Market`,
+          verificationLevel: "tier_2_phone_and_license",
+          isVerified: true,
+          createdAt: nowIso
         });
 
         await setDoc(doc(db, "vendors", cred.user.uid), {
           id: cred.user.uid,
-          name: cred.user.displayName ? `${cred.user.displayName}'s Agri Store` : "Agri Dealer Store",
-          ownerName: cred.user.displayName || "Store Owner",
-          email: cred.user.email || "",
-          phone: cred.user.phoneNumber || "",
-          district: ALL_DISTRICTS[0],
-          address: "Main Market",
-          license: "VERIFIED-GOOGLE-AUTH",
+          name: regData.name.trim() || cred.user.displayName || 'Agri Dealer Store',
+          ownerName: regData.ownerName.trim() || cred.user.displayName || 'Store Owner',
+          email: cred.user.email || '',
+          phone: fullPhone,
+          phoneVerified: true,
+          licenseOrGstin: regData.license.trim(),
+          license: regData.license.trim(),
+          district: regData.district,
+          address: regData.address.trim() || `${regData.district} Main Market`,
+          shopAddress: regData.address.trim() || `${regData.district} Main Market`,
+          verificationLevel: "tier_2_phone_and_license",
           rating: 5.0,
           verified: true,
           accreditationStatus: 'Verified',
           isDemo: false,
-          createdAt: serverTimestamp(),
+          createdAt: nowIso,
         });
+
+        registerVendor({
+          name: regData.name.trim() || 'Agri Dealer Store',
+          ownerName: regData.ownerName.trim() || 'Store Owner',
+          district: regData.district,
+          address: regData.address.trim() || `${regData.district} Main Market`,
+          phone: fullPhone,
+          license: regData.license.trim(),
+        });
+
+        showMessage("🎉 Verified Google Account Linked! Opening Vendor Dashboard…", "success");
+        setTimeout(() => router.push("/vendor/dashboard"), 500);
+        return;
       }
 
-      showMessage("🎉 Signed in with Google! Opening Vendor Dashboard…", "success");
-      setTimeout(() => router.push("/vendor/dashboard"), 500);
+      // Case 3: New/Unverified Seller -> switch to signup tab, prefill Google details, prompt for verification
+      setTab('signup');
+      setRegData(prev => ({
+        ...prev,
+        ownerName: cred.user.displayName || prev.ownerName,
+        email: cred.user.email || prev.email,
+      }));
+      setLoading(false);
+      showMessage(`🔗 Google Account connected (${cred.user.email}). Please enter your Business License / GSTIN and verify Phone (+91 OTP) below to activate your store.`, "success");
     } catch (err: any) {
       setLoading(false);
       if (err?.code === "auth/popup-closed-by-user") {

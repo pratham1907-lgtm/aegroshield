@@ -11,7 +11,7 @@ import {
   signInWithPhoneNumber,
   ConfirmationResult
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { registerVendor } from '@/lib/ecommerce-service';
 import { ALL_DISTRICTS } from '@/lib/marketplace-data';
 import { ShieldCheck, ArrowRight, CheckCircle2, PhoneCall, KeyRound, Building2 } from 'lucide-react';
@@ -127,66 +127,88 @@ export default function SellerRegisterPage() {
     }
   };
 
-  // ── GOOGLE REGISTRATION LINKING (Restricted until verified) ──
+  // ── GOOGLE SELLER AUTHENTICATION HANDLER ──
   const handleGoogleSignIn = async () => {
     hideMessage();
-    if (!isPhoneVerified || !isLicenseValid) {
-      return showMessage('⚠️ Please verify your phone (+91 OTP) and fill a valid Business License/GSTIN before linking Google Account.');
-    }
     setLoading(true);
     try {
       const cred = await signInWithGoogle();
-      const nowIso = new Date().toISOString();
+      const sellerRef = doc(db, 'sellers', cred.user.uid);
+      const sellerSnap = await getDoc(sellerRef);
 
-      // Save Seller Record in Firestore sellers/{uid}
-      await setDoc(doc(db, 'sellers', cred.user.uid), {
-        storeName: storeName.trim() || cred.user.displayName || 'Agri Dealer Store',
-        ownerName: ownerName.trim() || cred.user.displayName || 'Store Owner',
-        phone: '+91' + cleanPhone,
-        phoneVerified: true,
-        licenseOrGstin: licenseOrGstin.trim(),
-        district: district,
-        shopAddress: shopAddress.trim() || `${district} Main Market`,
-        verificationLevel: 'tier_2_phone_and_license',
-        isVerified: true,
-        createdAt: nowIso,
-      });
+      // Case 1: Existing verified seller -> direct login to dashboard
+      if (sellerSnap.exists() && sellerSnap.data()?.isVerified) {
+        showMessage('🎉 Welcome back, Verified Seller! Opening Seller Dashboard…', 'success');
+        setTimeout(() => router.push('/seller/dashboard'), 500);
+        return;
+      }
 
-      // Save Vendor Record in Firestore vendors/{uid}
-      await setDoc(doc(db, 'vendors', cred.user.uid), {
-        id: cred.user.uid,
-        name: storeName.trim() || cred.user.displayName || 'Agri Dealer Store',
-        ownerName: ownerName.trim() || cred.user.displayName || 'Store Owner',
-        email: cred.user.email || '',
-        phone: '+91' + cleanPhone,
-        phoneVerified: true,
-        licenseOrGstin: licenseOrGstin.trim(),
-        license: licenseOrGstin.trim(),
-        district: district,
-        address: shopAddress.trim() || `${district} Main Market`,
-        shopAddress: shopAddress.trim() || `${district} Main Market`,
-        verificationLevel: 'tier_2_phone_and_license',
-        rating: 5.0,
-        verified: true,
-        accreditationStatus: 'Verified',
-        isDemo: false,
-        createdAt: nowIso,
-      });
+      // Case 2: Verification complete on current form -> link Google & save document
+      if (isPhoneVerified && isLicenseValid) {
+        const nowIso = new Date().toISOString();
+        const fullPhone = '+91' + cleanPhone;
 
-      registerVendor({
-        name: storeName.trim() || 'Agri Dealer Store',
-        ownerName: ownerName.trim() || 'Store Owner',
-        district: district,
-        address: shopAddress.trim() || `${district} Main Market`,
-        phone: '+91' + cleanPhone,
-        license: licenseOrGstin.trim(),
-      });
+        // Save Seller Record in Firestore sellers/{uid}
+        await setDoc(doc(db, 'sellers', cred.user.uid), {
+          storeName: storeName.trim() || cred.user.displayName || 'Agri Dealer Store',
+          ownerName: ownerName.trim() || cred.user.displayName || 'Store Owner',
+          phone: fullPhone,
+          phoneVerified: true,
+          licenseOrGstin: licenseOrGstin.trim(),
+          district: district,
+          shopAddress: shopAddress.trim() || `${district} Main Market`,
+          verificationLevel: 'tier_2_phone_and_license',
+          isVerified: true,
+          createdAt: nowIso,
+        });
 
-      showMessage('🎉 Verified Google Account Linked! Redirecting to Seller Dashboard…', 'success');
-      setTimeout(() => router.push('/seller/dashboard'), 500);
+        // Save Vendor Record in Firestore vendors/{uid}
+        await setDoc(doc(db, 'vendors', cred.user.uid), {
+          id: cred.user.uid,
+          name: storeName.trim() || cred.user.displayName || 'Agri Dealer Store',
+          ownerName: ownerName.trim() || cred.user.displayName || 'Store Owner',
+          email: cred.user.email || '',
+          phone: fullPhone,
+          phoneVerified: true,
+          licenseOrGstin: licenseOrGstin.trim(),
+          license: licenseOrGstin.trim(),
+          district: district,
+          address: shopAddress.trim() || `${district} Main Market`,
+          shopAddress: shopAddress.trim() || `${district} Main Market`,
+          verificationLevel: 'tier_2_phone_and_license',
+          rating: 5.0,
+          verified: true,
+          accreditationStatus: 'Verified',
+          isDemo: false,
+          createdAt: nowIso,
+        });
+
+        registerVendor({
+          name: storeName.trim() || 'Agri Dealer Store',
+          ownerName: ownerName.trim() || 'Store Owner',
+          district: district,
+          address: shopAddress.trim() || `${district} Main Market`,
+          phone: fullPhone,
+          license: licenseOrGstin.trim(),
+        });
+
+        showMessage('🎉 Verified Google Account Linked! Redirecting to Seller Dashboard…', 'success');
+        setTimeout(() => router.push('/seller/dashboard'), 500);
+        return;
+      }
+
+      // Case 3: Google account connected, but License / Phone OTP not completed yet -> auto-fill details & prompt seller
+      if (cred.user.displayName) setOwnerName(cred.user.displayName);
+      if (cred.user.email) setEmail(cred.user.email);
+      setLoading(false);
+      showMessage(`🔗 Google account connected (${cred.user.email}). Please enter your Business License / GSTIN and verify Phone (+91 OTP) below to activate your store.`, 'success');
     } catch (err: any) {
       setLoading(false);
-      showMessage(err?.message || 'Failed to complete registration with Google.');
+      if (err?.code === 'auth/popup-closed-by-user') {
+        showMessage('Google Sign-In window was closed. Please try again.');
+      } else {
+        showMessage(err?.message || 'Failed to authenticate with Google.');
+      }
     }
   };
 
