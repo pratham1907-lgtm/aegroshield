@@ -20,11 +20,12 @@ import {
   Loader2,
   Database,
   Calendar,
+  AlertCircle,
 } from 'lucide-react';
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, cartTotal, deliveryFee, grandTotal, clearCart } = useCart();
+  const { cart, cartTotal, deliveryFee, grandTotal, clearCart, isLoaded } = useCart();
   const { user, userData, isDemo } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -50,6 +51,16 @@ export default function CheckoutPage() {
       }));
     }
   }, [user, userData, isDemo]);
+
+  // If cart is still loading from localStorage, show brief loader instead of empty cart screen
+  if (!isLoaded && !placedOrder) {
+    return (
+      <main className="container" style={{ padding: '100px 20px', textAlign: 'center' }}>
+        <Loader2 size={36} className="spin" style={{ margin: '0 auto', color: 'var(--primary)' }} />
+        <p style={{ marginTop: '16px', color: '#64748b', fontWeight: '500' }}>Loading your cart...</p>
+      </main>
+    );
+  }
 
   if (cart.length === 0 && !placedOrder) {
     return (
@@ -104,6 +115,8 @@ export default function CheckoutPage() {
         };
       });
 
+      const activeUserId = user?.uid || userData?.uid || null;
+
       const orderPayload = {
         customerName: formData.name.trim(),
         customerPhone: formData.phone.trim(),
@@ -113,9 +126,11 @@ export default function CheckoutPage() {
         paymentMethod: paymentMethod,
         items: itemsSnapshot,
         totalAmount: grandTotal,
-        userId: user?.uid || null,
-        firebaseUid: user?.uid || null,
+        userId: activeUserId,
+        firebaseUid: activeUserId,
       };
+
+      console.log("[Checkout] Submitting order payload:", orderPayload);
 
       const res = await fetch('/api/orders', {
         method: 'POST',
@@ -123,10 +138,19 @@ export default function CheckoutPage() {
         body: JSON.stringify(orderPayload),
       });
 
-      const json = await res.json();
+      let json: any = null;
+      try {
+        json = await res.json();
+      } catch (parseErr) {
+        console.error('[Checkout] Response JSON parse error:', parseErr);
+        throw new Error(`Server returned status ${res.status}: ${res.statusText || 'Unexpected response'}`);
+      }
 
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || 'Failed to persist order in database. Please try again.');
+      console.log("[Checkout] /api/orders response:", res.status, json);
+
+      if (!res.ok || !json?.success) {
+        const serverError = json?.error || `Order placement failed with status ${res.status}`;
+        throw new Error(serverError);
       }
 
       setPlacedOrder(json.data);
@@ -134,7 +158,11 @@ export default function CheckoutPage() {
       clearCart();
     } catch (err: any) {
       console.error('[Checkout] Order placement error:', err);
-      setErrorMsg(err.message || 'An unexpected error occurred while placing your order.');
+      const message = err?.message || 'An unexpected error occurred while placing your order.';
+      setErrorMsg(message);
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -518,6 +546,27 @@ export default function CheckoutPage() {
                 </label>
               </div>
             </div>
+
+            {errorMsg && (
+              <div
+                style={{
+                  marginTop: '16px',
+                  padding: '12px 16px',
+                  backgroundColor: '#fef2f2',
+                  border: '1.5px solid #ef4444',
+                  borderRadius: '10px',
+                  color: '#991b1b',
+                  fontSize: '0.88rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  boxShadow: '0 2px 8px rgba(239, 68, 68, 0.08)',
+                }}
+              >
+                <AlertCircle size={18} color="#dc2626" style={{ flexShrink: 0 }} />
+                <span>{errorMsg}</span>
+              </div>
+            )}
 
             <button
               type="submit"

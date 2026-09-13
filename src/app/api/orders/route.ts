@@ -125,25 +125,20 @@ export async function POST(request: NextRequest) {
       vendorId: String(item.vendorId || ''),
     }));
 
+    // Resolve user ID with immediate fallback to seeded Demo User
     let targetUserId: string | null = null;
     const lookupKey = firebaseUid || userId;
 
-    if (lookupKey) {
-      // 1. Check if lookupKey is a valid Postgres User ID
+    if (lookupKey && typeof lookupKey === 'string' && lookupKey.trim() !== '') {
       try {
+        // 1. Check if lookupKey matches database id
         const userById = await prisma.user.findUnique({
           where: { id: lookupKey },
         });
         if (userById) {
           targetUserId = userById.id;
-        }
-      } catch (err) {
-        // Continue to firebaseUid check
-      }
-
-      // 2. Check if lookupKey is a firebaseUid
-      if (!targetUserId) {
-        try {
+        } else {
+          // 2. Check if lookupKey matches firebaseUid
           const userByFb = await prisma.user.findUnique({
             where: { firebaseUid: lookupKey },
           });
@@ -154,21 +149,21 @@ export async function POST(request: NextRequest) {
             const createdUser = await prisma.user.create({
               data: {
                 firebaseUid: lookupKey,
-                name: customerName || 'AgriShield Farmer',
-                phone: customerPhone || null,
+                name: customerName ? String(customerName).trim() : 'AgriShield Farmer',
+                phone: customerPhone ? String(customerPhone).trim() : null,
                 role: 'FARMER',
                 isDemo: false,
               },
             });
             targetUserId = createdUser.id;
           }
-        } catch (fbErr) {
-          console.warn('[API/Orders] User lookup/create by firebaseUid error:', fbErr);
         }
+      } catch (lookupErr) {
+        console.warn('[API/Orders] User resolution warning:', lookupErr);
       }
     }
 
-    // 3. Fallback to existing demo user or any user in DB so order is never lost
+    // 3. Fallback: If userId is not in session/auth header, fallback to seeded Demo User ID so guest/demo checkout never fails
     if (!targetUserId) {
       try {
         const defaultUser =
@@ -192,14 +187,15 @@ export async function POST(request: NextRequest) {
           targetUserId = demoUser.id;
         }
       } catch (demoErr) {
-        console.warn('[API/Orders] Demo user fallback error:', demoErr);
+        console.error("ORDER_CREATE_ERROR (Demo User Fallback):", demoErr);
       }
     }
 
     if (!targetUserId) {
+      console.error("ORDER_CREATE_ERROR: Could not resolve or seed a user account for this order.");
       return NextResponse.json(
         { success: false, error: 'Could not resolve user account for this order.' },
-        { status: 400 }
+        { status: 500 }
       );
     }
 
@@ -213,39 +209,50 @@ export async function POST(request: NextRequest) {
     const deliveryCharge = computedTotal >= 500 ? 0 : 50;
     const finalTotal = Number(totalAmount || (computedTotal + deliveryCharge));
 
-    // Persist order in Supabase PostgreSQL
-    const createdOrder = await prisma.order.create({
-      data: {
-        userId: targetUserId,
-        items: normalizedItems,
-        totalAmount: finalTotal,
-        status: 'PENDING',
-        shippingAddress: `${shippingAddress}${district ? `, ${district}` : ''}${pincode ? ` - ${pincode}` : ''}`,
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.trim(),
-        district: district || 'Uttar Pradesh',
-        pincode: pincode || '250001',
-        paymentMethod: paymentMethod || 'Cash on Delivery (COD)',
-      },
-      include: {
-        user: {
-          select: { id: true, name: true, phone: true, email: true },
+    // Persist order in Supabase PostgreSQL with explicit try-catch logging
+    try {
+      const createdOrder = await prisma.order.create({
+        data: {
+          userId: targetUserId,
+          items: normalizedItems,
+          totalAmount: finalTotal,
+          status: 'PENDING',
+          shippingAddress: `${shippingAddress}${district ? `, ${district}` : ''}${pincode ? ` - ${pincode}` : ''}`,
+          customerName: customerName.trim(),
+          customerPhone: customerPhone.trim(),
+          district: district || 'Uttar Pradesh',
+          pincode: pincode || '250001',
+          paymentMethod: paymentMethod || 'Cash on Delivery (COD)',
         },
-      },
-    });
+        include: {
+          user: {
+            select: { id: true, name: true, phone: true, email: true },
+          },
+        },
+      });
 
-    console.log(`[API/Orders] Order ${createdOrder.id} created and persisted in Supabase with ${normalizedItems.length} items:`, JSON.stringify(createdOrder.items));
+      console.log(`[API/Orders] Order ${createdOrder.id} created and persisted in Supabase with ${normalizedItems.length} items:`, JSON.stringify(createdOrder.items));
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: createdOrder,
-        message: 'Order created and persisted successfully in Supabase database!',
-      },
-      { status: 201 }
-    );
+      return NextResponse.json(
+        {
+          success: true,
+          data: createdOrder,
+          message: 'Order created and persisted successfully in Supabase database!',
+        },
+        { status: 201 }
+      );
+    } catch (createError: any) {
+      console.error("ORDER_CREATE_ERROR:", createError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: createError?.message || 'Database error: Failed to insert order into Supabase',
+        },
+        { status: 500 }
+      );
+    }
   } catch (error: any) {
-    console.error('[API/Orders] Error creating order:', error);
+    console.error("ORDER_CREATE_ERROR:", error);
     return NextResponse.json(
       {
         success: false,

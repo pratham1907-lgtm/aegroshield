@@ -22,6 +22,7 @@ interface CartContextValue {
   openCart: () => void;
   closeCart: () => void;
   toggleCart: () => void;
+  isLoaded: boolean;
 }
 
 const CartContext = createContext<CartContextValue>({
@@ -38,6 +39,7 @@ const CartContext = createContext<CartContextValue>({
   openCart: () => {},
   closeCart: () => {},
   toggleCart: () => {},
+  isLoaded: false,
 });
 
 const CART_STORAGE_KEY = 'aegroshield_cart';
@@ -45,6 +47,7 @@ const CART_STORAGE_KEY = 'aegroshield_cart';
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Load saved cart from localStorage
   useEffect(() => {
@@ -55,6 +58,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (e) {
       console.error('Failed to load cart', e);
+    } finally {
+      setIsLoaded(true);
     }
   }, []);
 
@@ -125,6 +130,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         openCart,
         closeCart,
         toggleCart,
+        isLoaded,
       }}
     >
       {children}
