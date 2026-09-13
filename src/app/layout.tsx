@@ -4,6 +4,7 @@ import { CartProvider } from '@/lib/cart-context';
 import NavbarClient from '@/components/Navbar';
 import DemoBanner from '@/components/DemoBanner';
 import Chatbot from '@/components/Chatbot';
+import { LenisScrollSetup } from '@/components/ui/LenisScrollSetup';
 import './globals.css';
 
 export const metadata = {
@@ -25,10 +26,12 @@ export default function RootLayout({
         <AuthProvider>
           <LanguageProvider>
             <CartProvider>
-              <DemoBanner />
-              <NavbarClient />
-              {children}
-              <Chatbot />
+              <LenisScrollSetup>
+                <DemoBanner />
+                <NavbarClient />
+                {children}
+                <Chatbot />
+              </LenisScrollSetup>
             </CartProvider>
           </LanguageProvider>
         </AuthProvider>
