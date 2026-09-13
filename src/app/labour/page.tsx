@@ -13,48 +13,47 @@ export default function Page() {
   const [activeTab, setActiveTab] = useState<'find' | 'register'>('find');
   const [postSubmitted, setPostSubmitted] = useState(false);
   const [listingId, setListingId] = useState('');
-
   const [userBookings, setUserBookings] = useState<any[]>([]);
 
+  const isDemoUser = Boolean(isDemo || !user);
+
   useEffect(() => {
-    if (user && !isDemo) {
-      setLoading(true);
-      const fetchLabour = async () => {
-        try {
-          const snap1 = await getDocs(collection(db, 'labour'));
-          const snap2 = await getDocs(collection(db, 'workerListings'));
-          const items: any[] = [];
-          snap1.forEach(d => items.push({ id: d.id, ...d.data() }));
-          snap2.forEach(d => items.push({ id: d.id, ...d.data() }));
-          setLiveLabour(items);
-        } catch (err) {
-          console.warn("[Labour] Error fetching Firestore labour:", err);
-          setLiveLabour([]);
-        } finally {
-          setLoading(false);
+    setLoading(true);
+    fetch(`/api/labour?isDemo=${isDemoUser}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json?.data) {
+          setLiveLabour(json.data);
+        } else {
+          setLiveLabour(MOCK_LABOUR);
         }
-      };
+      })
+      .catch((err) => {
+        console.warn('[Labour] Error fetching labour from API:', err);
+        setLiveLabour(MOCK_LABOUR);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+
+    if (user && !isDemo) {
       const fetchUserBookings = async () => {
         try {
           const q = query(collection(db, 'labourBookings'), where('userId', '==', user.uid));
           const snap = await getDocs(q);
           const items: any[] = [];
-          snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+          snap.forEach((d) => items.push({ id: d.id, ...d.data() }));
           setUserBookings(items);
         } catch (err) {
-          console.warn("[Labour] Error fetching user bookings:", err);
+          console.warn('[Labour] Error fetching user bookings:', err);
           setUserBookings([]);
         }
       };
-      fetchLabour();
       fetchUserBookings();
     } else {
-      setLiveLabour(null);
       setUserBookings([]);
     }
-  }, [user, isDemo]);
-
-  const isRealAccount = Boolean(user && !isDemo);
+  }, [user, isDemo, isDemoUser]);
 
   const handlePostAvailability = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -64,12 +63,18 @@ export default function Page() {
     taskCheckboxes.forEach((cb: any) => checkedTasks.push(cb.value));
 
     const newLabour = {
+      leaderName: (formData.get('postName') as string) || 'Worker Group',
       teamLeaderName: (formData.get('postName') as string) || 'Worker Group',
+      phone: (formData.get('postPhone') as string) || '',
       contactPhone: (formData.get('postPhone') as string) || '',
       district: (formData.get('postDistrict') as string) || 'Meerut',
+      wagePerDay: Number(formData.get('postRate')) || 400,
       dailyRatePerWorker: Number(formData.get('postRate')) || 400,
+      groupSize: Number(formData.get('postGroupSize')) || 5,
       teamSize: Number(formData.get('postGroupSize')) || 5,
+      primarySkill: checkedTasks.join(', ') || 'Harvesting, Sowing',
       specialization: checkedTasks.join(', ') || 'Harvesting, Sowing',
+      firebaseUid: user?.uid || null,
       available: true,
       createdAt: new Date().toISOString(),
     };
@@ -78,23 +83,29 @@ export default function Page() {
     setListingId(newId);
 
     try {
-      if (user && !isDemo) {
-        await addDoc(collection(db, 'labour'), { id: newId, ...newLabour });
+      const res = await fetch('/api/labour', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newLabour),
+      });
+      const data = await res.json();
+      if (data?.data?.id) {
+        setListingId(data.data.id);
       }
     } catch (err) {
-      console.warn("[Labour] Error saving worker availability:", err);
+      console.warn('[Labour] Error saving worker availability via API:', err);
     }
 
-    setLiveLabour(prev => [{ id: newId, ...newLabour }, ...(prev || [])]);
+    setLiveLabour((prev) => [{ id: newId, ...newLabour }, ...(prev || [])]);
     setPostSubmitted(true);
   };
 
   const displayLabour = useMemo(() => {
-    if (isRealAccount) {
-      return liveLabour || [];
+    if (liveLabour !== null) {
+      return liveLabour;
     }
     return MOCK_LABOUR;
-  }, [isRealAccount, liveLabour]);
+  }, [liveLabour]);
 
   return (
     <main>

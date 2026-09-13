@@ -15,6 +15,7 @@ model User {
   name        String?
   phone       String?
   role        String   @default("FARMER")
+  isDemo      Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -37,6 +38,7 @@ model Seller {
   district       String
   shopAddress    String
   isVerified     Boolean  @default(false)
+  isDemo         Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -53,6 +55,7 @@ model Product {
   unit      String
   stock     Int      @default(0)
   imageUrl  String?
+  isDemo    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -67,6 +70,7 @@ model Machinery {
   district     String
   contactPhone String
   available    Boolean  @default(true)
+  isDemo       Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -81,6 +85,7 @@ model LabourPost {
   wagePerDay   Float
   district     String
   phone        String
+  isDemo       Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

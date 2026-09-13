@@ -14,43 +14,42 @@ export default function Page() {
   const [postSubmitted, setPostSubmitted] = useState(false);
   const [listingId, setListingId] = useState('');
 
-  useEffect(() => {
-    if (user && !isDemo) {
-      setLoading(true);
-      const fetchMachinery = async () => {
-        try {
-          const snap1 = await getDocs(collection(db, 'machinery'));
-          const snap2 = await getDocs(collection(db, 'machineListings'));
-          const items: any[] = [];
-          snap1.forEach(d => items.push({ id: d.id, ...d.data() }));
-          snap2.forEach(d => items.push({ id: d.id, ...d.data() }));
-          setLiveMachinery(items);
-        } catch (err) {
-          console.warn("[Machinery] Error fetching Firestore machinery:", err);
-          setLiveMachinery([]);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchMachinery();
-    } else {
-      setLiveMachinery(null);
-    }
-  }, [user, isDemo]);
+  const isDemoUser = Boolean(isDemo || !user);
 
-  const isRealAccount = Boolean(user && !isDemo);
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/machinery?isDemo=${isDemoUser}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json?.data) {
+          setLiveMachinery(json.data);
+        } else {
+          setLiveMachinery(MOCK_MACHINERY);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Machinery] Error fetching machinery from API:', err);
+        setLiveMachinery(MOCK_MACHINERY);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [user, isDemo, isDemoUser]);
 
   const handleRegisterEquipment = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const newMachine = {
-      chcName: (formData.get('postOwnerName') as string) || 'Private Owner',
-      contactPhone: (formData.get('postPhone') as string) || '',
-      district: (formData.get('postDistrict') as string) || 'Meerut',
-      equipmentType: (formData.get('postMachineType') as string) || 'Tractor',
+      title: (formData.get('postMachineName') as string) || '',
       model: (formData.get('postMachineName') as string) || '',
+      equipmentType: (formData.get('postMachineType') as string) || 'Tractor',
+      machineType: (formData.get('postMachineType') as string) || 'Tractor',
       ratePerHour: Number(formData.get('postHourlyRate')) || 400,
+      district: (formData.get('postDistrict') as string) || 'Meerut',
       state: (formData.get('postState') as string) || 'Uttar Pradesh',
+      contactPhone: (formData.get('postPhone') as string) || '',
+      chcName: (formData.get('postOwnerName') as string) || 'Private Owner',
+      firebaseUid: user?.uid || null,
       available: true,
       createdAt: new Date().toISOString(),
     };
@@ -59,23 +58,29 @@ export default function Page() {
     setListingId(newId);
 
     try {
-      if (user && !isDemo) {
-        await addDoc(collection(db, 'machinery'), { id: newId, ...newMachine });
+      const res = await fetch('/api/machinery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newMachine),
+      });
+      const data = await res.json();
+      if (data?.data?.id) {
+        setListingId(data.data.id);
       }
     } catch (err) {
-      console.warn("[Machinery] Error saving equipment:", err);
+      console.warn('[Machinery] Error saving equipment via API:', err);
     }
 
-    setLiveMachinery(prev => [{ id: newId, ...newMachine }, ...(prev || [])]);
+    setLiveMachinery((prev) => [{ id: newId, ...newMachine }, ...(prev || [])]);
     setPostSubmitted(true);
   };
 
   const displayMachinery = useMemo(() => {
-    if (isRealAccount) {
-      return liveMachinery || [];
+    if (liveMachinery !== null) {
+      return liveMachinery;
     }
     return MOCK_MACHINERY;
-  }, [isRealAccount, liveMachinery]);
+  }, [liveMachinery]);
 
   return (
     <main>
