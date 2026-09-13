@@ -18,6 +18,7 @@ export default function Page() {
   const [bookingMachine, setBookingMachine] = useState<any | null>(null);
   const [bookingHours, setBookingHours] = useState<number>(4);
   const [bookingDate, setBookingDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [bookingCustomerName, setBookingCustomerName] = useState<string>('');
   const [bookingContactPhone, setBookingContactPhone] = useState<string>('');
   const [bookingStatus, setBookingStatus] = useState<'idle' | 'booking' | 'success' | 'error'>('idle');
   const [confirmedBookingId, setConfirmedBookingId] = useState<string>('');
@@ -108,36 +109,54 @@ export default function Page() {
       const effectiveUserId = user?.uid || 'demo-farmer-seller-uid';
       const totalAmount = rate * bookingHours;
 
+      const startDateObj = bookingDate ? new Date(bookingDate) : new Date();
+      const endDateObj = new Date(startDateObj.getTime() + bookingHours * 60 * 60 * 1000);
+      const startDate = startDateObj.toISOString();
+      const endDate = endDateObj.toISOString();
+
+      const customerName = (bookingCustomerName || userData?.name || user?.displayName || 'AgriShield Farmer').trim();
+      const customerPhone = (bookingContactPhone || userData?.phone || user?.phoneNumber || '9876543210').trim();
+
+      const payload = {
+        bookingType: 'MACHINERY',
+        targetId: targetId,
+        startDate: startDate,
+        endDate: endDate,
+        bookingDate: startDate,
+        totalAmount: totalAmount,
+        pricePerHour: rate,
+        hours: bookingHours,
+        status: 'PENDING',
+        customerName: customerName,
+        customerPhone: customerPhone,
+        userId: effectiveUserId,
+        firebaseUid: effectiveUserId,
+        userName: customerName,
+        userPhone: customerPhone,
+        userEmail: user?.email || 'demo@aegroshield.com',
+      };
+
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bookingType: 'MACHINERY',
-          targetId: targetId,
-          totalAmount: totalAmount,
-          pricePerHour: rate,
-          status: 'PENDING',
-          bookingDate: bookingDate ? new Date(bookingDate).toISOString() : new Date().toISOString(),
-          contactPhone: bookingContactPhone || userData?.phone || user?.phoneNumber || '9876543210',
-          userId: effectiveUserId,
-          firebaseUid: effectiveUserId,
-          userName: userData?.name || user?.displayName || 'Farmer',
-          userPhone: bookingContactPhone || userData?.phone || user?.phoneNumber || '9876543210',
-          userEmail: user?.email || 'demo@aegroshield.com',
-        }),
+        body: JSON.stringify(payload),
       });
+
       const data = await res.json();
-      if (data?.success) {
+      if (res.ok && data?.success && data?.data?.id) {
         setConfirmedBookingId(data.data.id);
         setBookingStatus('success');
-        // Refresh My Bookings immediately
+        // Refresh My Bookings immediately from database
         fetchBookings();
       } else {
+        const errorMsg = data?.error || 'Failed to register booking in database.';
         setBookingStatus('error');
+        alert('Booking failed: ' + errorMsg);
       }
-    } catch (err) {
-      console.warn('Booking error:', err);
+    } catch (err: any) {
+      console.error('Booking error:', err);
       setBookingStatus('error');
+      alert('Booking failed: ' + (err?.message || 'Network error occurred. Please try again.'));
     }
   };
 
@@ -301,6 +320,8 @@ export default function Page() {
                 setBookingMachine(machine);
                 setBookingStatus('idle');
                 setConfirmedBookingId('');
+                setBookingCustomerName(userData?.name || user?.displayName || 'AgriShield Farmer');
+                setBookingContactPhone(userData?.phone || user?.phoneNumber || '');
               }}
               className="btn btn-primary btn-sm cursor-pointer"
               style={{ cursor: 'pointer' }}
@@ -574,6 +595,19 @@ export default function Page() {
             <div style={{ marginTop: '8px', fontSize: '1.1rem', fontWeight: 700, color: '#16a34a' }}>
               ₹{bookingMachine.ratePerHour || bookingMachine.pricePerHour || bookingMachine.rate || 400}<span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#64748b' }}>/hour</span>
             </div>
+          </div>
+
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+              Your Full Name:
+            </label>
+            <input
+              type="text"
+              value={bookingCustomerName}
+              onChange={(e) => setBookingCustomerName(e.target.value)}
+              placeholder="e.g. Ramesh Kumar"
+              style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+            />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>

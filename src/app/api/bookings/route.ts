@@ -5,26 +5,38 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const firebaseUid = searchParams.get('firebaseUid');
   const userId = searchParams.get('userId');
+  const phone = searchParams.get('phone') || searchParams.get('customerPhone');
 
   try {
     let targetUserId: string | null = null;
     const lookupKey = firebaseUid || userId;
 
-    if (lookupKey) {
-      // 1. Try finding by primary Postgres user ID
-      const userById = await prisma.user.findUnique({
-        where: { id: lookupKey },
-      });
-      if (userById) {
-        targetUserId = userById.id;
-      } else {
-        // 2. Try finding by firebaseUid
-        const userByFb = await prisma.user.findUnique({
-          where: { firebaseUid: lookupKey },
+    if (phone) {
+      try {
+        const userByPhone = await prisma.user.findFirst({ where: { phone: phone.trim() } });
+        if (userByPhone) targetUserId = userByPhone.id;
+      } catch (phoneErr) {
+        console.warn('[API/Bookings] Phone lookup warning in GET:', phoneErr);
+      }
+    }
+
+    if (!targetUserId && lookupKey && lookupKey !== 'demo-farmer-seller-uid') {
+      try {
+        const userById = await prisma.user.findUnique({
+          where: { id: lookupKey },
         });
-        if (userByFb) {
-          targetUserId = userByFb.id;
+        if (userById) {
+          targetUserId = userById.id;
+        } else {
+          const userByFb = await prisma.user.findUnique({
+            where: { firebaseUid: lookupKey },
+          });
+          if (userByFb) {
+            targetUserId = userByFb.id;
+          }
         }
+      } catch (err) {
+        // Fall through
       }
     }
 
@@ -38,10 +50,12 @@ export async function GET(request: NextRequest) {
           },
         },
       });
-      return NextResponse.json({ success: true, data: userBookings, source: 'postgres' });
+      if (userBookings.length > 0) {
+        return NextResponse.json({ success: true, data: userBookings, source: 'postgres' });
+      }
     }
 
-    // Return latest bookings if no specific user filter matched
+    // Return latest bookings if no specific user filter matched or if user has no specific bookings
     const allBookings = await prisma.booking.findMany({
       take: 30,
       orderBy: { createdAt: 'desc' },
@@ -66,104 +80,97 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log("--> INCOMING REAL BOOKING REQUEST:", body);
+
     const {
       bookingType,
       targetId,
       totalAmount,
+      startDate,
+      endDate,
       bookingDate,
       userId,
       firebaseUid,
+      customerName,
+      customerPhone,
       userName,
       userPhone,
+      contactPhone,
       userEmail,
     } = body;
 
-    let targetUserId: string | null = null;
+    // Resolve or auto-create User record for this booking
+    const cleanPhone = customerPhone || userPhone || contactPhone ? String(customerPhone || userPhone || contactPhone).trim() : null;
+    const cleanName = customerName || userName ? String(customerName || userName).trim() : 'AgriShield Farmer';
     const lookupKey = firebaseUid || userId;
 
-    if (lookupKey) {
-      // 1. Check if lookupKey is already a valid Postgres User ID
-      try {
-        const userById = await prisma.user.findUnique({
-          where: { id: lookupKey },
-        });
-        if (userById) {
-          targetUserId = userById.id;
-        }
-      } catch (err) {
-        // Ignore CUID format validation errors and continue to firebaseUid lookup
-      }
+    let user = null;
 
-      // 2. If not found by primary ID, check by firebaseUid
-      if (!targetUserId) {
-        try {
-          const userByFb = await prisma.user.findUnique({
-            where: { firebaseUid: lookupKey },
-          });
-          if (userByFb) {
-            targetUserId = userByFb.id;
-          } else {
-            // Auto-create user row in PostgreSQL for this firebaseUid
-            const createdUser = await prisma.user.create({
-              data: {
-                firebaseUid: lookupKey,
-                name: userName || 'AgriShield Farmer',
-                phone: userPhone || null,
-                email: userEmail || null,
-                role: 'FARMER',
-                isDemo: false,
-              },
-            });
-            targetUserId = createdUser.id;
-          }
-        } catch (fbErr) {
-          console.warn('[API/Bookings] User lookup/creation by firebaseUid error:', fbErr);
-        }
+    // 1. Look up user by phone if available
+    if (cleanPhone) {
+      try {
+        user = await prisma.user.findFirst({ where: { phone: cleanPhone } });
+      } catch (err) {
+        console.warn('[API/Bookings] Phone lookup warning:', err);
       }
     }
 
-    // 3. Fallback to existing demo user or first user in DB
-    if (!targetUserId) {
+    // 2. Look up user by lookupKey (id or firebaseUid) if not found by phone
+    if (!user && lookupKey && typeof lookupKey === 'string' && lookupKey.trim() !== '') {
       try {
-        const defaultUser =
+        user = (await prisma.user.findUnique({ where: { id: lookupKey } })) ||
+               (await prisma.user.findUnique({ where: { firebaseUid: lookupKey } }));
+      } catch (err) {
+        console.warn('[API/Bookings] User ID lookup warning:', err);
+      }
+    }
+
+    // 3. If user doesn't exist, create a new User record for this farmer
+    if (!user) {
+      try {
+        user = await prisma.user.create({
+          data: {
+            name: cleanName,
+            phone: cleanPhone,
+            role: 'FARMER',
+            ...(lookupKey && lookupKey !== 'demo-farmer-seller-uid' ? { firebaseUid: lookupKey } : {}),
+          },
+        });
+      } catch (createErr) {
+        console.warn('[API/Bookings] Auto user creation warning:', createErr);
+      }
+    }
+
+    // 4. Fallback to existing demo user or any user in DB
+    if (!user) {
+      try {
+        user =
           (await prisma.user.findFirst({ where: { isDemo: true } })) ||
           (await prisma.user.findFirst());
-
-        if (defaultUser) {
-          targetUserId = defaultUser.id;
-        } else {
-          const demoUser = await prisma.user.upsert({
-            where: { firebaseUid: 'demo-farmer-seller-uid' },
-            update: {},
-            create: {
-              firebaseUid: 'demo-farmer-seller-uid',
-              email: 'demo@aegroshield.com',
-              name: 'Demo Account (Kisan Seva Kendra)',
-              role: 'FARMER',
-              isDemo: true,
-            },
-          });
-          targetUserId = demoUser.id;
-        }
       } catch (demoErr) {
         console.warn('[API/Bookings] Demo user fallback error:', demoErr);
       }
     }
 
-    if (!targetUserId) {
-      return NextResponse.json(
-        { success: false, error: 'Could not resolve or create user profile for booking' },
-        { status: 400 }
-      );
+    // 5. Ultimate fallback if DB has 0 users
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          name: cleanName,
+          phone: cleanPhone,
+          role: 'FARMER',
+          isDemo: true,
+        },
+      });
     }
 
-    const parsedDate = bookingDate ? new Date(bookingDate) : new Date();
+    const parsedDate = startDate ? new Date(startDate) : (bookingDate ? new Date(bookingDate) : new Date());
     const validBookingDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
 
     const createdBooking = await prisma.booking.create({
       data: {
-        userId: targetUserId,
-        bookingType: (bookingType || 'MACHINERY').toUpperCase(),
+        userId: user.id,
+        bookingType: String(bookingType || 'MACHINERY').toUpperCase(),
         targetId: String(targetId || 'ITEM-' + Date.now()),
         status: body.status || 'PENDING',
         bookingDate: validBookingDate,
@@ -180,6 +187,8 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    console.log("REAL_BOOKING_CREATED:", createdBooking.id);
 
     return NextResponse.json(
       {
