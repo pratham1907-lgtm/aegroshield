@@ -1,12 +1,14 @@
 "use client";
+
 import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, auth, signInWithGoogle } from "@/lib/firebase";
 import { collection, getDocs, query, where, addDoc } from "firebase/firestore";
+import { Lock, Loader2 } from "lucide-react";
 
 export default function Page() {
-  const { user, userData } = useAuth();
+  const { user, userData, loading: authLoading } = useAuth();
   const [liveLabour, setLiveLabour] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'find' | 'register'>('find');
@@ -24,14 +26,13 @@ export default function Page() {
   const [bookingErrorMessage, setBookingErrorMessage] = useState<string>('');
   const [confirmedBookingId, setConfirmedBookingId] = useState<string>('');
 
-  const isGuest = !user;
-  const isRealUser = Boolean(user);
+  const isAuthenticated = Boolean(user || auth.currentUser);
 
   const fetchUserBookings = async () => {
     if (!user?.uid && !auth.currentUser?.uid) return;
     try {
       const activeUid = auth.currentUser?.uid || user?.uid;
-      const res = await fetch(`/api/bookings?firebaseUid=${activeUid}`);
+      const res = await fetch(`/api/bookings?firebaseUid=${activeUid}`, { cache: 'no-store' });
       const json = await res.json();
       if (json?.data && json.data.length > 0) {
         setUserBookings(json.data.filter((b: any) => b.bookingType === 'LABOUR' || !b.bookingType));
@@ -42,7 +43,8 @@ export default function Page() {
   };
 
   useEffect(() => {
-    if (isGuest) {
+    // Strict Auth Gate: Do NOT query database if unauthenticated
+    if (!isAuthenticated) {
       setLiveLabour([]);
       setLoading(false);
       return;
@@ -50,7 +52,7 @@ export default function Page() {
 
     // Authenticated User: Query live database records via Prisma API
     setLoading(true);
-    fetch('/api/labour')
+    fetch('/api/labour', { cache: 'no-store' })
       .then((res) => res.json())
       .then((json) => {
         if (json?.success && Array.isArray(json.data)) {
@@ -68,7 +70,7 @@ export default function Page() {
       });
 
     fetchUserBookings();
-  }, [user, isGuest]);
+  }, [isAuthenticated]);
 
   const handlePostAvailability = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -265,11 +267,11 @@ export default function Page() {
   };
 
   const displayLabour = useMemo(() => {
-    if (isGuest) {
+    if (!isAuthenticated) {
       return [];
     }
     return liveLabour || [];
-  }, [isGuest, liveLabour]);
+  }, [isAuthenticated, liveLabour]);
 
   return (
     <main>
@@ -291,8 +293,48 @@ export default function Page() {
     </svg>
   </div>
 </div>
-{/*  ── Main ──────────────────────────────────────────────────  */}
-<main className="labour-layout">
+
+{/* ── Strict Auth Barrier Check ── */}
+{authLoading ? (
+  <div style={{ padding: '80px 20px', textAlign: 'center', color: '#64748b' }}>
+    <Loader2 size={36} className="spin" style={{ margin: '0 auto 12px', color: '#15803d', animation: 'spin 1s linear infinite' }} />
+    <p style={{ fontWeight: 600, fontSize: '1rem' }}>Verifying authentication...</p>
+  </div>
+) : !isAuthenticated ? (
+  <div className="container" style={{ maxWidth: '540px', margin: '60px auto 100px', padding: '0 20px' }}>
+    <div style={{ background: '#ffffff', padding: '48px 32px', borderRadius: '20px', textAlign: 'center', border: '1.5px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)' }}>
+      <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#ecfdf5', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '1.8rem' }}>
+        <Lock size={32} color="#16a34a" />
+      </div>
+      <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '10px' }}>
+        Authentication Required
+      </h2>
+      <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '28px' }}>
+        Please sign in with your Google account to browse available farm labour and manage hiring bookings.
+      </p>
+      <button
+        onClick={() => signInWithGoogle()}
+        style={{
+          background: '#16a34a',
+          color: '#ffffff',
+          border: 'none',
+          padding: '13px 28px',
+          borderRadius: '10px',
+          fontWeight: 700,
+          fontSize: '0.95rem',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '10px',
+          boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)',
+        }}
+      >
+        Sign In with Google
+      </button>
+    </div>
+  </div>
+) : (
+<div className="labour-layout">
 
   {/*  Stats Strip  */}
   <div className="stats-strip" style={{"marginBottom":"28px"}}>
@@ -407,28 +449,7 @@ export default function Page() {
 
     {/*  Labour Results  */}
     <div id="labourResults">
-      {isGuest ? (
-        <div style={{ padding: '56px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1.5px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', margin: '20px 0' }}>
-          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '1.8rem' }}>
-            🔒
-          </div>
-          <h3 style={{ fontSize: '1.35rem', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
-            Sign in to view local labour squads
-          </h3>
-          <p style={{ color: '#64748b', fontSize: '0.95rem', maxWidth: '480px', margin: '0 auto 24px' }}>
-            Connect with verified agricultural workers, harvesting groups, and sowing teams across your district with real wages and transparent booking.
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => signInWithGoogle()}
-              className="btn btn-primary cursor-pointer"
-              style={{ padding: '10px 22px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}
-            >
-              Sign in with Google
-            </button>
-          </div>
-        </div>
-      ) : loading ? (
+      {loading ? (
         <div style={{ padding: '60px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', margin: '20px 0' }}>
           <div style={{ fontSize: '2rem', marginBottom: '10px' }}>⏳</div>
           <p style={{ color: '#64748b', fontSize: '1rem', fontWeight: 500 }}>Querying live labour squads from Supabase...</p>
@@ -720,7 +741,8 @@ export default function Page() {
     </div>
   )}
 
-</main>
+</div>
+)}
 
 {/*  ── Footer ────────────────────────────────────────────────  */}
   <footer>
@@ -782,9 +804,6 @@ export default function Page() {
   </div>
 </div>
 
-
-
-{/*  ── Labour Booking Modal ──  */}
 {bookingLabour && (
   <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
     <div style={{ background: '#fff', borderRadius: '20px', maxWidth: '480px', width: '100%', padding: '28px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>

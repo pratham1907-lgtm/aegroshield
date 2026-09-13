@@ -104,20 +104,15 @@ function setStored<T>(key: string, value: T): void {
 
 // ── DEMO MODE CONTROLS ───────────────────────────────────────────────────────
 export function isDemoMode(): boolean {
-  return getStored<boolean>(KEYS.IS_DEMO, false);
+  return false;
 }
 
 export function isDemoSessionActive(): boolean {
-  if (!isDemoMode()) return false;
-  const user = getCurrentUser();
-  const vendor = getCurrentVendor();
-  const admin = getCurrentAdmin();
-  return !!(user || vendor || admin);
+  return false;
 }
 
 export function enableDemoMode(forceReset = false): void {
-  setStored(KEYS.IS_DEMO, true);
-  initDemoStore(forceReset);
+  setStored(KEYS.IS_DEMO, false);
 }
 
 export function disableDemoMode(): void {
@@ -125,22 +120,7 @@ export function disableDemoMode(): void {
 }
 
 export function initDemoStore(forceReset = false): void {
-  if (typeof window === 'undefined') return;
-  if (forceReset || !localStorage.getItem(KEYS.DEMO_VENDORS)) {
-    setStored(KEYS.DEMO_VENDORS, MOCK_VENDORS);
-  }
-  if (forceReset || !localStorage.getItem(KEYS.DEMO_PRODUCTS)) {
-    setStored(KEYS.DEMO_PRODUCTS, MOCK_PRODUCTS);
-  }
-  if (forceReset || !localStorage.getItem(KEYS.DEMO_ORDERS)) {
-    setStored(KEYS.DEMO_ORDERS, MOCK_ORDERS);
-  }
-  if (forceReset || !localStorage.getItem(KEYS.DEMO_MACHINERY)) {
-    setStored(KEYS.DEMO_MACHINERY, MOCK_MACHINERY);
-  }
-  if (forceReset || !localStorage.getItem(KEYS.DEMO_LABOUR)) {
-    setStored(KEYS.DEMO_LABOUR, MOCK_LABOUR);
-  }
+  // Demo mode permanently disabled
 }
 
 function getVendorsKey(): string {

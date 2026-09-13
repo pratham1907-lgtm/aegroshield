@@ -3,17 +3,29 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/lib/cart-context';
-import { Store, ShoppingBag, Search, Plus, Check } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { auth, signInWithGoogle } from '@/lib/firebase';
+import { Store, ShoppingBag, Search, Plus, Check, Lock, Loader2 } from 'lucide-react';
 
 export default function StoreCatalogPage() {
   const { addToCart, cartCount, openCart } = useCart();
+  const { user, loading: authLoading } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [addedIds, setAddedIds] = useState<Record<string, boolean>>({});
 
+  const isAuthenticated = Boolean(user || auth.currentUser);
+
   useEffect(() => {
+    // Strict Auth Gate: Do NOT query database if unauthenticated
+    if (!isAuthenticated) {
+      setProducts([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     fetch('/api/products', { cache: 'no-store' })
       .then(res => res.json())
@@ -26,7 +38,7 @@ export default function StoreCatalogPage() {
         setProducts([]);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [isAuthenticated]);
 
   const handleAddToCart = (p: any) => {
     const cartProduct = {
@@ -85,199 +97,222 @@ export default function StoreCatalogPage() {
         </div>
       </section>
 
-
-      {/* ── Search & Filter Controls ── */}
-      <div className="container" style={{ maxWidth: '1200px', margin: '30px auto 20px', padding: '0 20px' }}>
-        <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', background: '#fff', padding: '16px 20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 300px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 14px' }}>
-            <Search size={18} color="#64748b" />
-            <input
-              type="text"
-              placeholder="Search products, brands, or seller stores..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.95rem' }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {['All', 'Fertilizers', 'Seeds', 'Pesticides', 'Equipment'].map(cat => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '20px',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: selectedCategory === cat ? 'none' : '1px solid #e2e8f0',
-                  background: selectedCategory === cat ? '#15803d' : '#f8fafc',
-                  color: selectedCategory === cat ? '#fff' : '#475569',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+      {/* ── Strict Auth Barrier Check ── */}
+      {authLoading ? (
+        <div style={{ padding: '80px 20px', textAlign: 'center', color: '#64748b' }}>
+          <Loader2 size={36} className="spin" style={{ margin: '0 auto 12px', color: '#15803d' }} />
+          <p style={{ fontWeight: 600, fontSize: '1rem' }}>Verifying authentication...</p>
         </div>
-      </div>
-
-      {/* ── Products Grid ── */}
-      <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
-            Available Products ({filtered.length})
-          </h2>
-          <span style={{ fontSize: '0.85rem', color: '#15803d', fontWeight: 600 }}>
-            ⚡ Supabase Live Inventory
-          </span>
-        </div>
-
-        {loading ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-            <p>Loading live catalog from database...</p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ padding: '60px', textAlign: 'center', background: '#fff', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
-            <p style={{ color: '#64748b', fontSize: '1.1rem', margin: '0 0 12px 0' }}>
-              {search || selectedCategory !== 'All' ? 'No products found matching your search.' : 'No products available yet in the live database.'}
+      ) : !isAuthenticated ? (
+        <div className="container" style={{ maxWidth: '540px', margin: '60px auto 100px', padding: '0 20px' }}>
+          <div style={{ background: '#ffffff', padding: '48px 32px', borderRadius: '20px', textAlign: 'center', border: '1.5px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#ecfdf5', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '1.8rem' }}>
+              <Lock size={32} color="#16a34a" />
+            </div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '10px' }}>
+              Authentication Required
+            </h2>
+            <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '28px' }}>
+              Please sign in with your Google account to browse the marketplace and access live agricultural inventory.
             </p>
-            <Link href="/seller/dashboard" className="btn btn-primary" style={{ padding: '8px 16px', borderRadius: '8px', textDecoration: 'none' }}>
-              Add a Product via Seller Dashboard
-            </Link>
+            <button
+              onClick={() => signInWithGoogle()}
+              style={{
+                background: '#16a34a',
+                color: '#ffffff',
+                border: 'none',
+                padding: '13px 28px',
+                borderRadius: '10px',
+                fontWeight: 700,
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '10px',
+                boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)',
+              }}
+            >
+              Sign In with Google
+            </button>
           </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '22px' }}>
-            {filtered.map(p => {
-              const isAdded = Boolean(addedIds[p.id]);
-              const sellerName = p.seller?.storeName || 'Official Store';
-              const sellerDistrict = p.seller?.district || 'Meerut';
-              const inStock = Number(p.stock) > 0;
+        </div>
+      ) : (
+        <>
+          {/* ── Search & Filter Controls ── */}
+          <div className="container" style={{ maxWidth: '1200px', margin: '30px auto 20px', padding: '0 20px' }}>
+            <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', background: '#fff', padding: '16px 20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 300px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 14px' }}>
+                <Search size={18} color="#64748b" />
+                <input
+                  type="text"
+                  placeholder="Search products, brands, or seller stores..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.95rem' }}
+                />
+              </div>
 
-              return (
-                <div
-                  key={p.id}
-                  style={{
-                    background: '#fff',
-                    borderRadius: '12px',
-                    border: '1px solid #e2e8f0',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                  }}
-                >
-                  {/* Image */}
-                  <div style={{ height: '170px', background: '#f1f5f9', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {p.imageUrl ? (
-                      <img
-                        src={p.imageUrl}
-                        alt={p.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <div style={{ color: '#94a3b8', fontSize: '2.5rem' }}>📦</div>
-                    )}
-                    <span
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {['All', 'Fertilizers', 'Seeds', 'Pesticides', 'Equipment'].map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '20px',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: selectedCategory === cat ? 'none' : '1px solid #e2e8f0',
+                      background: selectedCategory === cat ? '#15803d' : '#f8fafc',
+                      color: selectedCategory === cat ? '#fff' : '#475569',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Products Grid ── */}
+          <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                Available Products ({filtered.length})
+              </h2>
+              <span style={{ fontSize: '0.85rem', color: '#15803d', fontWeight: 600 }}>
+                ⚡ Supabase Live Inventory
+              </span>
+            </div>
+
+            {loading ? (
+              <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+                <Loader2 size={32} className="spin" style={{ margin: '0 auto 12px', color: '#15803d' }} />
+                <p>Loading live catalog from database...</p>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div style={{ padding: '60px', textAlign: 'center', background: '#fff', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                <p style={{ color: '#64748b', fontSize: '1.1rem', margin: '0 0 12px 0' }}>
+                  {search || selectedCategory !== 'All' ? 'No products found matching your search.' : 'No products available yet in the live database.'}
+                </p>
+                <Link href="/seller/dashboard" className="btn btn-primary" style={{ padding: '8px 16px', borderRadius: '8px', textDecoration: 'none' }}>
+                  Add a Product via Seller Dashboard
+                </Link>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '22px' }}>
+                {filtered.map(p => {
+                  const isAdded = Boolean(addedIds[p.id]);
+                  const sellerName = p.seller?.storeName || 'Official Store';
+                  const sellerDistrict = p.seller?.district || 'Meerut';
+                  const inStock = Number(p.stock) > 0;
+
+                  return (
+                    <div
+                      key={p.id}
                       style={{
-                        position: 'absolute',
-                        top: '10px',
-                        left: '10px',
-                        background: 'rgba(0,0,0,0.65)',
-                        color: '#fff',
-                        fontSize: '0.75rem',
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        fontWeight: 600,
+                        background: '#fff',
+                        borderRadius: '14px',
+                        overflow: 'hidden',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
                       }}
                     >
-                      {p.category}
-                    </span>
-                    {!p.isDemo && (
-                      <span
-                        style={{
-                          position: 'absolute',
-                          top: '10px',
-                          right: '10px',
-                          background: '#15803d',
-                          color: '#fff',
-                          fontSize: '0.72rem',
-                          padding: '3px 8px',
-                          borderRadius: '6px',
-                          fontWeight: 700,
-                        }}
-                      >
-                        ✓ Live
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Body */}
-                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-                      <Store size={13} /> {sellerName} • 📍 {sellerDistrict}
-                    </div>
-
-                    <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1e293b', margin: '0 0 6px 0', lineHeight: 1.3 }}>
-                      {p.name}
-                    </h3>
-
-                    {p.description && (
-                      <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 12px 0', lineClamp: 2, WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {p.description}
-                      </p>
-                    )}
-
-                    <div style={{ marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#15803d' }}>
-                          ₹{Number(p.price).toLocaleString()}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                          {p.unit || 'per unit'}
-                        </div>
+                      {/* Product Image */}
+                      <div style={{ height: '170px', background: '#f1f5f9', position: 'relative', overflow: 'hidden' }}>
+                        {p.imageUrl ? (
+                          <img
+                            src={p.imageUrl}
+                            alt={p.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '2.5rem' }}>
+                            🌱
+                          </div>
+                        )}
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: '10px',
+                            left: '10px',
+                            background: inStock ? '#dcfce7' : '#fee2e2',
+                            color: inStock ? '#166534' : '#991b1b',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: '12px',
+                          }}
+                        >
+                          {inStock ? 'In Stock' : 'Out of Stock'}
+                        </span>
                       </div>
 
-                      <button
-                        onClick={() => handleAddToCart(p)}
-                        disabled={!inStock}
-                        style={{
-                          background: isAdded ? '#16a34a' : inStock ? '#15803d' : '#cbd5e1',
-                          color: '#fff',
-                          border: 'none',
-                          padding: '8px 14px',
-                          borderRadius: '8px',
-                          fontWeight: 600,
-                          fontSize: '0.85rem',
-                          cursor: inStock ? 'pointer' : 'not-allowed',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                        }}
-                      >
-                        {isAdded ? (
-                          <>
-                            <Check size={15} /> Added
-                          </>
-                        ) : inStock ? (
-                          <>
-                            <ShoppingBag size={15} /> Add
-                          </>
-                        ) : (
-                          'Out of Stock'
-                        )}
-                      </button>
+                      {/* Product Info */}
+                      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                        <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 600 }}>
+                          {p.category}
+                        </span>
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 8px 0', minHeight: '44px' }}>
+                          {p.name}
+                        </h3>
+
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '12px' }}>
+                          <div>🏪 {sellerName}</div>
+                          <div>📍 {sellerDistrict}</div>
+                        </div>
+
+                        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+                          <div>
+                            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#15803d' }}>
+                              ₹{Number(p.price).toLocaleString('en-IN')}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>
+                              {p.unit}
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={() => handleAddToCart(p)}
+                            disabled={!inStock}
+                            style={{
+                              background: !inStock ? '#cbd5e1' : isAdded ? '#16a34a' : '#15803d',
+                              color: '#fff',
+                              border: 'none',
+                              padding: '8px 14px',
+                              borderRadius: '8px',
+                              fontWeight: 600,
+                              fontSize: '0.85rem',
+                              cursor: inStock ? 'pointer' : 'not-allowed',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            {isAdded ? (
+                              <>
+                                <Check size={16} /> Added
+                              </>
+                            ) : (
+                              'Add to Cart'
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </main>
   );
 }
