@@ -4,10 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, auth, signInWithGoogle } from "@/lib/firebase";
 import { collection, getDocs, addDoc } from "firebase/firestore";
-import { MOCK_MACHINERY } from "@/lib/mockData";
 
 export default function Page() {
-  const { user, userData, isDemo, loginAsDemo } = useAuth();
+  const { user, userData } = useAuth();
   const [liveMachinery, setLiveMachinery] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'find' | 'register'>('find');
@@ -25,8 +24,8 @@ export default function Page() {
   const [confirmedBookingId, setConfirmedBookingId] = useState<string>('');
   const [myBookings, setMyBookings] = useState<any[]>([]);
 
-  const isGuest = !user && !isDemo;
-  const isRealUser = Boolean(user && !isDemo);
+  const isGuest = !user;
+  const isRealUser = Boolean(user);
 
   const fetchBookings = async () => {
     if (!user?.uid && !auth.currentUser?.uid) return;
@@ -49,15 +48,9 @@ export default function Page() {
       return;
     }
 
-    if (isDemo) {
-      setLiveMachinery(MOCK_MACHINERY);
-      setLoading(false);
-      return;
-    }
-
-    // Authenticated Real User: Query ONLY live database records via Prisma
+    // Authenticated User: Query live database records via Prisma API
     setLoading(true);
-    fetch('/api/machinery?isDemo=false')
+    fetch('/api/machinery')
       .then((res) => res.json())
       .then((json) => {
         if (json?.success && Array.isArray(json.data)) {
@@ -75,17 +68,10 @@ export default function Page() {
       });
 
     fetchBookings();
-  }, [user, isDemo, isGuest]);
+  }, [user, isGuest]);
 
   const handleRegisterEquipment = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    if (isDemo) {
-      const demoListingId = 'DEMO-MCH-' + Math.floor(100000 + Math.random() * 900000);
-      setListingId(demoListingId);
-      setPostSubmitted(true);
-      return;
-    }
 
     if (!auth.currentUser) {
       const wantsSignIn = confirm("A verified Google Account is required to register equipment. Sign in with Google now?");
@@ -146,7 +132,7 @@ export default function Page() {
         setListingId(data.data.id);
         setPostSubmitted(true);
         // Refresh catalog immediately from database
-        fetch('/api/machinery?isDemo=false')
+        fetch('/api/machinery')
           .then((r) => r.json())
           .then((d) => {
             if (d?.success && Array.isArray(d.data)) setLiveMachinery(d.data);
@@ -171,25 +157,6 @@ export default function Page() {
     const startDate = startDateObj.toISOString();
     const endDate = endDateObj.toISOString();
     const totalAmount = rate * bookingHours;
-
-    // In demo mode: simulate booking locally without polluting PostgreSQL
-    if (isDemo) {
-      const demoBkId = 'DEMO-BK-' + Math.floor(100000 + Math.random() * 900000);
-      setConfirmedBookingId(demoBkId);
-      setBookingStatus('success');
-      setBookingErrorMessage('');
-      setMyBookings((prev) => [
-        {
-          id: demoBkId,
-          targetId: bookingMachine.title || bookingMachine.model || 'Demo Equipment',
-          totalAmount: totalAmount,
-          bookingDate: startDate,
-          status: 'CONFIRMED (DEMO)',
-        },
-        ...prev,
-      ]);
-      return;
-    }
 
     if (!auth.currentUser) {
       const wantsSignIn = confirm("A verified Google Account is required to book farm machinery. Sign in with Google now?");
@@ -301,11 +268,8 @@ export default function Page() {
     if (isGuest) {
       return [];
     }
-    if (isDemo) {
-      return MOCK_MACHINERY;
-    }
     return liveMachinery || [];
-  }, [isGuest, isDemo, liveMachinery]);
+  }, [isGuest, liveMachinery]);
 
   return (
     <main>
@@ -373,25 +337,7 @@ export default function Page() {
   {activeTab === 'find' && (
     <div className="tab-content active" id="findSection">
 
-  {/*  ── Demo Mode Notice ──  */}
-  {isDemo && (
-    <div style={{ marginBottom: '20px', padding: '14px 20px', background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#92400e', fontSize: '0.92rem' }}>
-        <span style={{ fontSize: '1.4rem' }}>🧪</span>
-        <div>
-          <strong>Demo Mode Active</strong>: Viewing sample evaluation listings (Mahindra 575 DI, John Deere, etc.).
-          <div style={{ fontSize: '0.82rem', color: '#b45309' }}>Actions and bookings taken in demo mode are simulated locally and isolated from the database.</div>
-        </div>
-      </div>
-      <button
-        onClick={() => signInWithGoogle()}
-        className="cursor-pointer"
-        style={{ background: '#d97706', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
-      >
-        Sign in with Google
-      </button>
-    </div>
-  )}
+
 
   {/*  ── Search Card ───────────────────────────────────────────  */}
   <div className="search-card">
@@ -466,13 +412,6 @@ export default function Page() {
             style={{ padding: '10px 22px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}
           >
             Sign in with Google
-          </button>
-          <button
-            onClick={() => loginAsDemo('farmer')}
-            className="btn btn-outline cursor-pointer"
-            style={{ padding: '10px 22px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}
-          >
-            Explore in Demo Mode
           </button>
         </div>
       </div>

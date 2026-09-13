@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { adminLogin, enableDemoMode, disableDemoMode } from '@/lib/ecommerce-service';
+import { adminLogin } from '@/lib/ecommerce-service';
 import { Shield, Lock, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function AdminLoginPageWrapper() {
@@ -48,7 +48,6 @@ function AdminLoginPage() {
     e.preventDefault();
     if (!password) return showMessage("Please enter the Admin Master Password.");
     setLoading(true);
-    disableDemoMode(); // Real Admin Session
     const admin = adminLogin(email, password, false);
     if (admin) {
       showMessage("🛡️ Admin Authenticated! Opening Master Control Panel…", "success");
@@ -56,14 +55,6 @@ function AdminLoginPage() {
     } else {
       showMessage("❌ Invalid Admin Credentials.");
       setLoading(false);
-    }
-  };
-
-  const triggerDemoAdmin = () => {
-    const a = adminLogin("admin@aegroshield.in", "AdminPass@123", true); // Demo Admin Session
-    if (a) {
-      showMessage("🛡️ Evaluation Demo Admin Mode Active! Opening Sample Admin Panel…", "success");
-      setTimeout(() => router.push(`/admin/dashboard?secret_key=${SECRET_KEY}`), 500);
     }
   };
 
@@ -124,15 +115,6 @@ function AdminLoginPage() {
             </button>
           </form>
 
-          {/* Demo Admin Sign In Button */}
-          <button
-            type="button"
-            className="btn-auth btn-demo"
-            onClick={triggerDemoAdmin}
-            style={{ marginTop: '14px', background: '#334155', color: '#f8fafc', border: '1px solid #475569', width: '100%', padding: '12px' }}
-          >
-            🛡️ Evaluation Demo Sign In (Sample Admin Metrics)
-          </button>
 
           <div className="back-link" style={{ marginTop: '20px', textAlign: 'center' }}>
             <Link href="/" style={{ color: '#94a3b8', fontSize: '0.85rem', textDecoration: 'none' }}>

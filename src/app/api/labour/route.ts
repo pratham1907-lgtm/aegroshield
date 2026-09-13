@@ -1,27 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { MOCK_LABOUR } from '@/lib/mockData';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const isDemo = searchParams.get('isDemo') === 'true';
   const userId = searchParams.get('userId');
   const leaderId = searchParams.get('leaderId');
+  const phone = searchParams.get('phone');
   const firebaseUid = searchParams.get('firebaseUid');
 
   const targetLeader = leaderId || userId;
-
-  // Explicit demo mode returns sample evaluation data strictly
-  if (isDemo && !targetLeader && !firebaseUid) {
-    return NextResponse.json({ success: true, data: MOCK_LABOUR, source: 'demo' });
-  }
 
   try {
     const whereClause: any = {};
 
     if (targetLeader) {
       whereClause.leaderId = targetLeader;
-    } else if (firebaseUid && firebaseUid !== 'demo-farmer-seller-uid') {
+    } else if (phone) {
+      const cleanPhone = String(phone).replace(/\D/g, '').trim();
+      const user = await prisma.user.findFirst({ where: { phone: cleanPhone } });
+      if (user) whereClause.leaderId = user.id;
+    } else if (firebaseUid) {
       const user = await prisma.user.findUnique({ where: { firebaseUid } });
       if (user) whereClause.leaderId = user.id;
     }
@@ -123,6 +121,22 @@ export async function POST(request: NextRequest) {
         targetLeaderId = dbUser.id;
       } catch (err) {
         console.warn('[API/Labour] User upsert warning:', err);
+      }
+    }
+
+    if (!targetLeaderId && userPhone) {
+      try {
+        const cleanP = String(userPhone).replace(/\D/g, '').trim();
+        if (cleanP.length >= 10) {
+          const userByPhone = await prisma.user.findFirst({
+            where: { phone: cleanP },
+          });
+          if (userByPhone) {
+            targetLeaderId = userByPhone.id;
+          }
+        }
+      } catch (phoneErr) {
+        console.warn('[API/Labour] Phone user lookup warning:', phoneErr);
       }
     }
 

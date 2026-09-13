@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { auth, db, signInWithGoogle } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -76,7 +77,22 @@ const PRESET_IMAGES = [
 ];
 
 export default function SellerDashboardPage() {
-  const { user, userData, isDemo } = useAuth();
+  const router = useRouter();
+  const { user, userData } = useAuth();
+
+  // Phone-authenticated seller session from localStorage
+  const [sellerSession, setSellerSession] = useState<{ user?: any; seller?: any } | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('aegroshield_seller_session');
+      if (stored) {
+        setSellerSession(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.warn('[SellerDashboard] Error reading seller session:', e);
+    }
+  }, []);
 
   // Seller Profile Doc from Firestore 'sellers' collection
   const [sellerDoc, setSellerDoc] = useState<any | null>(null);
@@ -166,10 +182,18 @@ export default function SellerDashboardPage() {
     setError(null);
 
     try {
-      const uid = auth.currentUser?.uid || user?.uid || (isDemo ? 'demo-farmer-seller-uid' : '');
-      const url = uid
-        ? `/api/products?firebaseUid=${encodeURIComponent(uid)}`
-        : '/api/products';
+      const sessionSellerId = sellerSession?.seller?.id;
+      const sessionPhone = sellerSession?.seller?.phone || sellerSession?.user?.phone;
+      const uid = auth.currentUser?.uid || user?.uid;
+
+      let url = '/api/products';
+      if (sessionSellerId) {
+        url = `/api/products?sellerId=${encodeURIComponent(sessionSellerId)}`;
+      } else if (sessionPhone) {
+        url = `/api/products?phone=${encodeURIComponent(sessionPhone)}`;
+      } else if (uid) {
+        url = `/api/products?firebaseUid=${encodeURIComponent(uid)}`;
+      }
 
       const res = await fetch(url, { cache: 'no-store' });
       const json = await res.json();
@@ -189,13 +213,18 @@ export default function SellerDashboardPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, isDemo]);
+  }, [user, sellerSession]);
 
   // Fetch machinery from PostgreSQL database API
   const fetchMachinery = useCallback(async () => {
+    const sessionPhone = sellerSession?.seller?.phone || sellerSession?.user?.phone;
     const uid = auth.currentUser?.uid || user?.uid;
+    const query = sessionPhone
+      ? `phone=${encodeURIComponent(sessionPhone)}`
+      : `firebaseUid=${encodeURIComponent(uid || '')}`;
+
     try {
-      const res = await fetch(`/api/machinery?firebaseUid=${uid || ''}`, { cache: 'no-store' });
+      const res = await fetch(`/api/machinery?${query}`, { cache: 'no-store' });
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setMachineryList(json.data);
@@ -203,13 +232,18 @@ export default function SellerDashboardPage() {
     } catch (err) {
       console.warn('[SellerDashboard] Failed to fetch machinery:', err);
     }
-  }, [user]);
+  }, [user, sellerSession]);
 
   // Fetch labour posts from PostgreSQL database API
   const fetchLabour = useCallback(async () => {
+    const sessionPhone = sellerSession?.seller?.phone || sellerSession?.user?.phone;
     const uid = auth.currentUser?.uid || user?.uid;
+    const query = sessionPhone
+      ? `phone=${encodeURIComponent(sessionPhone)}`
+      : `firebaseUid=${encodeURIComponent(uid || '')}`;
+
     try {
-      const res = await fetch(`/api/labour?firebaseUid=${uid || ''}`, { cache: 'no-store' });
+      const res = await fetch(`/api/labour?${query}`, { cache: 'no-store' });
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setLabourList(json.data);
@@ -217,7 +251,7 @@ export default function SellerDashboardPage() {
     } catch (err) {
       console.warn('[SellerDashboard] Failed to fetch labour:', err);
     }
-  }, [user]);
+  }, [user, sellerSession]);
 
   useEffect(() => {
     fetchProducts();
@@ -348,37 +382,35 @@ export default function SellerDashboardPage() {
         }
       } else {
         // POST create
-        if (!auth.currentUser) {
-          const wantsSignIn = confirm("A verified Google Account is required to add inventory. Sign in with Google now?");
+        const sessionUser = sellerSession?.user;
+        const sessionSeller = sellerSession?.seller;
+
+        if (!auth.currentUser && !sessionUser) {
+          const wantsSignIn = confirm("A verified Google Account or Phone login is required to add inventory. Sign in now?");
           if (wantsSignIn) {
-            try {
-              await signInWithGoogle();
-            } catch (err: any) {
-              if (err?.code !== 'auth/popup-closed-by-user') {
-                showToast("Google Sign-In failed: " + (err?.message || "Please sign in."), 'error');
-              }
-              return;
-            }
-          } else {
-            showToast("Sign-in required: Please sign in with Google to add products.", 'error');
-            return;
+            router.push('/vendor/login');
           }
+          return;
         }
 
         const token = await auth.currentUser?.getIdToken();
-        const activeUid = auth.currentUser?.uid || user?.uid;
-        const activeEmail = auth.currentUser?.email || user?.email || '';
-        const activeName = auth.currentUser?.displayName || user?.displayName || 'Store Owner';
+        const activeUid = auth.currentUser?.uid || user?.uid || sessionUser?.id || '';
+        const activeEmail = auth.currentUser?.email || user?.email || sessionUser?.email || '';
+        const activeName = auth.currentUser?.displayName || user?.displayName || sessionSeller?.ownerName || sessionUser?.name || 'Store Owner';
+        const activePhone = sessionSeller?.phone || sessionUser?.phone || '';
+
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        if (activeUid) headers['x-firebase-uid'] = activeUid;
+        if (activeEmail) headers['x-user-email'] = activeEmail;
+        if (activeName) headers['x-user-name'] = encodeURIComponent(activeName);
+        if (activePhone) headers['x-user-phone'] = activePhone;
 
         const res = await fetch('/api/products', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : '',
-            'x-firebase-uid': activeUid || '',
-            'x-user-email': activeEmail,
-            'x-user-name': encodeURIComponent(activeName),
-          },
+          headers,
           body: JSON.stringify({
             name: formData.name.trim(),
             category: formData.category,
@@ -389,6 +421,10 @@ export default function SellerDashboardPage() {
             imageUrl: formData.imageUrl.trim() || null,
             userId: activeUid,
             firebaseUid: activeUid,
+            sellerId: sessionSeller?.id || undefined,
+            phone: activePhone,
+            storeName: sessionSeller?.storeName || undefined,
+            district: sessionSeller?.district || undefined,
           }),
         });
 
@@ -417,45 +453,44 @@ export default function SellerDashboardPage() {
       return;
     }
 
-    if (!auth.currentUser) {
-      const wantsSignIn = confirm("A verified Google Account is required to add machinery. Sign in with Google now?");
+    const sessionUser = sellerSession?.user;
+    const sessionSeller = sellerSession?.seller;
+
+    if (!auth.currentUser && !sessionUser) {
+      const wantsSignIn = confirm("A verified Account is required to add machinery. Sign in now?");
       if (wantsSignIn) {
-        try {
-          await signInWithGoogle();
-        } catch (err: any) {
-          if (err?.code !== 'auth/popup-closed-by-user') {
-            showToast("Google Sign-In failed: " + (err?.message || "Please sign in."), 'error');
-          }
-          return;
-        }
-      } else {
-        showToast("Sign-in required: Please sign in with Google to add machinery.", 'error');
-        return;
+        router.push('/vendor/login');
       }
+      return;
     }
 
     setIsSubmitting(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      const activeUid = auth.currentUser?.uid || user?.uid;
-      const activeEmail = auth.currentUser?.email || user?.email || '';
-      const activeName = auth.currentUser?.displayName || user?.displayName || 'Equipment Partner';
+      const activeUid = auth.currentUser?.uid || user?.uid || sessionUser?.id || '';
+      const activeEmail = auth.currentUser?.email || user?.email || sessionUser?.email || '';
+      const activeName = auth.currentUser?.displayName || user?.displayName || sessionSeller?.ownerName || sessionUser?.name || 'Equipment Partner';
+      const activePhone = machineryForm.contactPhone.trim() || sessionSeller?.phone || sessionUser?.phone || '';
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (activeUid) headers['x-firebase-uid'] = activeUid;
+      if (activeEmail) headers['x-user-email'] = activeEmail;
+      if (activeName) headers['x-user-name'] = encodeURIComponent(activeName);
+      if (activePhone) headers['x-user-phone'] = activePhone;
 
       const res = await fetch('/api/machinery', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : '',
-          'x-firebase-uid': activeUid || '',
-          'x-user-email': activeEmail,
-          'x-user-name': encodeURIComponent(activeName),
-        },
+        headers,
         body: JSON.stringify({
           title: machineryForm.title.trim(),
           machineType: machineryForm.machineType,
           ratePerHour: Number(machineryForm.ratePerHour),
-          district: machineryForm.district.trim() || 'Meerut',
-          contactPhone: machineryForm.contactPhone.trim(),
+          district: machineryForm.district.trim() || sessionSeller?.district || 'Meerut',
+          contactPhone: activePhone,
+          phone: activePhone,
           ownerId: activeUid,
           userId: activeUid,
           firebaseUid: activeUid,
@@ -493,46 +528,45 @@ export default function SellerDashboardPage() {
       return;
     }
 
-    if (!auth.currentUser) {
-      const wantsSignIn = confirm("A verified Google Account is required to post labour. Sign in with Google now?");
+    const sessionUser = sellerSession?.user;
+    const sessionSeller = sellerSession?.seller;
+
+    if (!auth.currentUser && !sessionUser) {
+      const wantsSignIn = confirm("A verified Account is required to post labour. Sign in now?");
       if (wantsSignIn) {
-        try {
-          await signInWithGoogle();
-        } catch (err: any) {
-          if (err?.code !== 'auth/popup-closed-by-user') {
-            showToast("Google Sign-In failed: " + (err?.message || "Please sign in."), 'error');
-          }
-          return;
-        }
-      } else {
-        showToast("Sign-in required: Please sign in with Google to post labour.", 'error');
-        return;
+        router.push('/vendor/login');
       }
+      return;
     }
 
     setIsSubmitting(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      const activeUid = auth.currentUser?.uid || user?.uid;
-      const activeEmail = auth.currentUser?.email || user?.email || '';
-      const activeName = auth.currentUser?.displayName || user?.displayName || 'Labour Leader';
+      const activeUid = auth.currentUser?.uid || user?.uid || sessionUser?.id || '';
+      const activeEmail = auth.currentUser?.email || user?.email || sessionUser?.email || '';
+      const activeName = auth.currentUser?.displayName || user?.displayName || sessionSeller?.ownerName || sessionUser?.name || 'Labour Leader';
+      const activePhone = labourForm.phone.trim() || sessionSeller?.phone || sessionUser?.phone || '';
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (activeUid) headers['x-firebase-uid'] = activeUid;
+      if (activeEmail) headers['x-user-email'] = activeEmail;
+      if (activeName) headers['x-user-name'] = encodeURIComponent(activeName);
+      if (activePhone) headers['x-user-phone'] = activePhone;
 
       const res = await fetch('/api/labour', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : '',
-          'x-firebase-uid': activeUid || '',
-          'x-user-email': activeEmail,
-          'x-user-name': encodeURIComponent(activeName),
-        },
+        headers,
         body: JSON.stringify({
           leaderName: labourForm.leaderName.trim(),
           groupSize: Number(labourForm.groupSize) || 5,
           primarySkill: labourForm.primarySkill.trim() || 'Harvesting, Sowing',
           wagePerDay: Number(labourForm.wagePerDay) || 400,
-          district: labourForm.district.trim() || 'Meerut',
-          phone: labourForm.phone.trim(),
+          district: labourForm.district.trim() || sessionSeller?.district || 'Meerut',
+          phone: activePhone,
+          contactPhone: activePhone,
           userId: activeUid,
           leaderId: activeUid,
           firebaseUid: activeUid,

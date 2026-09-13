@@ -27,7 +27,7 @@ import {
 export default function CheckoutPage() {
   const router = useRouter();
   const { cart, cartTotal, deliveryFee, grandTotal, clearCart, isLoaded } = useCart();
-  const { user, userData, isDemo } = useAuth();
+  const { user, userData } = useAuth();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -47,11 +47,11 @@ export default function CheckoutPage() {
     if (user || userData) {
       setFormData(prev => ({
         ...prev,
-        name: prev.name || userData?.name || user?.displayName || (isDemo ? 'Kisan Seva Demo User' : ''),
+        name: prev.name || userData?.name || user?.displayName || '',
         phone: prev.phone || userData?.phone || '',
       }));
     }
-  }, [user, userData, isDemo]);
+  }, [user, userData]);
 
   // If cart is still loading from localStorage, show brief loader instead of empty cart screen
   if (!isLoaded && !placedOrder) {

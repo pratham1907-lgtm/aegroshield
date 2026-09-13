@@ -1,24 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { MOCK_MACHINERY } from '@/lib/mockData';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const isDemo = searchParams.get('isDemo') === 'true';
   const ownerId = searchParams.get('ownerId');
+  const phone = searchParams.get('phone');
   const firebaseUid = searchParams.get('firebaseUid');
-
-  // Explicit demo mode returns sample evaluation data strictly
-  if (isDemo && !ownerId && !firebaseUid) {
-    return NextResponse.json({ success: true, data: MOCK_MACHINERY, source: 'demo' });
-  }
 
   try {
     const whereClause: any = { available: true };
 
     if (ownerId) {
       whereClause.ownerId = ownerId;
-    } else if (firebaseUid && firebaseUid !== 'demo-farmer-seller-uid') {
+    } else if (phone) {
+      const cleanPhone = String(phone).replace(/\D/g, '').trim();
+      const user = await prisma.user.findFirst({ where: { phone: cleanPhone } });
+      if (user) whereClause.ownerId = user.id;
+    } else if (firebaseUid) {
       const user = await prisma.user.findUnique({ where: { firebaseUid } });
       if (user) whereClause.ownerId = user.id;
     }
@@ -98,6 +96,22 @@ export async function POST(request: NextRequest) {
         targetOwnerId = dbUser.id;
       } catch (err) {
         console.warn('[API/Machinery] User upsert warning:', err);
+      }
+    }
+
+    if (!targetOwnerId && phone) {
+      try {
+        const cleanP = String(phone).replace(/\D/g, '').trim();
+        if (cleanP.length >= 10) {
+          const userByPhone = await prisma.user.findFirst({
+            where: { phone: cleanP },
+          });
+          if (userByPhone) {
+            targetOwnerId = userByPhone.id;
+          }
+        }
+      } catch (phoneErr) {
+        console.warn('[API/Machinery] Phone user lookup warning:', phoneErr);
       }
     }
 

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (!targetUserId && lookupKey && lookupKey !== 'demo-farmer-seller-uid') {
+    if (!targetUserId && lookupKey) {
       try {
         const userById = await prisma.user.findUnique({
           where: { id: lookupKey },
@@ -150,21 +150,6 @@ export async function POST(request: NextRequest) {
     const rawType = String(bookingType || 'MACHINERY').toUpperCase();
     const isLabour = rawType === 'LABOUR';
 
-    if (body.isDemo === true) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          id: 'demo_booking_' + Date.now(),
-          targetId: String(targetId || 'DEMO-TARGET'),
-          bookingType: rawType,
-          status: 'CONFIRMED',
-          bookingDate: validBookingDate,
-          totalAmount: Number(totalAmount ?? body.pricePerHour ?? 0),
-          isDemo: true,
-        },
-        message: 'Demo booking simulated successfully (isolated from database)',
-      });
-    }
 
     let machineryIdToLink: string | null = null;
     let labourPostIdToLink: string | null = null;

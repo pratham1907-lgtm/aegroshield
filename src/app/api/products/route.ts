@@ -1,33 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { MOCK_PRODUCTS } from '@/lib/mockData';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const isDemoParam = searchParams.get('isDemo');
   const sellerId = searchParams.get('sellerId');
+  const phone = searchParams.get('phone');
   const firebaseUid = searchParams.get('firebaseUid');
   const category = searchParams.get('category');
   const search = searchParams.get('search');
-
-  // Explicit demo mode returns sample evaluation products strictly
-  if (isDemoParam === 'true' && !sellerId && !firebaseUid) {
-    let demoList = MOCK_PRODUCTS;
-    if (category && category !== 'All') {
-      demoList = demoList.filter(p => p.category.toLowerCase() === category.toLowerCase());
-    }
-    if (search) {
-      const q = search.toLowerCase();
-      demoList = demoList.filter(p => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q));
-    }
-    return NextResponse.json({ success: true, data: demoList, source: 'demo' });
-  }
 
   try {
     const whereClause: any = {};
 
     if (sellerId) {
       whereClause.sellerId = sellerId;
+    } else if (phone) {
+      const cleanPhone = String(phone).replace(/\D/g, '').trim();
+      const user = await prisma.user.findFirst({
+        where: { phone: cleanPhone },
+        include: { sellers: true },
+      });
+      if (user && user.sellers.length > 0) {
+        whereClause.sellerId = user.sellers[0].id;
+      }
     } else if (firebaseUid) {
       const user = await prisma.user.findUnique({
         where: { firebaseUid },
@@ -161,43 +156,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fallback to active demo seller or first seller in DB so creation never fails
+    // Resolve by seller phone if provided
+    if (!targetSellerId && (body.phone || body.sellerPhone || headerPhone)) {
+      try {
+        const cleanPhone = String(body.sellerPhone || body.phone || headerPhone).replace(/\D/g, '').trim();
+        if (cleanPhone.length >= 10) {
+          const userByPhone = await prisma.user.findFirst({
+            where: { phone: cleanPhone },
+            include: { sellers: true },
+          });
+          if (userByPhone && userByPhone.sellers.length > 0) {
+            targetSellerId = userByPhone.sellers[0].id;
+          }
+        }
+      } catch (phoneErr) {
+        console.warn('[API/Products] Phone seller lookup warning:', phoneErr);
+      }
+    }
+
+    // Fallback to active verified seller in DB
     if (!targetSellerId) {
       try {
-        const demoSeller = await prisma.seller.findFirst({
+        const anySeller = await prisma.seller.findFirst({
           where: { isVerified: true },
         });
-        if (demoSeller) {
-          targetSellerId = demoSeller.id;
-        } else {
-          const fallbackUser = await prisma.user.upsert({
-            where: { firebaseUid: 'demo-farmer-seller-uid' },
-            update: {},
-            create: {
-              firebaseUid: 'demo-farmer-seller-uid',
-              email: 'seller@aegroshield.com',
-              name: 'Kisan Seva Kendra',
-              role: 'SELLER',
-              isDemo: false,
-            },
-          });
-          const createdSeller = await prisma.seller.create({
-            data: {
-              userId: fallbackUser.id,
-              storeName: 'Kisan Seva Kendra',
-              ownerName: 'Ramesh Patel',
-              phone: '9876543210',
-              licenseOrGstin: '24AAACC1206D1ZM',
-              district: 'Ahmedabad',
-              shopAddress: 'APMC Market',
-              isVerified: true,
-              isDemo: false,
-            },
-          });
-          targetSellerId = createdSeller.id;
+        if (anySeller) {
+          targetSellerId = anySeller.id;
         }
       } catch (err) {
-        console.warn('[API/Products] Default seller lookup skipped:', err);
+        console.warn('[API/Products] Seller lookup skipped:', err);
       }
     }
 

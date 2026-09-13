@@ -43,7 +43,7 @@ function LoginPage() {
   const searchParams = useSearchParams();
   const secretKeyParam = searchParams.get("secret_key") || searchParams.get("key");
 
-  const { user, isDemo, loginAsDemo } = useAuth();
+  const { user } = useAuth();
 
   // If secret_key is present, auto-forward to dedicated Admin Login
   useEffect(() => {
@@ -65,10 +65,10 @@ function LoginPage() {
   const [name, setName] = useState("");
 
   useEffect(() => {
-    if (user && !isDemo) {
+    if (user) {
       router.push(farmerTarget);
     }
-  }, [user, isDemo, router]);
+  }, [user, router]);
 
   const showMessage = (text: string, type = "error") => setMsg({ text, type });
   const hideMessage = () => setMsg({ text: "", type: "error" });
@@ -149,12 +149,6 @@ function LoginPage() {
     }
   };
 
-  // ── DEMO FAST LOGIN HANDLERS (EXPLICITLY ENABLES DEMO MODE WITH MOCK DATA) ──
-  const triggerDemoFarmer = () => {
-    loginAsDemo('farmer');
-    showMessage("🌾 Evaluation Demo Mode Active! Opening Farmer Dashboard with Mock Data…", "success");
-    setTimeout(() => router.push(farmerTarget), 500);
-  };
 
   return (
     <main className="login-page-container">
@@ -260,11 +254,6 @@ function LoginPage() {
               </button>
             </div>
           )}
-
-          {/* ── DEMO FARMER SIGN IN ── */}
-          <button className="btn-auth btn-demo" onClick={triggerDemoFarmer} style={{ marginTop: '14px' }}>
-            🌾 Evaluation Demo Sign In (Farmer)
-          </button>
 
 
           {/* ── SUBTLE SELLER REDIRECTION LINK ── */}
