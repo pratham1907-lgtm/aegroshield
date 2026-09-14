@@ -48,7 +48,7 @@ export default function Navbar() {
     { href: '/store', label: t('nav.store'), isActive: pathname.startsWith('/store') || pathname.startsWith('/marketplace') },
     { href: '/machinery', label: t('nav.machinery'), isActive: pathname.startsWith('/machinery') },
     { href: '/labour', label: t('nav.labour'), isActive: pathname.startsWith('/labour') },
-    { href: '/mandi', label: t('nav.mandi') || 'Mandi Rates', isActive: pathname.startsWith('/mandi') || pathname.startsWith('/market') },
+    { href: '/market', label: t('nav.mandi') || 'Mandi Rates', isActive: pathname.startsWith('/market') || pathname.startsWith('/mandi') },
     { href: '/calculator', label: t('nav.calculator'), isActive: pathname.startsWith('/calculator') },
   ];
 

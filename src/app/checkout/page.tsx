@@ -390,7 +390,7 @@ export default function CheckoutPage() {
                 Continue Shopping
               </Link>
               <Link
-                href="/mandi"
+                href="/market"
                 className="btn btn-outline"
                 style={{
                   padding: '12px 20px',
