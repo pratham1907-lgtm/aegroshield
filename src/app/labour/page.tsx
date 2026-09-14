@@ -535,66 +535,75 @@ export default function Page() {
       </div>
 
       {userBookings.length > 0 ? (
-        userBookings.map((b) => (
-          <div key={b.id} className="booking-history-card">
-            <div className="bhc-header">
-              <div className="bhc-worker">
-                <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "linear-gradient(135deg,var(--primary),var(--mid))", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "900", fontSize: ".85rem" }}>
-                  {(b.teamLeaderName || b.workerName || 'WK').slice(0, 2).toUpperCase()}
-                </div>
-                {b.teamLeaderName || b.workerName || 'Labour Group'}
-              </div>
-              <span className={`status-badge ${b.status === 'Completed' || b.status === 'CONFIRMED' ? 'status-completed' : 'status-pending'}`}>
-                {b.status === 'Completed' || b.status === 'CONFIRMED' ? '✅ Confirmed' : '⏳ ' + (b.status || 'Pending')}
-              </span>
-            </div>
-            <div className="bhc-body">
-              <div className="bhc-meta-grid">
-                <div className="bhc-meta-item">
-                  <div className="bhc-meta-val">{b.task || b.targetId || 'Farm Work Squad'}</div>
-                  <div className="bhc-meta-lbl">Target</div>
-                </div>
-                <div className="bhc-meta-item">
-                  <div className="bhc-meta-val">{b.date || (b.bookingDate ? new Date(b.bookingDate).toLocaleDateString() : 'Today')}</div>
-                  <div className="bhc-meta-lbl">Date</div>
-                </div>
-                <div className="bhc-meta-item">
-                  <div className="bhc-meta-val">{b.hours ? `${b.hours} hrs` : 'Full Day'} · {b.teamSize || b.workersCount || 5} workers</div>
-                  <div className="bhc-meta-lbl">Duration</div>
-                </div>
-                <div className="bhc-meta-item">
-                  <div className="bhc-meta-val" style={{ color: "var(--primary)" }}>₹{(b.totalAmount || b.totalPaid || b.dailyRate || 0).toLocaleString()}</div>
-                  <div className="bhc-meta-lbl">Total Amount</div>
-                </div>
-              </div>
+        userBookings.map((b) => {
+          const leaderName = b.itemTitle || b.labourPost?.leaderName || b.teamLeaderName || b.workerName || 'Labour Group';
+          const bookingDateStr = b.startDate ? new Date(b.startDate).toLocaleDateString() : (b.bookingDate ? new Date(b.bookingDate).toLocaleDateString() : 'Today');
+          const durationStr = b.duration || (b.hours ? `${b.hours} hrs` : 'Full Day');
 
-              {/* Rating Form */}
-              <div className="rating-form" id={`ratingForm-${b.id}`}>
-                <div className="rating-label">⭐ Rate this team</div>
-                <div className="stars-row">
-                  <button className="star-btn" data-val="1" onClick={() => {}}>★</button>
-                  <button className="star-btn" data-val="2" onClick={() => {}}>★</button>
-                  <button className="star-btn" data-val="3" onClick={() => {}}>★</button>
-                  <button className="star-btn" data-val="4" onClick={() => {}}>★</button>
-                  <button className="star-btn" data-val="5" onClick={() => {}}>★</button>
-                </div>
-                <div className="rating-meta-row">
-                  <div className="form-group" style={{ margin: "0" }}>
-                    <label className="form-label">Workers who showed up</label>
-                    <input type="number" className="form-control" placeholder="e.g. 8" min="0" max="50" defaultValue={b.workersCount || 8} />
+          return (
+            <div key={b.id} className="booking-history-card">
+              <div className="bhc-header">
+                <div className="bhc-worker">
+                  <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "linear-gradient(135deg,var(--primary),var(--mid))", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "900", fontSize: ".85rem" }}>
+                    {leaderName.slice(0, 2).toUpperCase()}
                   </div>
-                  <div className="form-group" style={{ margin: "0" }}>
-                    <label className="form-label">Work quality feedback</label>
-                    <input type="text" className="form-control" placeholder="How was the work quality?" />
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{leaderName}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>📍 {b.district || b.labourPost?.district || 'Meerut'}</div>
                   </div>
                 </div>
-                <button className="btn btn-primary" style={{ marginTop: "14px" }} onClick={() => {}}>
-                  💾 Save Rating & Attendance
-                </button>
+                <span className={`status-badge ${b.status === 'Completed' || b.status === 'CONFIRMED' ? 'status-completed' : 'status-pending'}`}>
+                  {b.status === 'Completed' || b.status === 'CONFIRMED' ? '✅ Confirmed' : '⏳ ' + (b.status || 'Pending')}
+                </span>
+              </div>
+              <div className="bhc-body">
+                <div className="bhc-meta-grid">
+                  <div className="bhc-meta-item">
+                    <div className="bhc-meta-val">{b.labourPost?.primarySkill || b.task || 'Labour Squad'}</div>
+                    <div className="bhc-meta-lbl">Skill / Work</div>
+                  </div>
+                  <div className="bhc-meta-item">
+                    <div className="bhc-meta-val">{bookingDateStr}</div>
+                    <div className="bhc-meta-lbl">Date</div>
+                  </div>
+                  <div className="bhc-meta-item">
+                    <div className="bhc-meta-val">{durationStr}</div>
+                    <div className="bhc-meta-lbl">Duration</div>
+                  </div>
+                  <div className="bhc-meta-item">
+                    <div className="bhc-meta-val" style={{ color: "var(--primary)", fontWeight: 800 }}>₹{(b.totalAmount || 0).toLocaleString()}</div>
+                    <div className="bhc-meta-lbl">Total Amount</div>
+                  </div>
+                </div>
+
+                {/* Rating Form */}
+                <div className="rating-form" id={`ratingForm-${b.id}`}>
+                  <div className="rating-label">⭐ Rate this team</div>
+                  <div className="stars-row">
+                    <button className="star-btn" data-val="1" onClick={() => {}}>★</button>
+                    <button className="star-btn" data-val="2" onClick={() => {}}>★</button>
+                    <button className="star-btn" data-val="3" onClick={() => {}}>★</button>
+                    <button className="star-btn" data-val="4" onClick={() => {}}>★</button>
+                    <button className="star-btn" data-val="5" onClick={() => {}}>★</button>
+                  </div>
+                  <div className="rating-meta-row">
+                    <div className="form-group" style={{ margin: "0" }}>
+                      <label className="form-label">Workers who showed up</label>
+                      <input type="number" className="form-control" placeholder="e.g. 8" min="0" max="50" defaultValue={b.workersCount || 8} />
+                    </div>
+                    <div className="form-group" style={{ margin: "0" }}>
+                      <label className="form-label">Work quality feedback</label>
+                      <input type="text" className="form-control" placeholder="How was the work quality?" />
+                    </div>
+                  </div>
+                  <button className="btn btn-primary" style={{ marginTop: "14px" }} onClick={() => {}}>
+                    💾 Save Rating & Attendance
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))
+          );
+        })
       ) : (
         <div className="empty-bookings-card" style={{
           textAlign: 'center',

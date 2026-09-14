@@ -77,18 +77,28 @@ export async function POST(request: NextRequest) {
 
     if (uid) {
       try {
+        let safePhone: string | undefined = undefined;
+        if (phone && String(phone).trim().length >= 10) {
+          const existingUserWithPhone = await prisma.user.findFirst({
+            where: { phone: String(phone).trim(), NOT: { firebaseUid: uid } },
+          });
+          if (!existingUserWithPhone) {
+            safePhone = String(phone).trim();
+          }
+        }
+
         const dbUser = await prisma.user.upsert({
           where: { firebaseUid: uid },
           update: {
             email: email || undefined,
             name: name || undefined,
-            phone: phone || undefined,
+            phone: safePhone || undefined,
           },
           create: {
             firebaseUid: uid,
             email: email,
             name: name || 'Equipment Partner',
-            phone: phone || null,
+            phone: safePhone || null,
             role: 'FARMER',
             isDemo: false,
           },

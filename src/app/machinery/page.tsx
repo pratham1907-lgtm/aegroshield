@@ -522,16 +522,18 @@ export default function Page() {
         {myBookings.map((b) => (
           <div key={b.id} style={{ background: '#f8fafc', borderRadius: '12px', padding: '16px', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#64748b' }}>🚜 {b.targetId}</span>
+              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>
+                🚜 {b.itemTitle || b.machinery?.title || b.targetId}
+              </span>
               <span style={{ fontSize: '0.78rem', fontWeight: 700, padding: '3px 8px', borderRadius: '999px', background: b.status === 'CONFIRMED' ? '#dcfce7' : '#fef9c3', color: b.status === 'CONFIRMED' ? '#15803d' : '#854d0e' }}>
                 {b.status === 'CONFIRMED' ? 'Confirmed' : '⏳ ' + b.status}
               </span>
             </div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#15803d', marginBottom: '4px' }}>
               ₹{(b.totalAmount || 0).toLocaleString()}
             </div>
             <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
-              Date: {b.bookingDate ? new Date(b.bookingDate).toLocaleDateString() : 'Today'}
+              Date: {b.startDate ? new Date(b.startDate).toLocaleDateString() : (b.bookingDate ? new Date(b.bookingDate).toLocaleDateString() : 'Today')} {b.duration ? `• ${b.duration}` : ''}
             </div>
           </div>
         ))}

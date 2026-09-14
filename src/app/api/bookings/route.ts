@@ -128,28 +128,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Safe phone handling to avoid P2002 Unique constraint violation if phone belongs to another user
+    let safePhoneToUpdate: string | undefined = undefined;
+    if (phone && String(phone).trim().length >= 10) {
+      try {
+        const existingUserWithPhone = await prisma.user.findFirst({
+          where: { phone: String(phone).trim(), NOT: { firebaseUid: uid } },
+        });
+        if (!existingUserWithPhone) {
+          safePhoneToUpdate = String(phone).trim();
+        }
+      } catch (err) {
+        console.warn('[API/Bookings] Phone uniqueness check warning:', err);
+      }
+    }
+
     const dbUser = await prisma.user.upsert({
       where: { firebaseUid: uid },
       update: {
         email: email || undefined,
         name: name || undefined,
-        ...(phone ? { phone: phone } : {}),
+        ...(safePhoneToUpdate ? { phone: safePhoneToUpdate } : {}),
       },
       create: {
         firebaseUid: uid,
         email: email,
         name: name || 'Google User',
-        phone: phone || null,
+        phone: safePhoneToUpdate || null,
         role: 'FARMER',
       },
     });
 
     const parsedDate = startDate ? new Date(startDate) : (bookingDate ? new Date(bookingDate) : new Date());
     const validBookingDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+    const parsedEndDate = endDate ? new Date(endDate) : null;
+    const validEndDate = parsedEndDate && !isNaN(parsedEndDate.getTime()) ? parsedEndDate : null;
 
     const rawType = String(bookingType || 'MACHINERY').toUpperCase();
     const isLabour = rawType === 'LABOUR';
-
 
     let machineryIdToLink: string | null = null;
     let labourPostIdToLink: string | null = null;
@@ -178,12 +194,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const itemTitle = isLabour
+      ? String(body.leaderName || body.teamLeaderName || 'Agricultural Labour Squad')
+      : String(body.title || body.model || body.machineType || 'Agricultural Machinery');
+
+    const duration = isLabour
+      ? `${body.days || 1} day${Number(body.days || 1) > 1 ? 's' : ''}`
+      : `${body.hours || 4} hour${Number(body.hours || 4) > 1 ? 's' : ''}`;
+
     try {
       const createdBooking = await prisma.booking.create({
         data: {
           userId: dbUser.id,
           bookingType: rawType,
-          targetId: String(targetId || labourPostIdToLink || machineryIdToLink || 'ITEM-' + Date.now()),
+          targetId: String(targetId || labourPostIdToLink || machineryIdToLink || (isLabour ? 'LAB-' : 'MACH-') + Date.now()),
+          customerName: name || body.customerName || dbUser.name || 'AgriShield Farmer',
+          customerPhone: phone || body.customerPhone || dbUser.phone || '',
+          itemTitle: itemTitle,
+          district: String(body.district || 'Meerut'),
+          startDate: validBookingDate,
+          endDate: validEndDate,
+          duration: duration,
           machineryId: machineryIdToLink,
           labourPostId: labourPostIdToLink,
           status: body.status || 'PENDING',

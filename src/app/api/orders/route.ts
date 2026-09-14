@@ -148,18 +148,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Safe phone check
+    let safePhone: string | undefined = undefined;
+    if (phone && String(phone).trim().length >= 10) {
+      try {
+        const existingUserWithPhone = await prisma.user.findFirst({
+          where: { phone: String(phone).trim(), NOT: { firebaseUid: uid } },
+        });
+        if (!existingUserWithPhone) {
+          safePhone = String(phone).trim();
+        }
+      } catch (err) {
+        console.warn('[API/Orders] Phone uniqueness check warning:', err);
+      }
+    }
+
     const dbUser = await prisma.user.upsert({
       where: { firebaseUid: uid },
       update: {
         email: email,
         name: name || undefined,
-        ...(phone ? { phone: phone } : {}),
+        ...(safePhone ? { phone: safePhone } : {}),
       },
       create: {
         firebaseUid: uid,
         email: email,
         name: name || 'Google User',
-        phone: phone || null,
+        phone: safePhone || null,
         role: 'FARMER',
       },
     });
