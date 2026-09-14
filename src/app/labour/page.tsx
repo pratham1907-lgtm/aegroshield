@@ -11,10 +11,12 @@ export default function Page() {
   const { user, userData, loading: authLoading } = useAuth();
   const [liveLabour, setLiveLabour] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'find' | 'register'>('find');
+  const [activeTab, setActiveTab] = useState<'find' | 'register' | 'received'>('find');
   const [postSubmitted, setPostSubmitted] = useState(false);
   const [listingId, setListingId] = useState('');
   const [userBookings, setUserBookings] = useState<any[]>([]);
+  const [receivedBookings, setReceivedBookings] = useState<any[]>([]);
+  const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
 
   // Booking Modal State
   const [bookingLabour, setBookingLabour] = useState<any | null>(null);
@@ -37,8 +39,32 @@ export default function Page() {
       if (json?.data && json.data.length > 0) {
         setUserBookings(json.data.filter((b: any) => b.bookingType === 'LABOUR' || !b.bookingType));
       }
+      if (json?.received) {
+        setReceivedBookings(json.received.filter((b: any) => b.bookingType === 'LABOUR' || !b.bookingType));
+      }
     } catch (err) {
       console.warn('[Labour] Error fetching bookings:', err);
+    }
+  };
+
+  const handleUpdateBookingStatus = async (bookingId: string, newStatus: string) => {
+    try {
+      setUpdatingBookingId(bookingId);
+      const res = await fetch('/api/bookings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId, status: newStatus }),
+      });
+      const json = await res.json();
+      if (json?.success) {
+        await fetchUserBookings();
+      } else {
+        alert('Could not update status: ' + (json?.error || 'Unknown error'));
+      }
+    } catch (err: any) {
+      alert('Error updating status: ' + err.message);
+    } finally {
+      setUpdatingBookingId(null);
     }
   };
 
@@ -374,12 +400,77 @@ export default function Page() {
     >
       📢 Post Availability
     </button>
+    <button
+      className={`tab-toggle cursor-pointer ${activeTab === 'received' ? 'active' : ''}`}
+      style={{ cursor: 'pointer', position: 'relative' }}
+      id="receivedLabourTab"
+      onClick={() => setActiveTab('received')}
+    >
+      📥 Work Requests
+      {receivedBookings.length > 0 && (
+        <span style={{
+          marginLeft: '8px',
+          background: activeTab === 'received' ? '#16a34a' : '#22c55e',
+          color: '#fff',
+          fontSize: '0.72rem',
+          fontWeight: 800,
+          padding: '2px 7px',
+          borderRadius: '999px'
+        }}>
+          {receivedBookings.length}
+        </span>
+      )}
+    </button>
   </div>
 
   {activeTab === 'find' && (
     <div className="tab-content active" id="findLabourSection">
 
-
+      {/* ── Incoming Work Requests Notification Banner for Labour Providers ── */}
+      {receivedBookings.length > 0 && (
+        <div style={{
+          marginBottom: '24px',
+          background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+          border: '2px solid #86efac',
+          borderRadius: '16px',
+          padding: '16px 20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px',
+          boxShadow: '0 4px 12px rgba(22, 163, 74, 0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <span style={{ fontSize: '2rem' }}>📥</span>
+            <div>
+              <div style={{ fontWeight: 800, color: '#14532d', fontSize: '1.05rem' }}>
+                You have {receivedBookings.length} incoming farm work request{receivedBookings.length > 1 ? 's' : ''} for your labour group!
+              </div>
+              <div style={{ fontSize: '0.85rem', color: '#15803d', marginTop: '2px' }}>
+                Farmers have requested to hire your workers. View farmer details, required days, and wage payment details.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => setActiveTab('received')}
+            className="cursor-pointer"
+            style={{
+              background: '#16a34a',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '10px',
+              padding: '10px 18px',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(22, 163, 74, 0.3)'
+            }}
+          >
+            View Work Requests ({receivedBookings.length}) →
+          </button>
+        </div>
+      )}
 
     {/*  Search Card  */}
     <div className="search-card">
@@ -746,6 +837,218 @@ export default function Page() {
             </form>
           )}
         </div>
+      </div>
+    </div>
+  )}
+
+  {/*  TAB 3: RECEIVED WORK REQUESTS (FOR LABOUR SQUAD LEADERS)  */}
+  {activeTab === 'received' && (
+    <div className="tab-content active" id="receivedSection">
+      <div style={{
+        background: '#ffffff',
+        borderRadius: '20px',
+        padding: '28px',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
+        marginBottom: '24px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+              📥 Incoming Work Requests for Your Labour Squad
+            </h2>
+            <p style={{ color: '#64748b', fontSize: '0.92rem', marginTop: '4px', margin: 0 }}>
+              यहाँ आपके लेबर ग्रुप के लिए किसानों द्वारा भेजे गए सभी लाइव काम के ऑर्डर्स दिखेंगे। किसान का नाम, फ़ोन नंबर, आवश्यक दिन और कुल मजदूरी देखकर रिक्वेस्ट स्वीकार करें।
+            </p>
+          </div>
+          <button
+            onClick={fetchUserBookings}
+            className="cursor-pointer"
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              background: '#f8fafc',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              color: '#334155',
+              cursor: 'pointer'
+            }}
+          >
+            🔄 Refresh Requests
+          </button>
+        </div>
+
+        {receivedBookings.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '18px' }}>
+            {receivedBookings.map((b) => (
+              <div key={b.id} style={{
+                background: '#f8fafc',
+                borderRadius: '16px',
+                padding: '20px',
+                border: '1.5px solid #e2e8f0',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                    <div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+                        👥 {b.itemTitle || b.labourPost?.primarySkill || 'Labour Squad Work'}
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '2px' }}>
+                        📍 {b.district || b.labourPost?.district || 'Nearby Area'}
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: '0.78rem',
+                      fontWeight: 800,
+                      padding: '4px 10px',
+                      borderRadius: '999px',
+                      background: b.status === 'CONFIRMED' ? '#dcfce7' : '#fef9c3',
+                      color: b.status === 'CONFIRMED' ? '#15803d' : '#854d0e',
+                      border: `1px solid ${b.status === 'CONFIRMED' ? '#86efac' : '#fde047'}`
+                    }}>
+                      {b.status === 'CONFIRMED' ? '✅ Confirmed' : '⏳ ' + b.status}
+                    </span>
+                  </div>
+
+                  {/* Customer / Farmer Info */}
+                  <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: '12px', marginBottom: '14px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#334155' }}>
+                      👤 Booked By (किसान का नाम):
+                    </div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+                      {b.customerName || b.user?.name || 'AgriShield Farmer'}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '4px' }}>
+                      📞 Phone: <strong style={{ color: '#0f172a' }}>{b.customerPhone || b.user?.phone || 'Not provided'}</strong>
+                    </div>
+                  </div>
+
+                  {/* Duration and Date Details */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
+                    <div style={{ background: '#ecfdf5', padding: '10px 12px', borderRadius: '10px', border: '1px solid #d1fae5' }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#059669', textTransform: 'uppercase' }}>
+                        ⏱️ Required Days
+                      </div>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#065f46', marginTop: '2px' }}>
+                        {b.duration || '1 day'}
+                      </div>
+                    </div>
+                    <div style={{ background: '#eff6ff', padding: '10px 12px', borderRadius: '10px', border: '1px solid #dbeafe' }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase' }}>
+                        📅 Work Start Date
+                      </div>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1e40af', marginTop: '2px' }}>
+                        {b.startDate ? new Date(b.startDate).toLocaleDateString('hi-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : (b.bookingDate ? new Date(b.bookingDate).toLocaleDateString('hi-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Today')}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#f0fdf4', borderRadius: '10px', marginBottom: '16px', border: '1px solid #bbf7d0' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>Total Wage Earnings:</span>
+                    <span style={{ fontSize: '1.3rem', fontWeight: 900, color: '#15803d' }}>
+                      ₹{(b.totalAmount || 0).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {b.customerPhone ? (
+                    <a
+                      href={`tel:${b.customerPhone}`}
+                      style={{
+                        flex: 1,
+                        textAlign: 'center',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        background: '#2563eb',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      📞 Call Farmer
+                    </a>
+                  ) : null}
+                  {b.status !== 'CONFIRMED' ? (
+                    <button
+                      onClick={() => handleUpdateBookingStatus(b.id, 'CONFIRMED')}
+                      disabled={updatingBookingId === b.id}
+                      className="cursor-pointer"
+                      style={{
+                        flex: 1,
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        background: '#16a34a',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      {updatingBookingId === b.id ? 'Updating...' : '✅ Accept Work'}
+                    </button>
+                  ) : (
+                    <div style={{
+                      flex: 1,
+                      textAlign: 'center',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      background: '#dcfce7',
+                      color: '#15803d',
+                      fontWeight: 800,
+                      fontSize: '0.85rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}>
+                      ✓ Accepted
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{
+            textAlign: 'center',
+            padding: '56px 24px',
+            background: '#f8fafc',
+            borderRadius: '16px',
+            border: '1.5px dashed #cbd5e1'
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '12px' }}>📥</div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', marginBottom: '8px' }}>
+              No incoming work requests yet
+            </h3>
+            <p style={{ fontSize: '0.92rem', color: '#64748b', maxWidth: '440px', margin: '0 auto 20px', lineHeight: '1.5' }}>
+              When farmers book your labour group, their details, farm location, required days, and start dates will be displayed here immediately.
+            </p>
+            <button
+              onClick={() => setActiveTab('register')}
+              className="btn btn-primary cursor-pointer"
+              style={{ padding: '9px 20px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              + Post More Availability
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )}

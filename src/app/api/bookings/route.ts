@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (targetUserId) {
+      // 1. Outgoing bookings made by this user as customer
       const userBookings = await prisma.booking.findMany({
         where: { userId: targetUserId },
         orderBy: { createdAt: 'desc' },
@@ -52,12 +53,46 @@ export async function GET(request: NextRequest) {
           labourPost: true,
         },
       });
-      if (userBookings.length > 0) {
-        return NextResponse.json({ success: true, data: userBookings, source: 'postgres' });
-      }
+
+      // 2. Incoming booking requests for equipment or labour owned by this provider
+      const providerUser = await prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: { id: true, phone: true },
+      });
+      const providerPhone = providerUser?.phone?.trim() || (phone ? phone.trim() : null);
+
+      const receivedBookings = await prisma.booking.findMany({
+        where: {
+          OR: [
+            { machinery: { ownerId: targetUserId } },
+            { labourPost: { leaderId: targetUserId } },
+            ...(providerPhone
+              ? [
+                  { machinery: { contactPhone: providerPhone } },
+                  { labourPost: { phone: providerPhone } },
+                ]
+              : []),
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, phone: true },
+          },
+          machinery: true,
+          labourPost: true,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: userBookings,
+        received: receivedBookings,
+        source: 'postgres',
+      });
     }
 
-    // Return latest bookings if no specific user filter matched or if user has no specific bookings
+    // Return latest bookings if no specific user filter matched
     const allBookings = await prisma.booking.findMany({
       take: 30,
       orderBy: { createdAt: 'desc' },
@@ -70,7 +105,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, data: allBookings, source: 'postgres' });
+    return NextResponse.json({ success: true, data: allBookings, received: [], source: 'postgres' });
   } catch (error: any) {
     console.warn('[API/Bookings] Database query error:', error);
     return NextResponse.json({
@@ -262,6 +297,46 @@ export async function POST(request: NextRequest) {
         success: false,
         error: error?.message || 'Failed to process booking in database',
       },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { bookingId, status } = body;
+
+    if (!bookingId) {
+      return NextResponse.json(
+        { success: false, error: 'bookingId is required' },
+        { status: 400 }
+      );
+    }
+
+    const updated = await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: status || 'CONFIRMED',
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, phone: true },
+        },
+        machinery: true,
+        labourPost: true,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: updated,
+      message: `Booking status updated to ${updated.status}`,
+    });
+  } catch (err: any) {
+    console.error('[API/Bookings] PATCH error:', err);
+    return NextResponse.json(
+      { success: false, error: err?.message || 'Failed to update booking status' },
       { status: 500 }
     );
   }
