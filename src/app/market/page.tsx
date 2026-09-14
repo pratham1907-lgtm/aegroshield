@@ -230,6 +230,7 @@ function ensureItemAnalytics(item: MandiRateItem): MandiRateItem {
   };
 }
 
+export default function Page() {
   const { user, userData } = useAuth();
 
   // Reactive search filter selections
