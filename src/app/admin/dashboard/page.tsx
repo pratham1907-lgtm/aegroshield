@@ -35,9 +35,6 @@ export default function AdminDashboardPage() {
   }, [router]);
 
   const refreshData = () => {
-    if (isDemoMode()) {
-      initDemoStore(false); // Do not force reset on state updates
-    }
     setAnalytics(getPlatformAnalytics());
     setVendors(getVendors());
     setProducts(getProducts());

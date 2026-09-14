@@ -230,8 +230,7 @@ function ensureItemAnalytics(item: MandiRateItem): MandiRateItem {
   };
 }
 
-export default function Page() {
-  const { user, userData, isDemo } = useAuth();
+  const { user, userData } = useAuth();
 
   // Reactive search filter selections
   const [selectedCrop, setSelectedCrop] = useState<string>("All");
@@ -286,11 +285,8 @@ export default function Page() {
   }, []);
 
   const rawData: MandiRateItem[] = useMemo(() => {
-    if (isDemo && (!liveMandiRates || liveMandiRates.length === 0)) {
-      return normalizedMockPrices;
-    }
-    return (liveMandiRates && liveMandiRates.length > 0) ? liveMandiRates : normalizedMockPrices;
-  }, [isDemo, liveMandiRates, normalizedMockPrices]);
+    return liveMandiRates || [];
+  }, [liveMandiRates]);
 
   // 1. Available States (Comprehensive 28 states + 8 UTs, plus any custom states from DB)
   const availableStates = useMemo(() => {

@@ -1136,35 +1136,19 @@ export default function SellerDashboardPage() {
                           <div>
                             <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.95rem' }}>
                               {product.name}
-                              {product.isDemo ? (
-                                <span
-                                  style={{
-                                    marginLeft: '8px',
-                                    fontSize: '0.7rem',
-                                    background: '#f1f5f9',
-                                    color: '#64748b',
-                                    padding: '2px 6px',
-                                    borderRadius: '6px',
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  Demo
-                                </span>
-                              ) : (
-                                <span
-                                  style={{
-                                    marginLeft: '8px',
-                                    fontSize: '0.7rem',
-                                    background: '#dcfce7',
-                                    color: '#15803d',
-                                    padding: '2px 6px',
-                                    borderRadius: '6px',
-                                    fontWeight: 700,
-                                  }}
-                                >
-                                  Live Item
-                                </span>
-                              )}
+                              <span
+                                style={{
+                                  marginLeft: '8px',
+                                  fontSize: '0.7rem',
+                                  background: '#dcfce7',
+                                  color: '#15803d',
+                                  padding: '2px 6px',
+                                  borderRadius: '6px',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Live Item
+                              </span>
                             </div>
                             {product.description && (
                               <div
