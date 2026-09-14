@@ -17,7 +17,7 @@ export default function Navbar() {
   const rawPathname = usePathname();
   const { lang, setLang, t } = useLanguage();
   const { cartCount, openCart, isCartOpen } = useCart();
-  const { user, userData, isDemo, logout } = useAuth();
+  const { user, userData, logout } = useAuth();
 
   const pathname = rawPathname || '';
 
@@ -40,12 +40,12 @@ export default function Navbar() {
     return null;
   }
 
-  const isLoggedIn = Boolean(user || isDemo || userData);
-  const displayName = userData?.name || user?.displayName || (userData?.email ? userData.email.split('@')[0] : 'Farmer');
+  const isLoggedIn = Boolean(user);
+  const displayName = userData?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Farmer');
 
   const navItems = [
     { href: '/', label: t('nav.home'), isActive: pathname === '/' },
-    { href: '/marketplace', label: t('nav.store'), isActive: pathname.startsWith('/marketplace') || pathname.startsWith('/store') },
+    { href: '/store', label: t('nav.store'), isActive: pathname.startsWith('/store') || pathname.startsWith('/marketplace') },
     { href: '/machinery', label: t('nav.machinery'), isActive: pathname.startsWith('/machinery') },
     { href: '/labour', label: t('nav.labour'), isActive: pathname.startsWith('/labour') },
     { href: '/mandi', label: t('nav.mandi') || 'Mandi Rates', isActive: pathname.startsWith('/mandi') || pathname.startsWith('/market') },
@@ -126,7 +126,6 @@ export default function Navbar() {
             >
               <User size={15} color="#16a34a" />
               {displayName}
-              {isDemo && <span style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#b45309', padding: '1px 6px', borderRadius: '10px', fontWeight: 'bold' }}>Demo</span>}
             </span>
             <button
               onClick={() => logout()}

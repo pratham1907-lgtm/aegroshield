@@ -15,7 +15,7 @@ export default function FarmerHomePage() {
         Order farm inputs, book machinery, find labour, check live mandi prices, and calculate inputs — completely free for Indian farmers.
       </p>
       <div className="hero-actions">
-        <Link href="/marketplace" className="btn btn-primary btn-lg">
+        <Link href="/store" className="btn btn-primary btn-lg">
           🛒 Explore Marketplace →
         </Link>
         <a href="#features" className="btn btn-outline btn-lg">
@@ -39,7 +39,7 @@ export default function FarmerHomePage() {
         </div>
 
         {/* TOOL 1: AGRI-STORE */}
-        <Link href="/marketplace" className="pipeline-step highlighted" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <Link href="/store" className="pipeline-step highlighted" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="step-icon-box green">
             <ShoppingBag size={18} />
           </div>
@@ -130,7 +130,7 @@ export default function FarmerHomePage() {
     
     <div className="features-grid">
       {/* TOOL 1: MARKETPLACE */}
-      <Link href="/marketplace" className="feature-card">
+      <Link href="/store" className="feature-card">
         <div className="feature-icon-circle">🛒</div>
         <h3>Local Marketplace</h3>
         <p>Buy seeds, fertilizers, and pesticides from nearby verified local dealers with Cash on Delivery.</p>
@@ -185,10 +185,10 @@ export default function FarmerHomePage() {
           Order fertilizers, seeds, pesticides and equipment from trusted sellers in your district with in-app cart and Cash on Delivery!
         </p>
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-          <Link href="/marketplace" className="btn btn-primary">🛒 Open Marketplace →</Link>
-          <Link href="/marketplace?cat=Fertilizer" className="btn btn-outline">🌱 Fertilizers</Link>
-          <Link href="/marketplace?cat=Seed" className="btn btn-outline">🌾 Seeds</Link>
-          <Link href="/marketplace?cat=Pesticide" className="btn btn-outline">🧪 Pesticides</Link>
+          <Link href="/store" className="btn btn-primary">🛒 Open Marketplace →</Link>
+          <Link href="/store?cat=Fertilizer" className="btn btn-outline">🌱 Fertilizers</Link>
+          <Link href="/store?cat=Seed" className="btn btn-outline">🌾 Seeds</Link>
+          <Link href="/store?cat=Pesticide" className="btn btn-outline">🧪 Pesticides</Link>
         </div>
       </div>
       <div className="mbs-cards">
@@ -197,7 +197,7 @@ export default function FarmerHomePage() {
         <div className="mbs-card"><span className="mbs-icon">🌾</span><span>Wheat Seeds HD-2967</span><span className="mbs-price">₹70 / kg</span></div>
         <div className="mbs-card"><span className="mbs-icon">🧪</span><span>Neem Oil</span><span className="mbs-price">₹250 / L</span></div>
         <div className="mbs-card"><span className="mbs-icon">⚙️</span><span>Sprayer (16L)</span><span className="mbs-price">₹1200</span></div>
-        <div className="mbs-card mbs-card-cta"><Link href="/marketplace">View All →</Link></div>
+        <div className="mbs-card mbs-card-cta"><Link href="/store">View All →</Link></div>
       </div>
     </div>
   </div>
@@ -271,7 +271,7 @@ export default function FarmerHomePage() {
       <p style={{ fontSize: "16px", fontWeight: "600", marginBottom: "16px" }}>Aegroshield — Smart Farming Platform | Made for Indian Farmers 🇮🇳</p>
       <div className="footer-links">
         <Link href="/">Home</Link>
-        <Link href="/marketplace">Store</Link>
+        <Link href="/store">Store</Link>
         <Link href="/machinery">Machinery</Link>
         <Link href="/labour">Labour</Link>
         <Link href="/market">Market Price</Link>

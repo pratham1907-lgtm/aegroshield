@@ -737,7 +737,7 @@ export default function SellerDashboardPage() {
             </button>
 
             <Link
-              href="/marketplace"
+              href="/store"
               target="_blank"
               className="btn btn-outline btn-sm"
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}

@@ -26,8 +26,8 @@ export default function CartPage() {
           <p style={{ color: 'var(--text-mid)', marginBottom: '24px' }}>
             Explore local agri-stores and add fertilizers, seeds or pesticides to your cart.
           </p>
-          <Link href="/marketplace" className="btn btn-primary">
-            Browse Marketplace →
+          <Link href="/store" className="btn btn-primary">
+            Browse Store →
           </Link>
         </div>
       </main>
@@ -41,7 +41,7 @@ export default function CartPage() {
     <main className="cart-page">
       <div className="container" style={{ padding: '40px 20px 80px', maxWidth: '960px' }}>
         <div className="cart-header">
-          <Link href="/marketplace" className="back-link">
+          <Link href="/store" className="back-link">
             <ArrowLeft size={16} /> Continue Shopping
           </Link>
           <h1>Shopping Cart ({cartCount} Items)</h1>

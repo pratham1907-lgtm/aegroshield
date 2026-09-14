@@ -243,7 +243,7 @@ export default function CartDrawer() {
               <button
                 onClick={() => {
                   closeCart();
-                  router.push('/marketplace');
+                  router.push('/store');
                 }}
                 className="btn btn-primary"
                 style={{

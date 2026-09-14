@@ -72,8 +72,8 @@ export default function CheckoutPage() {
           <p style={{ color: 'var(--text-mid)', marginBottom: '24px' }}>
             Please add seeds, fertilizers or equipment to your cart before proceeding to checkout.
           </p>
-          <Link href="/marketplace" className="btn btn-primary">
-            Browse Marketplace →
+          <Link href="/store" className="btn btn-primary">
+            Browse Store →
           </Link>
         </div>
       </main>
@@ -378,7 +378,7 @@ export default function CheckoutPage() {
             {/* Bottom Actions */}
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link
-                href="/marketplace"
+                href="/store"
                 className="btn btn-primary"
                 style={{
                   padding: '12px 24px',

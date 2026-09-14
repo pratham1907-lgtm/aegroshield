@@ -111,7 +111,7 @@ export default function VendorStorefrontPage({ params }: { params: Promise<{ ven
       <main className="container" style={{ padding: '80px 20px', textAlign: 'center' }}>
         <h2>Store Not Found</h2>
         <p>The vendor store you are looking for does not exist or has been removed.</p>
-        <Link href="/marketplace" className="btn btn-primary" style={{ marginTop: '20px' }}>
+        <Link href="/store" className="btn btn-primary" style={{ marginTop: '20px' }}>
           Back to Marketplace
         </Link>
       </main>
@@ -123,7 +123,7 @@ export default function VendorStorefrontPage({ params }: { params: Promise<{ ven
       {/* ── Vendor Store Header ── */}
       <section className="store-header-banner">
         <div className="container">
-          <Link href="/marketplace" className="back-link">
+          <Link href="/store" className="back-link">
             <ArrowLeft size={16} /> Back to All Stores & Marketplace
           </Link>
 
