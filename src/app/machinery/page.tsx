@@ -530,7 +530,7 @@ export default function Page() {
     {loading ? (
       <div style={{ gridColumn: '1 / -1', padding: '60px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
         <div style={{ fontSize: '2rem', marginBottom: '10px' }}>⏳</div>
-        <p style={{ color: '#64748b', fontSize: '1rem', fontWeight: 500 }}>Querying live machinery records from Supabase...</p>
+        <p style={{ color: '#64748b', fontSize: '1rem', fontWeight: 500 }}>Loading available farm machinery...</p>
       </div>
     ) : displayMachinery.length > 0 ? (
       displayMachinery.map((machine, idx) => (

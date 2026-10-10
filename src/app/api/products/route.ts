@@ -47,19 +47,32 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const products = await prisma.product.findMany({
-      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
-      include: {
-        seller: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    let products: any[] = [];
+    try {
+      products = await prisma.product.findMany({
+        where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+        include: {
+          seller: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (dbErr: any) {
+      console.warn('[API/Products] Initial query encountered error, retrying in 600ms:', dbErr?.message);
+      await new Promise(r => setTimeout(r, 600));
+      products = await prisma.product.findMany({
+        where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+        include: {
+          seller: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
 
     console.log("FARMER_STORE_ACTIVE_PRODUCTS:", products.length);
 
     return NextResponse.json(products);
   } catch (error: any) {
-    console.warn('[API/Products] Database query failed:', error);
+    console.warn('[API/Products] Database query failed after retry:', error);
     return NextResponse.json([]);
   }
 }

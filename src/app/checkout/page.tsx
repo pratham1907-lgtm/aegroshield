@@ -281,7 +281,7 @@ export default function CheckoutPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Database size={14} color="#16a34a" />
                 <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#166534', background: '#dcfce7', padding: '3px 8px', borderRadius: '12px' }}>
-                  Saved in Supabase PostgreSQL
+                  Order Confirmed & Saved
                 </span>
               </div>
             </div>

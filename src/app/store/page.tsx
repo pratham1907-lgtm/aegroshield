@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/context/AuthContext';
 import { auth, signInWithGoogle } from '@/lib/firebase';
-import { Store, ShoppingBag, Search, Plus, Check, Lock, Loader2 } from 'lucide-react';
+import { Store, ShoppingBag, Search, Plus, Check, Lock, Loader2, RefreshCw } from 'lucide-react';
 
 export default function StoreCatalogPage() {
   const { addToCart, cartCount, openCart } = useCart();
@@ -18,6 +18,23 @@ export default function StoreCatalogPage() {
 
   const isAuthenticated = Boolean(user || auth.currentUser);
 
+  const loadProducts = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/products', { cache: 'no-store' });
+      const data = await res.json();
+      const items = Array.isArray(data) ? data : (data?.data || []);
+      console.log("FARMER_STORE_ACTIVE_PRODUCTS:", items.length);
+      setProducts(items);
+    } catch (err) {
+      console.warn('[Store] Failed to fetch live products:', err);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
     // Strict Auth Gate: Do NOT query database if unauthenticated
     if (!isAuthenticated) {
@@ -26,20 +43,8 @@ export default function StoreCatalogPage() {
       return;
     }
 
-    setLoading(true);
-    fetch('/api/products', { cache: 'no-store' })
-      .then(res => res.json())
-      .then(data => {
-        const items = Array.isArray(data) ? data : (data?.data || []);
-        console.log("FARMER_STORE_ACTIVE_PRODUCTS:", items.length);
-        setProducts(items);
-      })
-      .catch(err => {
-        console.warn('[Store] Failed to fetch live products:', err);
-        setProducts([]);
-      })
-      .finally(() => setLoading(false));
-  }, [isAuthenticated]);
+    loadProducts();
+  }, [isAuthenticated, loadProducts]);
 
   const handleAddToCart = (p: any) => {
     const cartProduct = {
@@ -83,10 +88,19 @@ export default function StoreCatalogPage() {
               </div>
               <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 8px 0' }}>AgriShield Live Store Catalog</h1>
               <p style={{ opacity: 0.9, margin: 0, fontSize: '1rem' }}>
-                Browse genuine fertilizers, seeds, pesticides and tools directly from verified suppliers in Supabase database.
+                Browse genuine fertilizers, seeds, pesticides and tools directly from verified local suppliers.
               </p>
             </div>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => loadProducts()}
+                disabled={loading}
+                className="btn"
+                style={{ background: 'rgba(255,255,255,0.18)', color: '#fff', fontWeight: 600, padding: '10px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                title="Refresh product catalog"
+              >
+                <RefreshCw size={15} className={loading ? "spin" : ""} /> Refresh
+              </button>
               <Link href="/seller/dashboard" className="btn" style={{ background: '#fff', color: '#15803d', fontWeight: 600, padding: '10px 18px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
                 <Plus size={16} /> Seller Dashboard
               </Link>
@@ -183,24 +197,58 @@ export default function StoreCatalogPage() {
               <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
                 Available Products ({filtered.length})
               </h2>
-              <span style={{ fontSize: '0.85rem', color: '#15803d', fontWeight: 600 }}>
-                ⚡ Supabase Live Inventory
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  onClick={() => loadProducts()}
+                  disabled={loading}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    padding: '4px 10px',
+                    fontSize: '0.8rem',
+                    color: '#475569',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontWeight: 600,
+                  }}
+                >
+                  <RefreshCw size={13} className={loading ? "spin" : ""} /> Refresh
+                </button>
+                <span style={{ fontSize: '0.85rem', color: '#15803d', fontWeight: 600 }}>
+                  ⚡ Live Store Inventory
+                </span>
+              </div>
             </div>
 
             {loading ? (
               <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
                 <Loader2 size={32} className="spin" style={{ margin: '0 auto 12px', color: '#15803d' }} />
-                <p>Loading live catalog from database...</p>
+                <p>Loading live store catalog...</p>
               </div>
             ) : filtered.length === 0 ? (
-              <div style={{ padding: '60px', textAlign: 'center', background: '#fff', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
-                <p style={{ color: '#64748b', fontSize: '1.1rem', margin: '0 0 12px 0' }}>
-                  {search || selectedCategory !== 'All' ? 'No products found matching your search.' : 'No products available yet in the live database.'}
+              <div style={{ padding: '60px 24px', textAlign: 'center', background: '#fff', borderRadius: '14px', border: '1px dashed #cbd5e1' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>📦</div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', marginBottom: '6px' }}>
+                  {search || selectedCategory !== 'All' ? 'No products found matching your filter.' : 'No products available yet in your area.'}
+                </h3>
+                <p style={{ color: '#64748b', fontSize: '0.95rem', margin: '0 0 18px 0' }}>
+                  {search || selectedCategory !== 'All' ? 'Try changing your search term or select "All" categories.' : 'Local verified agri-stores are updating their live stock. You can refresh or add items via Seller Dashboard.'}
                 </p>
-                <Link href="/seller/dashboard" className="btn btn-primary" style={{ padding: '8px 16px', borderRadius: '8px', textDecoration: 'none' }}>
-                  Add a Product via Seller Dashboard
-                </Link>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => loadProducts()}
+                    className="btn btn-outline-primary"
+                    style={{ padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
+                  >
+                    <RefreshCw size={14} /> Refresh Catalog
+                  </button>
+                  <Link href="/seller/dashboard" className="btn btn-primary" style={{ padding: '8px 16px', borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                    <Plus size={16} /> Add Product via Seller Dashboard
+                  </Link>
+                </div>
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '22px' }}>

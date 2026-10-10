@@ -676,8 +676,8 @@ export default function SellerDashboardPage() {
           <h3 style={{ fontSize: '1.2rem', color: '#1e293b', fontWeight: 700 }}>
             Live Store Products ({filteredProducts.length})
           </h3>
-          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
-            Synchronized with Supabase PostgreSQL
+          <span style={{ fontSize: '0.85rem', color: '#16a34a', fontWeight: 600 }}>
+            ⚡ Synchronized with Live Store Inventory
           </span>
         </div>
 

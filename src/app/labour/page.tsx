@@ -543,7 +543,7 @@ export default function Page() {
       {loading ? (
         <div style={{ padding: '60px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', margin: '20px 0' }}>
           <div style={{ fontSize: '2rem', marginBottom: '10px' }}>⏳</div>
-          <p style={{ color: '#64748b', fontSize: '1rem', fontWeight: 500 }}>Querying live labour squads from Supabase...</p>
+          <p style={{ color: '#64748b', fontSize: '1rem', fontWeight: 500 }}>Finding available labour squads...</p>
         </div>
       ) : displayLabour.length > 0 ? (
         displayLabour.map((item, idx) => (
