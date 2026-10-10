@@ -2,8 +2,6 @@
 
 import { use, useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
 import type { PriceHistoryItem, MandiRateItem } from "@/app/market/page";
 
 // ─── MSP Reference Map (Rabi/Kharif 2025-26) ────────────────────────────────
@@ -370,29 +368,34 @@ export default function MandiDetailPage({
   const [detailedAdvisory, setDetailedAdvisory] = useState<DetailedAdvisory | null>(null);
   const [advisoryLoading, setAdvisoryLoading] = useState(false);
 
-  // ─ Fetch Firestore document ────────────────────────────────────────────────
+  // ─ Fetch Mandi Rate document from API ───────────────────────────────────────
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
 
     const load = async () => {
       try {
-        const snap = await getDoc(doc(db, "mandi_rates", id));
+        const res = await fetch(`/api/mandi?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+        const json = await res.json();
         if (cancelled) return;
 
-        if (!snap.exists()) {
+        if (!json.success || !json.data) {
           setNotFound(true);
           setLoading(false);
           return;
         }
 
-        const data = snap.data() as Record<string, any>;
         const loaded: MandiRateItem = {
-          id: snap.id,
-          ...data,
+          id: json.data.id || id,
+          ...json.data,
         } as MandiRateItem;
 
         setItem(loaded);
+
+        // If backend already included detailed advisory, show it immediately
+        if (json.data.detailedAdvisory) {
+          setDetailedAdvisory(json.data.detailedAdvisory as DetailedAdvisory);
+        }
 
         // Build chart data
         const history: PriceHistoryItem[] = Array.isArray(loaded.priceHistory)
@@ -409,7 +412,7 @@ export default function MandiDetailPage({
         setAdvisory(loaded.advisoryText || "");
         setLoading(false);
       } catch (err) {
-        console.error("[MandiDetail] Firestore error:", err);
+        console.error("[MandiDetail] Error fetching mandi rate:", err);
         if (!cancelled) {
           setNotFound(true);
           setLoading(false);

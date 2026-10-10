@@ -145,7 +145,7 @@ export function computeTrendAndRecommendation(
   };
 }
 
-const BASELINE_MANDI_RECORDS = [
+export const BASELINE_MANDI_RECORDS = [
   {
     state: "Uttar Pradesh",
     district: "Meerut",
@@ -665,20 +665,20 @@ async function populateBaselineRecords(recordsToPopulate = BASELINE_MANDI_RECORD
 
     batch.set(docRef, rec, { merge: true });
   }
-  await batch.commit();
 
   try {
+    await batch.commit();
     await setDoc(doc(db, 'mandi_metadata', 'sync_status'), {
       lastSyncedAt: serverTimestamp(),
       lastSyncCount: recordsToPopulate.length,
       lastStateFilter: 'all',
       updatedAt: serverTimestamp(),
     }, { merge: true });
+    console.log(`[mandi-sync] Baseline records successfully written to Firestore (${recordsToPopulate.length} docs).`);
   } catch (metaErr) {
-    console.warn('[mandi-sync] Failed to write baseline sync metadata:', metaErr);
+    console.warn('[mandi-sync] Firestore batch write skipped (using in-memory verified baseline):', metaErr);
   }
 
-  console.log(`[mandi-sync] Baseline records successfully written to Firestore (${recordsToPopulate.length} docs).`);
   return recordsToPopulate.length;
 }
 

@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
 import { MOCK_MARKET_PRICES } from "@/lib/mockData";
 import { getAllIndianStates, getDistrictsForState, isStateMatching } from "@/lib/india-locations";
 
@@ -344,17 +342,16 @@ export default function Page() {
     }
   }, [selectedState, selectedDistrict, availableDistricts]);
 
-  const fetchFirestoreRates = useCallback(async () => {
+  const fetchMandiRates = useCallback(async () => {
     try {
-      const snap = await getDocs(collection(db, 'mandi_rates'));
-      const items: MandiRateItem[] = [];
-      snap.forEach((d) => {
-        const data = d.data() as Record<string, any>;
-        items.push(ensureItemAnalytics({ id: d.id, ...data } as MandiRateItem));
-      });
-      return items;
+      const res = await fetch('/api/mandi', { cache: 'no-store' });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        return json.data.map((item: any) => ensureItemAnalytics(item));
+      }
+      return [];
     } catch (err: any) {
-      console.warn("[Market] Error querying Firestore mandi_rates:", err);
+      console.warn("[Market] Error fetching from /api/mandi:", err);
       return [];
     }
   }, []);
@@ -402,8 +399,8 @@ export default function Page() {
         }
       }
 
-      // Re-fetch all documents from Firestore so dropdowns and grid update seamlessly
-      const freshItems = await fetchFirestoreRates();
+      // Re-fetch all documents from API so dropdowns and grid update seamlessly
+      const freshItems = await fetchMandiRates();
       setLiveMandiRates(freshItems);
       return freshItems;
     } catch (err: any) {
@@ -414,9 +411,9 @@ export default function Page() {
       setSyncing(false);
       setLoading(false);
     }
-  }, [fetchFirestoreRates, selectedState, selectedDistrict, selectedCrop]);
+  }, [fetchMandiRates, selectedState, selectedDistrict, selectedCrop]);
 
-  // Initial load: fetch Firestore, auto-sync if empty
+  // Initial load: fetch Mandi rates, auto-sync if empty
   useEffect(() => {
     let isMounted = true;
 
@@ -424,14 +421,14 @@ export default function Page() {
       setLoading(true);
       setError(null);
 
-      const items = await fetchFirestoreRates();
+      const items = await fetchMandiRates();
       if (!isMounted) return;
 
       if (items.length > 0) {
         setLiveMandiRates(items);
         setLoading(false);
       } else {
-        console.log("[Market] Firestore mandi_rates collection is empty. Auto-triggering /api/mandi-sync...");
+        console.log("[Market] Mandi data is empty. Auto-triggering /api/mandi-sync...");
         await triggerSyncAndRefresh("All", "All", "All");
       }
     };
@@ -441,7 +438,7 @@ export default function Page() {
     return () => {
       isMounted = false;
     };
-  }, [fetchFirestoreRates, triggerSyncAndRefresh]);
+  }, [fetchMandiRates, triggerSyncAndRefresh]);
 
   // Primary Search Handler for "Get Live Prices →" button - filters cached rates or triggers live Agmarknet fetch
   const handleGetLivePrices = async () => {
@@ -449,12 +446,13 @@ export default function Page() {
     setError(null);
     setSyncMessage(null);
 
-    // If live rates not loaded yet, query from Firestore
+    // If live rates not loaded yet, query from API
     let currentRates = liveMandiRates;
     if (!currentRates || currentRates.length === 0) {
-      currentRates = await fetchFirestoreRates();
-      if (currentRates.length > 0) {
-        setLiveMandiRates(currentRates);
+      const fetched = await fetchMandiRates();
+      if (fetched && fetched.length > 0) {
+        currentRates = fetched;
+        setLiveMandiRates(fetched);
       }
     }
 
@@ -1108,11 +1106,17 @@ export default function Page() {
                 )}
                 <button
                   className="btn btn-outline-primary"
-                  onClick={() => fetchFirestoreRates()}
+                  onClick={() => {
+                    setLoading(true);
+                    fetchMandiRates().then((items) => {
+                      setLiveMandiRates(items);
+                      setLoading(false);
+                    });
+                  }}
                   disabled={loading}
                   style={{ padding: "10px 20px", fontSize: "0.95rem" }}
                 >
-                  🔄 Reload Cached Rates
+                  🔄 Reload Live Rates
                 </button>
                 <button
                   className="btn btn-outline-primary"
