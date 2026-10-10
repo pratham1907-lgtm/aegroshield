@@ -607,7 +607,7 @@ export default function Page() {
                 {liveMandiRates && liveMandiRates.length > 0 ? liveMandiRates.length : "2,840"}
               </div>
               <div className="stat-sub">
-                {liveMandiRates && liveMandiRates.length > 0 ? "In Firestore" : "Across India"}
+                {liveMandiRates && liveMandiRates.length > 0 ? "APMC Mandis" : "Across India"}
               </div>
             </div>
           </div>

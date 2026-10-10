@@ -595,7 +595,7 @@ export default function Page() {
           <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>👥</div>
           <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>No labour postings available in your area yet</h3>
           <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 20px' }}>
-            There are currently 0 records in the live database. Be the first to list your squad or post worker availability.
+            There are currently no active worker listings in this area. Be the first to list your squad or post worker availability.
           </p>
           <button
             onClick={() => setActiveTab('register')}

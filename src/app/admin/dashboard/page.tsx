@@ -460,7 +460,7 @@ export default function AdminDashboardPage() {
                   {filteredMachinery.length === 0 && (
                     <tr>
                       <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
-                        No machinery listings found in database.
+                        No machinery listings found.
                       </td>
                     </tr>
                   )}
@@ -531,7 +531,7 @@ export default function AdminDashboardPage() {
                   {filteredLabour.length === 0 && (
                     <tr>
                       <td colSpan={7} style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
-                        No labour postings found in database.
+                        No labour postings found.
                       </td>
                     </tr>
                   )}

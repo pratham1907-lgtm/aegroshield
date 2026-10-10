@@ -521,7 +521,7 @@ export default function MandiDetailPage({
             Mandi Record Not Found
           </h2>
           <p style={{ color: "#64748b", marginBottom: 24, lineHeight: 1.6 }}>
-            The mandi record <code style={{ background: "#f1f5f9", padding: "2px 6px", borderRadius: 4, fontSize: "0.85em" }}>{id}</code> was not found in the database. It may have been updated or removed.
+            The mandi record <code style={{ background: "#f1f5f9", padding: "2px 6px", borderRadius: 4, fontSize: "0.85em" }}>{id}</code> was not found. It may have been updated or arrivals have ended for the day.
           </p>
           <Link
             href="/market"

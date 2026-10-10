@@ -177,7 +177,7 @@ export default function SellerDashboardPage() {
       }
     } catch (err: any) {
       console.error('[SellerDashboard] Failed to fetch inventory:', err);
-      setError('Unable to load products from database. Please check connection.');
+      setError('Unable to load products. Please check connection.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -397,7 +397,7 @@ export default function SellerDashboardPage() {
       const json = await res.json();
 
       if (json.success) {
-        showToast(`Product "${deletingProduct.name}" deleted from database.`);
+        showToast(`Product "${deletingProduct.name}" deleted successfully.`);
         setProducts(prev => prev.filter(p => p.id !== deletingProduct.id));
         setDeletingProduct(null);
       } else {
@@ -432,9 +432,32 @@ export default function SellerDashboardPage() {
     }
   };
 
-  const sellerStoreName = sellerDoc?.storeName || userData?.storeName || (user?.displayName ? `${user.displayName}'s Store` : 'Kisan Seva Kendra');
-  const sellerOwner = sellerDoc?.ownerName || userData?.name || user?.displayName || 'Ramesh Patel';
-  const sellerDistrict = sellerDoc?.district || userData?.district || 'Ahmedabad';
+  // Resolve authentic seller profile from live inventory, seller session, or user details
+  const activeSeller =
+    products.find(p => p.seller)?.seller ||
+    sellerSession?.seller ||
+    sellerDoc;
+
+  const userRealName =
+    activeSeller?.ownerName ||
+    userData?.name ||
+    user?.displayName ||
+    (user?.email ? user.email.split('@')[0] : '') ||
+    'Store Owner';
+
+  const sellerStoreName =
+    activeSeller?.storeName ||
+    userData?.storeName ||
+    sellerSession?.seller?.storeName ||
+    (userRealName && userRealName !== 'Store Owner' ? `${userRealName}'s Farm Store` : 'AgriShield Farm Store');
+
+  const sellerOwner = userRealName;
+
+  const sellerDistrict =
+    activeSeller?.district ||
+    userData?.district ||
+    sellerSession?.seller?.district ||
+    'Meerut';
 
   return (
     <main className="vendor-dashboard-page" style={{ paddingBottom: '90px' }}>
@@ -497,7 +520,7 @@ export default function SellerDashboardPage() {
                 </span>
               </h2>
               <p>
-                Owner: <strong>{sellerOwner}</strong> • 📍 {sellerDistrict} • PostgreSQL Supabase Inventory
+                Owner: <strong>{sellerOwner}</strong> • 📍 {sellerDistrict}
               </p>
             </div>
           </div>
@@ -507,7 +530,7 @@ export default function SellerDashboardPage() {
               onClick={() => fetchProducts(true)}
               disabled={refreshing}
               className="btn btn-outline btn-sm"
-              title="Refresh database records"
+              title="Refresh store inventory"
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />

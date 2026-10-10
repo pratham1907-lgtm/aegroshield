@@ -279,7 +279,7 @@ export default function CheckoutPage() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Database size={14} color="#16a34a" />
+                <ShieldCheck size={14} color="#16a34a" />
                 <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#166534', background: '#dcfce7', padding: '3px 8px', borderRadius: '12px' }}>
                   Order Confirmed & Saved
                 </span>
@@ -626,7 +626,7 @@ export default function CheckoutPage() {
               {isSubmitting ? (
                 <>
                   <Loader2 size={18} className="spin" />
-                  <span>Placing Order in Database...</span>
+                  <span>Placing Order...</span>
                 </>
               ) : (
                 <span>Confirm & Place Order (₹{grandTotal.toLocaleString()})</span>

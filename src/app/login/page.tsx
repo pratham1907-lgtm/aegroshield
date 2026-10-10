@@ -108,7 +108,7 @@ function LoginPage() {
         createdAt: serverTimestamp(),
       });
 
-      showMessage("🎉 Account created in Firestore! Opening Farmer Dashboard…", "success");
+      showMessage("🎉 Account created successfully! Opening Farmer Dashboard…", "success");
       setTimeout(() => router.push(farmerTarget), 500);
     } catch (err: any) {
       setLoading(false);

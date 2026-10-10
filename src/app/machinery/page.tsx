@@ -580,7 +580,7 @@ export default function Page() {
         <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>🚜</div>
         <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>No machinery listings available yet in your area</h3>
         <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 20px' }}>
-          There are currently 0 records in the live database. Be the first to register equipment or view your listings from the seller dashboard.
+          There are currently no machinery listings available in this area. Be the first to register equipment or view your listings from the seller dashboard.
         </p>
         <button
           onClick={() => setActiveTab('register')}
