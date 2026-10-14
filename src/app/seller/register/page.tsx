@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { auth, signInWithGoogle } from '@/lib/firebase';
+import { syncUserToDatabase } from '@/lib/sync-user-client';
 import { ALL_DISTRICTS } from '@/lib/marketplace-data';
 import { registerVendor } from '@/lib/ecommerce-service';
 import { Building2, ArrowRight, CheckCircle2, PhoneCall, KeyRound, Zap } from 'lucide-react';
@@ -94,9 +96,28 @@ export default function SellerRegisterPage() {
     setLoading(true);
 
     try {
+      let currentUser = auth.currentUser;
+      if (!currentUser) {
+        const cred = await signInWithGoogle();
+        currentUser = cred.user;
+      }
+
+      await syncUserToDatabase({
+        uid: currentUser.uid,
+        email: currentUser.email,
+        displayName: ownerName.trim() || currentUser.displayName,
+        phoneNumber: cleanPhone || currentUser.phoneNumber,
+        role: 'SELLER',
+      });
+
+      const token = await currentUser.getIdToken();
+
       const res = await fetch('/api/seller/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({
           ownerName: ownerName.trim(),
           phone: cleanPhone,
@@ -133,10 +154,10 @@ export default function SellerRegisterPage() {
         license: 'TIER-1-PHONE-VERIFIED',
       });
 
-      showMessage(`🎉 Store registered successfully! Welcome, ${ownerName.trim()}. Redirecting…`, 'success');
+      showMessage(`🎉 Store registered successfully! Welcome, ${ownerName.trim()}. Your account is submitted for verification.`, 'success');
       setTimeout(() => {
         router.push('/seller/dashboard');
-      }, 700);
+      }, 1000);
     } catch (err: any) {
       console.error('[SellerRegister] Error:', err);
       showMessage(err?.message || 'Failed to complete registration. Please try again.');

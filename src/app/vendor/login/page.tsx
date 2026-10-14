@@ -3,6 +3,8 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { auth, signInWithGoogle } from '@/lib/firebase';
+import { syncUserToDatabase } from '@/lib/sync-user-client';
 import { ALL_DISTRICTS } from '@/lib/marketplace-data';
 import { registerVendor } from '@/lib/ecommerce-service';
 import { Store, ArrowRight, CheckCircle2, PhoneCall, KeyRound, Zap, ShieldCheck } from 'lucide-react';
@@ -81,15 +83,36 @@ function VendorLoginPage() {
     setLoading(true);
 
     try {
+      let currentUser = auth.currentUser;
+      if (!currentUser) {
+        const cred = await signInWithGoogle();
+        currentUser = cred.user;
+        await syncUserToDatabase({
+          uid: currentUser.uid,
+          email: currentUser.email,
+          displayName: currentUser.displayName,
+          phoneNumber: cleanLoginPhone || currentUser.phoneNumber,
+          role: 'SELLER',
+        });
+      }
+
+      const token = await currentUser.getIdToken();
+
       const res = await fetch('/api/seller/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ phone: cleanLoginPhone }),
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.success) {
+        if (res.status === 403 && data?.status === 'PENDING_VERIFICATION') {
+          throw new Error("⏳ Store pending verification: Your account has been registered and is awaiting admin approval.");
+        }
         throw new Error(data.error || "No seller found. Please register your store first.");
       }
 
@@ -129,9 +152,28 @@ function VendorLoginPage() {
     setLoading(true);
 
     try {
+      let currentUser = auth.currentUser;
+      if (!currentUser) {
+        const cred = await signInWithGoogle();
+        currentUser = cred.user;
+      }
+
+      await syncUserToDatabase({
+        uid: currentUser.uid,
+        email: currentUser.email,
+        displayName: ownerName.trim() || currentUser.displayName,
+        phoneNumber: cleanRegPhone || currentUser.phoneNumber,
+        role: 'SELLER',
+      });
+
+      const token = await currentUser.getIdToken();
+
       const res = await fetch('/api/seller/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({
           ownerName: ownerName.trim(),
           phone: cleanRegPhone,
@@ -167,8 +209,8 @@ function VendorLoginPage() {
         license: 'TIER-1-PHONE-VERIFIED',
       });
 
-      showMessage(`🎉 Store registered successfully! Welcome, ${ownerName.trim()}. Redirecting…`, "success");
-      setTimeout(() => router.push("/seller/dashboard"), 600);
+      showMessage(`🎉 Store registered successfully! Welcome, ${ownerName.trim()}. Your account is submitted for verification.`, "success");
+      setTimeout(() => router.push("/seller/dashboard"), 1000);
     } catch (err: any) {
       console.error("[VendorRegister] Error:", err);
       showMessage(err?.message || "Failed to register store.");
