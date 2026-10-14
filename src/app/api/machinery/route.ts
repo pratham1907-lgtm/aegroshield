@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireUser, handleAuthError, HttpError } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -46,6 +47,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireUser(request);
+
     const body = await request.json();
     const {
       title,
@@ -55,99 +58,26 @@ export async function POST(request: NextRequest) {
       ratePerHour,
       district,
       contactPhone,
-      ownerId,
-      userId,
-      firebaseUid,
+      phone,
     } = body;
 
-    const headerAuth = request.headers.get('authorization') || '';
-    const bearerToken = headerAuth.startsWith('Bearer ') ? headerAuth.slice(7).trim() : null;
-    const headerFirebaseUid = request.headers.get('x-firebase-uid');
-    const headerEmail = request.headers.get('x-user-email');
-    const headerNameRaw = request.headers.get('x-user-name');
-    const headerName = headerNameRaw ? decodeURIComponent(headerNameRaw) : null;
-    const headerPhone = request.headers.get('x-user-phone');
-
-    const uid = headerFirebaseUid || bearerToken || firebaseUid || userId || ownerId;
-    const email = headerEmail || body.email || null;
-    const name = headerName || body.userName || body.name || null;
-    const phone = headerPhone || contactPhone || body.phone || null;
-
-    let targetOwnerId = ownerId || userId;
-
-    if (uid) {
-      try {
-        let safePhone: string | undefined = undefined;
-        if (phone && String(phone).trim().length >= 10) {
-          const existingUserWithPhone = await prisma.user.findFirst({
-            where: { phone: String(phone).trim(), NOT: { firebaseUid: uid } },
-          });
-          if (!existingUserWithPhone) {
-            safePhone = String(phone).trim();
-          }
-        }
-
-        const dbUser = await prisma.user.upsert({
-          where: { firebaseUid: uid },
-          update: {
-            email: email || undefined,
-            name: name || undefined,
-            phone: safePhone || undefined,
-          },
-          create: {
-            firebaseUid: uid,
-            email: email,
-            name: name || 'Equipment Partner',
-            phone: safePhone || null,
-            role: 'FARMER',
-            isDemo: false,
-          },
-        });
-        targetOwnerId = dbUser.id;
-      } catch (err) {
-        console.warn('[API/Machinery] User upsert warning:', err);
-      }
+    const machineTitle = (title || model || equipmentType || '').trim();
+    if (!machineTitle) {
+      throw new HttpError('Machine title or model is required', 400);
     }
 
-    if (!targetOwnerId && phone) {
-      try {
-        const cleanP = String(phone).replace(/\D/g, '').trim();
-        if (cleanP.length >= 10) {
-          const userByPhone = await prisma.user.findFirst({
-            where: { phone: cleanP },
-          });
-          if (userByPhone) {
-            targetOwnerId = userByPhone.id;
-          }
-        }
-      } catch (phoneErr) {
-        console.warn('[API/Machinery] Phone user lookup warning:', phoneErr);
-      }
+    const rate = Number(ratePerHour);
+    if (isNaN(rate) || rate <= 0) {
+      throw new HttpError('A valid hourly rate is required', 400);
     }
 
-    if (!targetOwnerId) {
-      const fallbackUser = await prisma.user.upsert({
-        where: { firebaseUid: 'production-default-owner' },
-        update: {},
-        create: {
-          firebaseUid: 'production-default-owner',
-          name: 'Platform Equipment Partner',
-          role: 'FARMER',
-          isDemo: false,
-        },
-      });
-      targetOwnerId = fallbackUser.id;
-    }
-
-    const machineTitle = title || model || equipmentType || 'Agricultural Machinery';
     const type = machineType || equipmentType || 'Tractor';
-    const rate = Number(ratePerHour) || 500;
     const dist = district || 'Meerut';
-    const contact = contactPhone || phone || '';
+    const contact = contactPhone || phone || user.phone || '';
 
     const created = await prisma.machinery.create({
       data: {
-        ownerId: targetOwnerId,
+        ownerId: user.id,
         title: machineTitle,
         machineType: type,
         ratePerHour: rate,
@@ -168,9 +98,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error: any) {
     console.error('[API/Machinery] Error creating machinery:', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to register machinery in Supabase database.' },
-      { status: 500 }
-    );
+    return handleAuthError(error);
   }
 }
+

@@ -284,11 +284,21 @@ export default function SellerDashboardPage() {
 
     setIsSubmitting(true);
     try {
+      const token = await auth.currentUser?.getIdToken();
+
       if (editingProduct) {
+        if (!token) {
+          showToast('Authentication required: Please sign in to edit products.', 'error');
+          return;
+        }
+
         // PUT update
         const res = await fetch(`/api/products/${editingProduct.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
           body: JSON.stringify({
             name: formData.name.trim(),
             category: formData.category,
@@ -322,7 +332,11 @@ export default function SellerDashboardPage() {
           return;
         }
 
-        const token = await auth.currentUser?.getIdToken();
+        if (!token) {
+          showToast('Authentication required: Please sign in as a verified seller to add products.', 'error');
+          return;
+        }
+
         const activeUid = auth.currentUser?.uid || user?.uid || sessionUser?.id || '';
         const activeEmail = auth.currentUser?.email || user?.email || sessionUser?.email || '';
         const activeName = auth.currentUser?.displayName || user?.displayName || sessionSeller?.ownerName || sessionUser?.name || 'Store Owner';
@@ -330,8 +344,8 @@ export default function SellerDashboardPage() {
 
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
         if (activeUid) headers['x-firebase-uid'] = activeUid;
         if (activeEmail) headers['x-user-email'] = activeEmail;
         if (activeName) headers['x-user-name'] = encodeURIComponent(activeName);
@@ -391,8 +405,17 @@ export default function SellerDashboardPage() {
     setIsSubmitting(true);
 
     try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        showToast('Authentication required: Please sign in to delete products.', 'error');
+        return;
+      }
+
       const res = await fetch(`/api/products/${deletingProduct.id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
       const json = await res.json();
 
@@ -417,9 +440,18 @@ export default function SellerDashboardPage() {
     if (newStock === product.stock) return;
 
     try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        showToast('Authentication required: Please sign in to adjust stock.', 'error');
+        return;
+      }
+
       const res = await fetch(`/api/products/${product.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ stock: newStock }),
       });
       const json = await res.json();
@@ -431,6 +463,7 @@ export default function SellerDashboardPage() {
       console.error('[SellerDashboard] Stock update failed:', err);
     }
   };
+
 
   // Resolve authentic seller profile from live inventory, seller session, or user details
   const activeSeller =

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireUser, handleAuthError, HttpError } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -118,6 +119,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireUser(request);
+
     const body = await request.json();
     console.log("--> INCOMING REAL BOOKING REQUEST:", body);
 
@@ -130,69 +133,15 @@ export async function POST(request: NextRequest) {
       startDate,
       endDate,
       bookingDate,
-      userId,
-      firebaseUid,
       customerName,
       customerPhone,
       userName,
       userPhone,
       contactPhone,
-      userEmail,
     } = body;
 
-    // Read the incoming Firebase UID and email
-    const headerAuth = request.headers.get('authorization') || '';
-    const bearerToken = headerAuth.startsWith('Bearer ') ? headerAuth.slice(7).trim() : null;
-    const headerFirebaseUid = request.headers.get('x-firebase-uid');
-    const headerEmail = request.headers.get('x-user-email');
-    const headerNameRaw = request.headers.get('x-user-name');
-    const headerName = headerNameRaw ? decodeURIComponent(headerNameRaw) : null;
-    const headerPhone = request.headers.get('x-user-phone');
-
-    const uid = headerFirebaseUid || bearerToken || body.firebaseUid || body.userId;
-    const email = headerEmail || body.email || userEmail || null;
-    const name = headerName || body.customerName || body.userName || body.name || null;
-    const phone = headerPhone || body.customerPhone || body.userPhone || body.contactPhone || body.phone || null;
-
-    if (!uid) {
-      const err = new Error('Authentication required: Missing real Firebase user UID.');
-      console.error("API Creation Error:", err);
-      return NextResponse.json(
-        { success: false, error: err.message },
-        { status: 401 }
-      );
-    }
-
-    // Safe phone handling to avoid P2002 Unique constraint violation if phone belongs to another user
-    let safePhoneToUpdate: string | undefined = undefined;
-    if (phone && String(phone).trim().length >= 10) {
-      try {
-        const existingUserWithPhone = await prisma.user.findFirst({
-          where: { phone: String(phone).trim(), NOT: { firebaseUid: uid } },
-        });
-        if (!existingUserWithPhone) {
-          safePhoneToUpdate = String(phone).trim();
-        }
-      } catch (err) {
-        console.warn('[API/Bookings] Phone uniqueness check warning:', err);
-      }
-    }
-
-    const dbUser = await prisma.user.upsert({
-      where: { firebaseUid: uid },
-      update: {
-        email: email || undefined,
-        name: name || undefined,
-        ...(safePhoneToUpdate ? { phone: safePhoneToUpdate } : {}),
-      },
-      create: {
-        firebaseUid: uid,
-        email: email,
-        name: name || 'Google User',
-        phone: safePhoneToUpdate || null,
-        role: 'FARMER',
-      },
-    });
+    const phone = customerPhone || userPhone || contactPhone || user.phone || null;
+    const name = customerName || userName || user.name || 'AgriShield Farmer';
 
     const parsedDate = startDate ? new Date(startDate) : (bookingDate ? new Date(bookingDate) : new Date());
     const validBookingDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
@@ -237,68 +186,51 @@ export async function POST(request: NextRequest) {
       ? `${body.days || 1} day${Number(body.days || 1) > 1 ? 's' : ''}`
       : `${body.hours || 4} hour${Number(body.hours || 4) > 1 ? 's' : ''}`;
 
-    try {
-      const createdBooking = await prisma.booking.create({
-        data: {
-          userId: dbUser.id,
-          bookingType: rawType,
-          targetId: String(targetId || labourPostIdToLink || machineryIdToLink || (isLabour ? 'LAB-' : 'MACH-') + Date.now()),
-          customerName: name || body.customerName || dbUser.name || 'AgriShield Farmer',
-          customerPhone: phone || body.customerPhone || dbUser.phone || '',
-          itemTitle: itemTitle,
-          district: String(body.district || 'Meerut'),
-          startDate: validBookingDate,
-          endDate: validEndDate,
-          duration: duration,
-          machineryId: machineryIdToLink,
-          labourPostId: labourPostIdToLink,
-          status: body.status || 'PENDING',
-          bookingDate: validBookingDate,
-          totalAmount: Number(totalAmount ?? body.pricePerHour ?? 0),
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-            },
+    const createdBooking = await prisma.booking.create({
+      data: {
+        userId: user.id,
+        bookingType: rawType,
+        targetId: String(targetId || labourPostIdToLink || machineryIdToLink || (isLabour ? 'LAB-' : 'MACH-') + Date.now()),
+        customerName: name,
+        customerPhone: phone || '',
+        itemTitle: itemTitle,
+        district: String(body.district || 'Meerut'),
+        startDate: validBookingDate,
+        endDate: validEndDate,
+        duration: duration,
+        machineryId: machineryIdToLink,
+        labourPostId: labourPostIdToLink,
+        status: body.status || 'PENDING',
+        bookingDate: validBookingDate,
+        totalAmount: Number(totalAmount ?? body.pricePerHour ?? 0),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
           },
-          machinery: true,
-          labourPost: true,
         },
-      });
+        machinery: true,
+        labourPost: true,
+      },
+    });
 
-      console.log("REAL_BOOKING_CREATED:", createdBooking.id, "Type:", rawType);
+    console.log("REAL_BOOKING_CREATED:", createdBooking.id, "Type:", rawType);
 
-      return NextResponse.json(
-        {
-          success: true,
-          data: createdBooking,
-          message: 'Booking successfully confirmed in Supabase database.',
-        },
-        { status: 201 }
-      );
-    } catch (createErr) {
-      console.error("API Creation Error:", createErr);
-      return NextResponse.json(
-        {
-          success: false,
-          error: (createErr as any)?.message || 'Database error: Failed to insert booking into Supabase',
-        },
-        { status: 500 }
-      );
-    }
-  } catch (error: any) {
-    console.error("API Creation Error:", error);
     return NextResponse.json(
       {
-        success: false,
-        error: error?.message || 'Failed to process booking in database',
+        success: true,
+        data: createdBooking,
+        message: 'Booking successfully confirmed in Supabase database.',
       },
-      { status: 500 }
+      { status: 201 }
     );
+  } catch (error: any) {
+    console.error("API Creation Error:", error);
+    return handleAuthError(error);
   }
 }
 

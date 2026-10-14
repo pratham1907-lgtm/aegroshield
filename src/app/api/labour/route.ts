@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireUser, handleAuthError, HttpError } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -67,6 +68,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireUser(request);
+
     const body = await request.json();
     const {
       leaderName,
@@ -80,100 +83,22 @@ export async function POST(request: NextRequest) {
       district,
       phone,
       contactPhone,
-      userId,
-      leaderId,
-      firebaseUid,
     } = body;
 
-    const headerAuth = request.headers.get('authorization') || '';
-    const bearerToken = headerAuth.startsWith('Bearer ') ? headerAuth.slice(7).trim() : null;
-    const headerFirebaseUid = request.headers.get('x-firebase-uid');
-    const headerEmail = request.headers.get('x-user-email');
-    const headerNameRaw = request.headers.get('x-user-name');
-    const headerName = headerNameRaw ? decodeURIComponent(headerNameRaw) : null;
-    const headerPhone = request.headers.get('x-user-phone');
-
-    const uid = headerFirebaseUid || bearerToken || firebaseUid || userId || leaderId;
-    const email = headerEmail || body.email || null;
-    const name = headerName || body.userName || body.name || null;
-    const userPhone = headerPhone || phone || contactPhone || null;
-
-    let targetLeaderId = leaderId || userId;
-
-    if (uid) {
-      try {
-        let safePhone: string | undefined = undefined;
-        if (userPhone && String(userPhone).trim().length >= 10) {
-          const existingUserWithPhone = await prisma.user.findFirst({
-            where: { phone: String(userPhone).trim(), NOT: { firebaseUid: uid } },
-          });
-          if (!existingUserWithPhone) {
-            safePhone = String(userPhone).trim();
-          }
-        }
-
-        const dbUser = await prisma.user.upsert({
-          where: { firebaseUid: uid },
-          update: {
-            email: email || undefined,
-            name: name || undefined,
-            phone: safePhone || undefined,
-          },
-          create: {
-            firebaseUid: uid,
-            email: email,
-            name: name || 'Labour Leader',
-            phone: safePhone || null,
-            role: 'FARMER',
-            isDemo: false,
-          },
-        });
-        targetLeaderId = dbUser.id;
-      } catch (err) {
-        console.warn('[API/Labour] User upsert warning:', err);
-      }
+    const postLeaderName = (leaderName || teamLeaderName || user.name || 'Labour Leader').trim();
+    const size = Math.max(1, Number(groupSize || teamSize) || 1);
+    const wage = Number(wagePerDay || dailyRatePerWorker);
+    if (isNaN(wage) || wage <= 0) {
+      throw new HttpError('A valid daily wage rate is required', 400);
     }
 
-    if (!targetLeaderId && userPhone) {
-      try {
-        const cleanP = String(userPhone).replace(/\D/g, '').trim();
-        if (cleanP.length >= 10) {
-          const userByPhone = await prisma.user.findFirst({
-            where: { phone: cleanP },
-          });
-          if (userByPhone) {
-            targetLeaderId = userByPhone.id;
-          }
-        }
-      } catch (phoneErr) {
-        console.warn('[API/Labour] Phone user lookup warning:', phoneErr);
-      }
-    }
-
-    if (!targetLeaderId) {
-      const fallbackUser = await prisma.user.upsert({
-        where: { firebaseUid: 'production-default-labour-leader' },
-        update: {},
-        create: {
-          firebaseUid: 'production-default-labour-leader',
-          name: 'Labour Representative',
-          role: 'FARMER',
-          isDemo: false,
-        },
-      });
-      targetLeaderId = fallbackUser.id;
-    }
-
-    const postLeaderName = leaderName || teamLeaderName || 'Labour Squad Leader';
-    const size = Number(groupSize || teamSize) || 5;
-    const skill = primarySkill || specialization || 'General Agriculture & Harvesting';
-    const wage = Number(wagePerDay || dailyRatePerWorker) || 400;
+    const skill = (primarySkill || specialization || 'General Agriculture & Harvesting').trim();
     const dist = district || 'Meerut';
-    const postPhone = phone || contactPhone || userPhone || '';
+    const postPhone = phone || contactPhone || user.phone || '';
 
     const created = await prisma.labourPost.create({
       data: {
-        leaderId: targetLeaderId,
+        leaderId: user.id,
         leaderName: postLeaderName,
         groupSize: size,
         primarySkill: skill,
@@ -194,9 +119,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error: any) {
     console.error('[API/Labour] Error creating labour post:', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to post labour availability in Supabase database.' },
-      { status: 500 }
-    );
+    return handleAuthError(error);
   }
 }
+
