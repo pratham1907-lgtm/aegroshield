@@ -22,8 +22,8 @@ function AdminLoginPage() {
   const rawKey = searchParams.get("secret_key") || searchParams.get("key") || "";
   const cleanKey = rawKey.replace(/[\/\\]+$/, "").trim();
   
-  const SECRET_KEY = process.env.NEXT_PUBLIC_ADMIN_SECRET_KEY || "aegroshield_admin_1907";
-  const isAuthorized = cleanKey === SECRET_KEY || cleanKey === "aegroshield_admin_1907";
+  const SECRET_KEY = process.env.NEXT_PUBLIC_ADMIN_SECRET_KEY;
+  const isAuthorized = Boolean(SECRET_KEY && cleanKey && cleanKey === SECRET_KEY);
 
   const [email, setEmail] = useState("admin@aegroshield.in");
   const [password, setPassword] = useState("");

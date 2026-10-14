@@ -5,9 +5,13 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function getOptimizedDatabaseUrl(): string {
-  let url =
-    process.env.DATABASE_URL ||
-    "postgresql://postgres.ltexrevhqnhawknvhxup:BRyxjBnduAnfgwdg@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true";
+  let url = process.env.DATABASE_URL;
+
+  if (!url) {
+    throw new Error(
+      '[Prisma] Missing DATABASE_URL environment variable. Please ensure it is defined in your environment (.env / .env.production).'
+    );
+  }
 
   if (!url.includes('connection_limit=')) {
     url += (url.includes('?') ? '&' : '?') + 'connection_limit=1';
