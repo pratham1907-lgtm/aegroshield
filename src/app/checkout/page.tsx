@@ -121,30 +121,18 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
 
     try {
-      // Snapshot cart items with complete product details: productId, title, price, quantity, image
-      const itemsSnapshot = cart.map(item => {
-        const p = item.product;
-        const imageUrl = (p as any).imageUrl || (p as any).image || '';
-        return {
-          productId: p.id,
-          title: p.name,
-          price: Number(p.price),
-          quantity: Number(item.quantity),
-          image: imageUrl,
-          id: p.id,
-          name: p.name,
-          category: p.category || 'General',
-          brand: p.brand || '',
-          unit: p.unit || 'unit',
-          vendorId: p.vendorId || '',
-        };
-      });
+      const itemsPayload = cart.map(item => ({
+        productId: item.product.id,
+        quantity: Math.max(1, Math.min(1000, Number(item.quantity) || 1)),
+      }));
 
       const token = await auth.currentUser?.getIdToken();
-      const activeUid = auth.currentUser?.uid || '';
-      const activeEmail = auth.currentUser?.email || '';
-      const activeName = auth.currentUser?.displayName || formData.name.trim() || 'Google User';
-      const activePhone = formData.phone.trim() || auth.currentUser?.phoneNumber || '';
+      if (!token) {
+        throw new Error('Authentication required: Please sign in with Google to place your order.');
+      }
+
+      const activeName = (formData.name.trim() || auth.currentUser?.displayName || 'AgriShield Farmer');
+      const activePhone = (formData.phone.trim() || auth.currentUser?.phoneNumber || '');
 
       const payload = {
         customerName: activeName,
@@ -153,29 +141,20 @@ export default function CheckoutPage() {
         district: formData.district,
         pincode: formData.pincode.trim() || '250001',
         paymentMethod: paymentMethod,
-        items: itemsSnapshot,
-        totalAmount: grandTotal,
-        userId: activeUid,
-        firebaseUid: activeUid,
-        email: activeEmail,
-        name: activeName,
-        phone: activePhone,
+        items: itemsPayload,
       };
 
-      console.log("[Checkout] Submitting order payload with Google user:", payload);
+      console.log("[Checkout] Submitting verified order payload:", payload);
 
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : '',
-          'x-firebase-uid': auth.currentUser?.uid || '',
-          'x-user-email': auth.currentUser?.email || '',
-          'x-user-name': encodeURIComponent(auth.currentUser?.displayName || formData.name || 'Google User'),
-          'x-user-phone': activePhone,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
+
 
       let json: any = null;
       try {
