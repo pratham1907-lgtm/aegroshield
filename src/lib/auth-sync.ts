@@ -1,64 +1,63 @@
+/**
+ * auth-sync.ts
+ * Server-side utility: Syncs a Firebase Auth user into the Supabase
+ * PostgreSQL User table via Prisma using a single atomic upsert.
+ *
+ * NOTE: This module imports Prisma and must only be imported from:
+ *   - Next.js API routes (server-side)
+ *   - Server Actions
+ * Never import this in 'use client' components.
+ */
 import { prisma } from './prisma';
 
-export interface MinimalFirebaseUser {
+export interface FirebaseUserPayload {
   uid: string;
   email?: string | null;
   displayName?: string | null;
-  name?: string | null;
   phoneNumber?: string | null;
-  phone?: string | null;
+  /** Optional role override (defaults to 'FARMER') */
   role?: string | null;
 }
 
 /**
- * Hybrid Auth Helper: Syncs Firebase Auth User details to PostgreSQL via Prisma.
- * Guarantees that every authenticated Firebase user has a corresponding relational User record in Postgres.
+ * Upserts a Firebase Auth user into the Supabase User table via Prisma.
+ * - If no record exists for this firebaseUid → creates a new row.
+ * - If a record already exists → updates email / name only if they have
+ *   changed (phone is preserved server-side to avoid overwriting with null).
  *
- * @param firebaseUser - User object from Firebase Auth or AuthContext
- * @returns The synced Prisma User record
+ * @param payload - Firebase user fields from the client
+ * @returns The created or updated Prisma User record
  */
-export async function syncFirebaseUserToPrisma(firebaseUser: MinimalFirebaseUser) {
-  if (!firebaseUser || !firebaseUser.uid) {
-    throw new Error('syncFirebaseUserToPrisma requires a valid firebaseUser with a uid.');
+export async function syncFirebaseUserToPrisma(payload: FirebaseUserPayload) {
+  const { uid, email, displayName, phoneNumber, role } = payload;
+
+  if (!uid) {
+    throw new Error('[auth-sync] syncFirebaseUserToPrisma: uid is required.');
   }
 
-  const uid = firebaseUser.uid;
-  const email = firebaseUser.email || null;
-  const name = firebaseUser.displayName || firebaseUser.name || null;
-  const phone = firebaseUser.phoneNumber || firebaseUser.phone || null;
-  const role = firebaseUser.role || 'FARMER';
+  const name  = displayName?.trim() || null;
+  const phone = phoneNumber || null;
+  const resolvedRole = role || 'FARMER';
 
-  try {
-    const existingUser = await prisma.user.findUnique({
-      where: { firebaseUid: uid },
-    });
+  const user = await prisma.user.upsert({
+    where: { firebaseUid: uid },
+    create: {
+      firebaseUid: uid,
+      email:  email || null,
+      name,
+      phone,
+      role:   resolvedRole,
+      isDemo: false,
+    },
+    update: {
+      // Only update fields that Firebase definitively provides.
+      // Phone is intentionally excluded from the update clause so that
+      // a user who set their phone through the app UI doesn't have it
+      // wiped on next login (Firebase doesn't always return phoneNumber).
+      email:  email || undefined,
+      name:   name  || undefined,
+    },
+  });
 
-    if (!existingUser) {
-      const newUser = await prisma.user.create({
-        data: {
-          firebaseUid: uid,
-          email,
-          name,
-          phone,
-          role,
-        },
-      });
-      return newUser;
-    }
-
-    // Update profile fields if changed
-    const updatedUser = await prisma.user.update({
-      where: { firebaseUid: uid },
-      data: {
-        email: email ?? existingUser.email,
-        name: name ?? existingUser.name,
-        phone: phone ?? existingUser.phone,
-      },
-    });
-
-    return updatedUser;
-  } catch (error) {
-    console.error('Error syncing Firebase user to Prisma PostgreSQL:', error);
-    throw error;
-  }
+  return user;
 }

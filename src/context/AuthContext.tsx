@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import { syncUserToDatabase } from '@/lib/sync-user-client';
 
 export interface FirestoreUserData {
   uid: string;
@@ -73,6 +74,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
+
+        // Sync Firebase user to Supabase PostgreSQL (via Prisma upsert on the server)
+        // Fire-and-forget: errors are logged but never block the UI
+        syncUserToDatabase({
+          uid:         firebaseUser.uid,
+          email:       firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          phoneNumber: firebaseUser.phoneNumber,
+        });
 
         const userRef = doc(db, 'users', firebaseUser.uid);
         const unsubDoc = onSnapshot(

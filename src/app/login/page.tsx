@@ -7,6 +7,7 @@ import { auth, db, signInWithGoogle } from "@/lib/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
+import { syncUserToDatabase } from "@/lib/sync-user-client";
 import { Store } from "lucide-react";
 
 export default function LoginPageWrapper() {
@@ -108,6 +109,13 @@ function LoginPage() {
         createdAt: serverTimestamp(),
       });
 
+      // Sync to Supabase PostgreSQL (Prisma upsert — fire-and-forget)
+      syncUserToDatabase({
+        uid:         cred.user.uid,
+        email:       cred.user.email,
+        displayName: name.trim(),
+      });
+
       showMessage("🎉 Account created successfully! Opening Farmer Dashboard…", "success");
       setTimeout(() => router.push(farmerTarget), 500);
     } catch (err: any) {
@@ -136,6 +144,14 @@ function LoginPage() {
           createdAt: serverTimestamp(),
         });
       }
+
+      // Sync to Supabase PostgreSQL (Prisma upsert — fire-and-forget, covers both new & returning)
+      syncUserToDatabase({
+        uid:         cred.user.uid,
+        email:       cred.user.email,
+        displayName: cred.user.displayName,
+        phoneNumber: cred.user.phoneNumber,
+      });
 
       showMessage("🎉 Signed in with Google! Opening Farmer Dashboard…", "success");
       setTimeout(() => router.push(farmerTarget), 500);
