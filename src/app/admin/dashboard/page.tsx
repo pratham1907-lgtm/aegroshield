@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { auth } from '@/lib/firebase';
 import {
   getCurrentAdmin, adminLogout, getVendors, getProducts, getOrders, getMachineryListings, getLabourListings,
   toggleVendorVerification, toggleProductBanned, updateOrderStatus, toggleMachineryAvailability, toggleLabourAvailability,
@@ -25,13 +26,47 @@ export default function AdminDashboardPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    const current = getCurrentAdmin();
-    if (!current) {
-      router.push('/'); // Redirect unauthorized direct access to home page
-      return;
-    }
-    setAdmin(current);
-    refreshData();
+    let isMounted = true;
+
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+      if (!isMounted) return;
+
+      if (!currentUser) {
+        const current = getCurrentAdmin();
+        if (current) {
+          setAdmin(current);
+          refreshData();
+          return;
+        }
+        router.push('/admin/login');
+        return;
+      }
+
+      try {
+        const tokenResult = await currentUser.getIdTokenResult();
+        if (tokenResult.claims.admin !== true) {
+          console.warn('[AdminDashboard] User lacks admin claim, redirecting to login.');
+          router.push('/admin/login');
+          return;
+        }
+
+        setAdmin({
+          id: currentUser.uid,
+          name: currentUser.displayName || 'Platform Administrator',
+          email: currentUser.email || 'admin@aegroshield.in',
+          role: 'admin',
+        });
+        refreshData();
+      } catch (err) {
+        console.error('[AdminDashboard] Claim verification error:', err);
+        router.push('/admin/login');
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, [router]);
 
   const refreshData = () => {
@@ -43,9 +78,12 @@ export default function AdminDashboardPage() {
     setLabour(getLabourListings());
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+    } catch {}
     adminLogout();
-    router.push('/');
+    router.push('/admin/login');
   };
 
   const handleToggleAccreditation = (vendorId: string) => {

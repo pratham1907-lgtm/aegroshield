@@ -6,6 +6,8 @@
  * Prisma or Node.js-only imports.
  */
 
+import { auth } from './firebase';
+
 export interface SyncUserPayload {
   uid: string;
   email?: string | null;
@@ -22,14 +24,21 @@ export interface SyncUserPayload {
  */
 export async function syncUserToDatabase(payload: SyncUserPayload): Promise<void> {
   try {
+    const token = await auth.currentUser?.getIdToken();
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const res = await fetch('/api/auth/sync-user', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-sync-key': process.env.NEXT_PUBLIC_ADMIN_SECRET_KEY || '',
-      },
+      headers,
       body: JSON.stringify(payload),
     });
+
 
     if (!res.ok) {
       const text = await res.text();

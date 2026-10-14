@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { auth, db, signInWithGoogle } from "@/lib/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
@@ -41,17 +41,7 @@ function getFirebaseErrorMessage(code: string, fallback: string): string {
 
 function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const secretKeyParam = searchParams.get("secret_key") || searchParams.get("key");
-
   const { user } = useAuth();
-
-  // If secret_key is present, auto-forward to dedicated Admin Login
-  useEffect(() => {
-    if (secretKeyParam) {
-      router.push(`/admin/login?secret_key=${secretKeyParam}`);
-    }
-  }, [secretKeyParam, router]);
 
   // Strict Farmer Redirect Target: ALWAYS / (Farmer Homepage)
   const farmerTarget = "/";
