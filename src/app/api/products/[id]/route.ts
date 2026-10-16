@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireUser, handleAuthError, HttpError } from '@/lib/auth';
+import { updateProductSchema, formatZodError } from '@/lib/validations';
 
 export async function GET(
   request: NextRequest,
@@ -67,15 +68,36 @@ export async function PUT(
       throw new HttpError('Product not found or you do not have permission to edit it.', 404);
     }
 
-    const body = await request.json();
-    const { name, title, category, price, unit, stock, description, imageUrl } = body;
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      throw new HttpError('Invalid JSON request body', 400);
+    }
+
+    const validation = updateProductSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: formatZodError(validation.error),
+          details: validation.error.issues.map(i => ({
+            field: i.path.join('.'),
+            message: i.message,
+          })),
+        },
+        { status: 400 }
+      );
+    }
+
+    const { name, category, price, unit, stock, description, imageUrl } = validation.data;
 
     const updateData: any = {};
-    if (name !== undefined || title !== undefined) updateData.name = name || title;
+    if (name !== undefined) updateData.name = name;
     if (category !== undefined) updateData.category = category;
-    if (price !== undefined) updateData.price = Number(price);
+    if (price !== undefined) updateData.price = price;
     if (unit !== undefined) updateData.unit = unit;
-    if (stock !== undefined) updateData.stock = Number(stock);
+    if (stock !== undefined) updateData.stock = stock;
     if (description !== undefined) updateData.description = description;
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
 

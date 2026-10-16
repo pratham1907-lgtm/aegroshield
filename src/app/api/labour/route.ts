@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireUser, handleAuthError, HttpError } from '@/lib/auth';
+import { createLabourPostSchema, formatZodError } from '@/lib/validations';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -72,12 +73,34 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireUser(request);
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      throw new HttpError('Invalid JSON request body', 400);
+    }
+
+    const validation = createLabourPostSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: formatZodError(validation.error),
+          details: validation.error.issues.map(i => ({
+            field: i.path.join('.'),
+            message: i.message,
+          })),
+        },
+        { status: 400 }
+      );
+    }
+
     const {
       leaderName,
       teamLeaderName,
       groupSize,
       teamSize,
+      taskType,
       primarySkill,
       specialization,
       wagePerDay,
@@ -85,17 +108,12 @@ export async function POST(request: NextRequest) {
       district,
       phone,
       contactPhone,
-    } = body;
+    } = validation.data;
 
     const postLeaderName = (leaderName || teamLeaderName || user.name || 'Labour Leader').trim();
-    const size = Math.max(1, Number(groupSize || teamSize) || 1);
-    const wage = Number(wagePerDay || dailyRatePerWorker);
-    if (isNaN(wage) || wage <= 0) {
-      throw new HttpError('A valid daily wage rate is required', 400);
-    }
-
-    const skill = (primarySkill || specialization || 'General Agriculture & Harvesting').trim();
-    const dist = district || 'Meerut';
+    const size = groupSize ?? teamSize ?? 1;
+    const wage = wagePerDay ?? dailyRatePerWorker ?? 400;
+    const skill = (taskType || primarySkill || specialization || 'General Agriculture & Harvesting').trim();
     const postPhone = phone || contactPhone || user.phone || '';
 
     const created = await prisma.labourPost.create({
@@ -105,7 +123,7 @@ export async function POST(request: NextRequest) {
         groupSize: size,
         primarySkill: skill,
         wagePerDay: wage,
-        district: dist,
+        district,
         phone: postPhone,
         isDemo: false,
       },

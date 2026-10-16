@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireUser, handleAuthError, HttpError } from '@/lib/auth';
+import { createMachinerySchema, formatZodError } from '@/lib/validations';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -51,7 +52,28 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireUser(request);
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      throw new HttpError('Invalid JSON request body', 400);
+    }
+
+    const validation = createMachinerySchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: formatZodError(validation.error),
+          details: validation.error.issues.map(i => ({
+            field: i.path.join('.'),
+            message: i.message,
+          })),
+        },
+        { status: 400 }
+      );
+    }
+
     const {
       title,
       model,
@@ -61,20 +83,11 @@ export async function POST(request: NextRequest) {
       district,
       contactPhone,
       phone,
-    } = body;
+      available,
+    } = validation.data;
 
-    const machineTitle = (title || model || equipmentType || '').trim();
-    if (!machineTitle) {
-      throw new HttpError('Machine title or model is required', 400);
-    }
-
-    const rate = Number(ratePerHour);
-    if (isNaN(rate) || rate <= 0) {
-      throw new HttpError('A valid hourly rate is required', 400);
-    }
-
-    const type = machineType || equipmentType || 'Tractor';
-    const dist = district || 'Meerut';
+    const machineTitle = (title || model || machineType || equipmentType || '').trim();
+    const type = (machineType || equipmentType || 'Tractor').trim();
     const contact = contactPhone || phone || user.phone || '';
 
     const created = await prisma.machinery.create({
@@ -82,10 +95,10 @@ export async function POST(request: NextRequest) {
         ownerId: user.id,
         title: machineTitle,
         machineType: type,
-        ratePerHour: rate,
-        district: dist,
+        ratePerHour,
+        district,
         contactPhone: contact,
-        available: true,
+        available: available ?? true,
         isDemo: false,
       },
       include: {

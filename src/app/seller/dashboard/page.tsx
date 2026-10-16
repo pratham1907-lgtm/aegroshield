@@ -362,12 +362,6 @@ export default function SellerDashboardPage() {
             unit: formData.unit.trim(),
             description: formData.description.trim() || null,
             imageUrl: formData.imageUrl.trim() || null,
-            userId: activeUid,
-            firebaseUid: activeUid,
-            sellerId: sessionSeller?.id || undefined,
-            phone: activePhone,
-            storeName: sessionSeller?.storeName || undefined,
-            district: sessionSeller?.district || undefined,
           }),
         });
 

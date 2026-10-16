@@ -1,29 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireUser, handleAuthError } from '@/lib/auth';
+import { requireUser, handleAuthError, HttpError } from '@/lib/auth';
+import { registerSellerSchema, formatZodError } from '@/lib/validations';
 
 export async function POST(request: NextRequest) {
   try {
     // 1. Authenticate user via verified Firebase ID Token
     const user = await requireUser(request);
 
-    const body = await request.json();
-    const { ownerName, phone, storeName, district, category } = body;
+    let rawBody;
+    try {
+      rawBody = await request.json();
+    } catch {
+      throw new HttpError('Invalid JSON request body', 400);
+    }
 
-    if (!storeName || !ownerName || !phone) {
+    const validation = registerSellerSchema.safeParse(rawBody);
+    if (!validation.success) {
       return NextResponse.json(
-        { success: false, error: 'Store Name, Owner Name, and Phone Number are required' },
+        {
+          success: false,
+          error: formatZodError(validation.error),
+          details: validation.error.issues.map(i => ({
+            field: i.path.join('.'),
+            message: i.message,
+          })),
+        },
         { status: 400 }
       );
     }
 
-    const cleanPhone = String(phone).replace(/\D/g, '').trim();
-    if (cleanPhone.length < 10) {
-      return NextResponse.json(
-        { success: false, error: 'Please enter a valid 10-digit mobile number' },
-        { status: 400 }
-      );
-    }
+    const { ownerName, phone, storeName, district, category, shopAddress, licenseOrGstin } = validation.data;
+    const cleanPhone = phone;
 
     // 2. Update user role to SELLER and update contact name/phone
     await prisma.user.update({

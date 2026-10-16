@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireUser, handleAuthError, HttpError } from '@/lib/auth';
+import { createProductSchema, formatZodError } from '@/lib/validations';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -95,34 +96,45 @@ export async function POST(request: NextRequest) {
       throw new HttpError('Forbidden: Seller account is pending verification. Only verified sellers can list products.', 403);
     }
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      throw new HttpError('Invalid JSON request body', 400);
+    }
+
+    const validation = createProductSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: formatZodError(validation.error),
+          details: validation.error.issues.map(i => ({
+            field: i.path.join('.'),
+            message: i.message,
+          })),
+        },
+        { status: 400 }
+      );
+    }
+
     const {
       name,
-      title,
       category,
       price,
       unit,
       stock,
       imageUrl,
       description,
-    } = body;
-
-    const productName = (name || title || '').trim();
-    if (!productName) {
-      throw new HttpError('Product name/title is required', 400);
-    }
-
-    if (price === undefined || price === null || isNaN(Number(price)) || Number(price) < 0) {
-      throw new HttpError('Valid product price is required', 400);
-    }
+    } = validation.data;
 
     const newProduct = await prisma.product.create({
       data: {
-        name: productName,
-        category: category || 'General',
-        price: parseFloat(price),
+        name,
+        category,
+        price,
         unit: unit || 'per unit',
-        stock: parseInt(stock) || 0,
+        stock,
         sellerId: seller.id,
         imageUrl: imageUrl || null,
         description: description || null,
