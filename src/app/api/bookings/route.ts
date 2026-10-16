@@ -108,14 +108,17 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: allBookings, received: [], source: 'postgres' });
   } catch (error: any) {
-    console.warn('[API/Bookings] Database query error:', error);
-    return NextResponse.json({
-      success: true,
-      data: [],
-      warning: 'Could not query bookings from database',
-    });
+    console.error('[API/Bookings] Database query error:', error?.message || error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to retrieve bookings. Service temporarily unavailable.',
+      },
+      { status: 503 }
+    );
   }
 }
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -266,10 +269,11 @@ export async function PATCH(request: NextRequest) {
       message: `Booking status updated to ${updated.status}`,
     });
   } catch (err: any) {
-    console.error('[API/Bookings] PATCH error:', err);
+    console.error('[API/Bookings] PATCH error:', err?.message || err);
     return NextResponse.json(
-      { success: false, error: err?.message || 'Failed to update booking status' },
+      { success: false, error: 'Failed to update booking status. Internal server error.' },
       { status: 500 }
     );
   }
 }
+

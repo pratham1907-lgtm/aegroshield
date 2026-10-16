@@ -34,13 +34,14 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: product });
   } catch (error: any) {
-    console.error('[API/Products/[id]] GET error:', error);
+    console.error('[API/Products/[id]] GET error:', error?.message || error);
     return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to fetch product' },
+      { success: false, error: 'Failed to fetch product details. Internal server error.' },
       { status: 500 }
     );
   }
 }
+
 
 export async function PUT(
   request: NextRequest,

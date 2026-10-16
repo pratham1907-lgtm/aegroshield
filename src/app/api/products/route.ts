@@ -73,10 +73,14 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(products);
   } catch (error: any) {
-    console.warn('[API/Products] Database query failed after retry:', error);
-    return NextResponse.json([]);
+    console.error('[API/Products] Database query failed:', error?.message || error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to retrieve products. Service temporarily unavailable.' },
+      { status: 503 }
+    );
   }
 }
+
 
 export async function POST(request: NextRequest) {
   try {

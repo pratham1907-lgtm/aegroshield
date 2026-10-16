@@ -54,17 +54,19 @@ export async function GET(request: NextRequest) {
     }));
 
     // Pure real database rows - never merge or fallback to mock data
-    return NextResponse.json({ success: true, data: mapped, source: 'postgres' });
+    return NextResponse.json({ success: true, data: mapped });
   } catch (error: any) {
-    console.warn('[API/Labour] Database query failed:', error);
-    return NextResponse.json({
-      success: false,
-      data: [],
-      source: 'postgres_error',
-      warning: error?.message || 'Could not query labour posts from database',
-    });
+    console.error('[API/Labour] Database query failed:', error?.message || error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to retrieve labour listings. Service temporarily unavailable.',
+      },
+      { status: 503 }
+    );
   }
 }
+
 
 export async function POST(request: NextRequest) {
   try {

@@ -33,17 +33,19 @@ export async function GET(request: NextRequest) {
     });
 
     // Pure real database rows - never merge or fallback to mock data
-    return NextResponse.json({ success: true, data: items || [], source: 'postgres' });
+    return NextResponse.json({ success: true, data: items || [] });
   } catch (error: any) {
-    console.warn('[API/Machinery] Database query failed:', error);
-    return NextResponse.json({
-      success: false,
-      data: [],
-      source: 'postgres_error',
-      warning: error?.message || 'Could not query machinery from database',
-    });
+    console.error('[API/Machinery] Database query failed:', error?.message || error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to retrieve machinery listings. Service temporarily unavailable.',
+      },
+      { status: 503 }
+    );
   }
 }
+
 
 export async function POST(request: NextRequest) {
   try {
