@@ -684,6 +684,20 @@ async function populateBaselineRecords(recordsToPopulate = BASELINE_MANDI_RECORD
 
 export async function GET(req: Request) {
   try {
+    // 1. Authorize Cron trigger via CRON_SECRET header
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+    const cronSecret = process.env.CRON_SECRET;
+
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Unauthorized: Missing or invalid CRON_SECRET authorization header.',
+        },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const rawState = searchParams.get('state')?.trim() || '';
     const rawDistrict = searchParams.get('district')?.trim() || '';
@@ -694,11 +708,8 @@ export async function GET(req: Request) {
     const district = (rawDistrict.toLowerCase() === 'all' || rawDistrict.toLowerCase() === 'all districts') ? '' : rawDistrict;
     const commodity = (rawCommodity.toLowerCase() === 'all' || rawCommodity.toLowerCase() === 'all crops') ? '' : rawCommodity;
 
-    // Check if bypass is requested (e.g. ?force=true or Vercel Cron secret)
-    const isForce =
-      searchParams.get('force') === 'true' ||
-      req.headers.get('x-cron-secret') === process.env.CRON_SECRET ||
-      req.headers.get('authorization') === `Bearer ${process.env.CRON_SECRET}`;
+    // Force sync bypass is strictly restricted to authorized calls (already authenticated above)
+    const isForce = searchParams.get('force') === 'true';
 
     // Rate-limiting / 6-hour Cooldown Check (Only for unfiltered pan-India bulk sync)
     if (!isForce && !state && !district && !commodity) {

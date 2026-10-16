@@ -25,6 +25,15 @@ export default function AdminDashboardPage() {
   const [labour, setLabour] = useState<MockLabour[]>([]);
   const [search, setSearch] = useState('');
 
+  const refreshData = () => {
+    setAnalytics(getPlatformAnalytics());
+    setVendors(getVendors());
+    setProducts(getProducts());
+    setOrders(getOrders());
+    setMachinery(getMachineryListings());
+    setLabour(getLabourListings());
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -68,15 +77,6 @@ export default function AdminDashboardPage() {
       unsubscribe();
     };
   }, [router]);
-
-  const refreshData = () => {
-    setAnalytics(getPlatformAnalytics());
-    setVendors(getVendors());
-    setProducts(getProducts());
-    setOrders(getOrders());
-    setMachinery(getMachineryListings());
-    setLabour(getLabourListings());
-  };
 
   const handleLogout = async () => {
     try {

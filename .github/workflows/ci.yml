@@ -1,0 +1,44 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    name: Build, Lint & Typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: TypeScript Typecheck
+        run: npx tsc --noEmit
+
+      - name: Run Linter
+        run: npm run lint
+
+      - name: Production Build
+        run: npm run build
+        env:
+          DATABASE_URL: "postgresql://postgres:ci_password@localhost:5432/postgres?schema=public"
+          DIRECT_URL: "postgresql://postgres:ci_password@localhost:5432/postgres?schema=public"
+          CRON_SECRET: "ci_cron_secret_test_key"
+          NEXT_PUBLIC_FIREBASE_API_KEY: "AIzaSyCiDummyFirebaseKeyForBuild"
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "ci-test.firebaseapp.com"
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: "ci-test-project"
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "ci-test.firebasestorage.app"
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "1234567890"
+          NEXT_PUBLIC_FIREBASE_APP_ID: "1:1234567890:web:abcdef123456"
