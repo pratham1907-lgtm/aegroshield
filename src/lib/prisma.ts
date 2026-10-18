@@ -8,9 +8,8 @@ function getOptimizedDatabaseUrl(): string {
   let url = process.env.DATABASE_URL;
 
   if (!url) {
-    throw new Error(
-      '[Prisma] Missing DATABASE_URL environment variable. Please ensure it is defined in your environment (.env / .env.production).'
-    );
+    // Graceful fallback for Next.js build-time static page collection
+    return 'postgresql://postgres:postgres@localhost:5432/postgres?connection_limit=1&connect_timeout=20';
   }
 
   if (!url.includes('connection_limit=')) {

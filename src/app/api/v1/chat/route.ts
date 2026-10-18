@@ -1,11 +1,22 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 
-// Instantiate Gemini SDK client
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+function getGeminiClient() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  return new GoogleGenAI({ apiKey });
+}
 
 export async function POST(req: Request) {
   try {
+    const ai = getGeminiClient();
+    if (!ai) {
+      return NextResponse.json({
+        success: false,
+        error: 'Gemini API key is not configured.'
+      }, { status: 503 });
+    }
+
     const { messages, context } = await req.json();
     const userLanguage = context?.language || 'en';
     const currentPage = context?.currentPage || 'Unknown Page';
