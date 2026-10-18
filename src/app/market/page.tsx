@@ -557,6 +557,7 @@ export default function Page() {
       {/* ── Main Layout ────────────────────────────────────────── */}
       <main className="market-layout">
         {/* Stats Strip */}
+        {/* Stats Strip */}
         <div className="stats-strip">
           <div className="stat-card">
             <div className="stat-icon green">📊</div>
@@ -574,24 +575,86 @@ export default function Page() {
             <div className="stat-icon amber">🔄</div>
             <div>
               <div className="stat-label">Last Updated</div>
-              <div className="stat-value">{syncing || isSearching ? "Filtering..." : "Live data"}</div>
-              <div className="stat-sub">Agmarknet Feed</div>
+              <div className="stat-value">{syncing || isSearching ? "Filtering..." : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+              <div className="stat-sub">Live Daily Sync</div>
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon blue">📦</div>
+            <div className="stat-icon blue">⚖️</div>
             <div>
-              <div className="stat-label">Crops Tracked</div>
-              <div className="stat-value">{availableCrops.length > 0 ? `${availableCrops.length}+` : "280+"}</div>
-              <div className="stat-sub">Recorded varieties</div>
+              <div className="stat-label">Standard Unit</div>
+              <div className="stat-value">₹ / Quintal</div>
+              <div className="stat-sub">1 Quintal = 100 kg</div>
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon green">🎯</div>
+            <div className="stat-icon green">🏛️</div>
             <div>
-              <div className="stat-label">Signal Accuracy</div>
-              <div className="stat-value">89%</div>
-              <div className="stat-sub">Hold/Sell Precision</div>
+              <div className="stat-label">Data Source</div>
+              <div className="stat-value">Agmarknet</div>
+              <div className="stat-sub">DMI, Govt of India</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Official Mandi Data Source & Trading Transparency Banner ───────────────────────── */}
+        <div style={{
+          background: "#f0fdf4",
+          border: "1px solid #86efac",
+          borderRadius: "14px",
+          padding: "14px 20px",
+          marginBottom: "20px",
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "14px",
+          boxShadow: "0 2px 8px rgba(22, 163, 74, 0.06)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: "1 1 340px" }}>
+            <div style={{
+              width: "38px",
+              height: "38px",
+              borderRadius: "10px",
+              background: "#dcfce7",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.25rem",
+              flexShrink: 0
+            }}>
+              🏛️
+            </div>
+            <div>
+              <div style={{ fontSize: "0.86rem", fontWeight: 700, color: "#14532d" }}>
+                Official Data Source: Directorate of Marketing & Inspection (Agmarknet / DMI)
+              </div>
+              <div style={{ fontSize: "0.78rem", color: "#15803d", lineHeight: 1.4 }}>
+                Ministry of Agriculture & Farmers Welfare, Government of India • Real-time APMC Mandi price feeds
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <div style={{
+              background: "#ffffff",
+              padding: "6px 12px",
+              borderRadius: "8px",
+              border: "1px solid #bbf7d0",
+              fontSize: "0.8rem",
+              color: "#166534"
+            }}>
+              <strong>Trading Unit:</strong> ₹ / Quintal (100 kg)
+            </div>
+            <div style={{
+              background: "#ffffff",
+              padding: "6px 12px",
+              borderRadius: "8px",
+              border: "1px solid #bbf7d0",
+              fontSize: "0.8rem",
+              color: "#166534"
+            }}>
+              <strong>Last Updated:</strong> {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
             </div>
           </div>
         </div>
@@ -918,14 +981,14 @@ export default function Page() {
                           <div className="price-box-val" style={{ fontSize: "0.95rem", fontWeight: 700, color: "#475569" }}>
                             ₹{item.minPrice}
                           </div>
-                          <div className="price-box-lbl" style={{ fontSize: "0.68rem", color: "#94a3b8", fontWeight: 600 }}>Min Rate</div>
+                          <div className="price-box-lbl" style={{ fontSize: "0.68rem", color: "#94a3b8", fontWeight: 600 }}>Min Rate (/qtl)</div>
                         </div>
 
                         <div className="price-divider" style={{ width: "1px", height: "36px", background: "#e2e8f0", margin: "0 6px" }}></div>
 
                         <div className="price-box" style={{ flex: 1.4, textAlign: "center" }}>
                           <div className="price-box-val modal" style={{ fontSize: "1.28rem", color: "#16a34a", fontWeight: 800, lineHeight: 1.1 }}>
-                            ₹{item.modalPrice} <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "#16a34a" }}>/qtl</span>
+                            ₹{item.modalPrice} <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "#16a34a" }}>/quintal</span>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", marginTop: "2px" }}>
                             <span style={{ fontSize: "0.72rem", color: "#15803d", fontWeight: 600 }}>
@@ -941,7 +1004,7 @@ export default function Page() {
                               </span>
                             ) : null}
                           </div>
-                          <div className="price-box-lbl" style={{ color: "#16a34a", fontWeight: 700, fontSize: "0.68rem", marginTop: "2px" }}>Modal Rate</div>
+                          <div className="price-box-lbl" style={{ color: "#16a34a", fontWeight: 700, fontSize: "0.68rem", marginTop: "2px" }}>Modal Rate (/quintal)</div>
                         </div>
 
                         <div className="price-divider" style={{ width: "1px", height: "36px", background: "#e2e8f0", margin: "0 6px" }}></div>
@@ -950,7 +1013,7 @@ export default function Page() {
                           <div className="price-box-val" style={{ fontSize: "0.95rem", fontWeight: 700, color: "#475569" }}>
                             ₹{item.maxPrice}
                           </div>
-                          <div className="price-box-lbl" style={{ fontSize: "0.68rem", color: "#94a3b8", fontWeight: 600 }}>Max Rate</div>
+                          <div className="price-box-lbl" style={{ fontSize: "0.68rem", color: "#94a3b8", fontWeight: 600 }}>Max Rate (/qtl)</div>
                         </div>
                       </div>
 
@@ -991,7 +1054,7 @@ export default function Page() {
                       </div>
                     </div>
 
-                    {/* Footer: Arrival Date & Detail Analysis CTA */}
+                    {/* Footer: Arrival Date, Unit & Detail Analysis CTA */}
                     <div style={{
                       marginTop: "auto",
                       paddingTop: "12px",
@@ -1001,9 +1064,14 @@ export default function Page() {
                       justifyContent: "space-between",
                       gap: "8px",
                     }}>
-                      <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
-                        🗓️ {item.arrivalDate || "Today"}
-                      </span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <span style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>
+                          🗓️ {item.arrivalDate || "Today"}
+                        </span>
+                        <span style={{ fontSize: "0.68rem", color: "#94a3b8" }}>
+                          Agmarknet • ₹/quintal (100kg)
+                        </span>
+                      </div>
 
                       {item.id ? (
                         <Link

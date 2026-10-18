@@ -675,7 +675,7 @@ export default function MandiDetailPage({
               </div>
               <div style={{ fontSize: "2.1rem", fontWeight: 900, color: "#14532d", lineHeight: 1.1 }}>
                 ₹{modalPrice.toLocaleString("en-IN")}
-                <span style={{ fontSize: "1rem", fontWeight: 600, color: "#059669" }}> / qtl</span>
+                <span style={{ fontSize: "1rem", fontWeight: 600, color: "#059669" }}> / quintal</span>
               </div>
               <div style={{ fontSize: "0.85rem", color: "#16a34a", fontWeight: 600, marginTop: 2 }}>
                 ≈ ₹{(modalPrice / 100).toFixed(2)}/kg retail parity
@@ -731,6 +731,37 @@ export default function MandiDetailPage({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* ── Official Data Source & Trading Transparency Strip ─────────── */}
+          <div style={{
+            marginTop: 20,
+            padding: "12px 16px",
+            background: "#f0fdf4",
+            border: "1px solid #bbf7d0",
+            borderRadius: 12,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            fontSize: "0.82rem",
+            color: "#166534",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: "1.1rem" }}>🏛️</span>
+              <span>
+                <strong>Official Data Source:</strong> Agmarknet (Directorate of Marketing &amp; Inspection, MoAFW, Govt. of India)
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+              <span>
+                ⚖️ <strong>Trading Unit:</strong> ₹/quintal (1 Quintal = 100 kg)
+              </span>
+              <span>
+                🗓️ <strong>Last Updated:</strong> {item.arrivalDate || "Today (Live Daily APMC Sync)"}
+              </span>
+            </div>
           </div>
         </div>
 

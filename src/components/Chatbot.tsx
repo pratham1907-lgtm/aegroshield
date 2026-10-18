@@ -145,6 +145,25 @@ export default function Chatbot() {
             </button>
           </div>
           
+          {/* Mandatory Agricultural Safety Disclaimer */}
+          <div style={{
+            background: '#fffbeb',
+            borderBottom: '1px solid #fef3c7',
+            padding: '7px 12px',
+            fontSize: '0.72rem',
+            lineHeight: '1.35',
+            color: '#92400e',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '6px',
+            flexShrink: 0
+          }}>
+            <span style={{ fontSize: '0.85rem', flexShrink: 0, marginTop: '-1px' }}>⚠️</span>
+            <div>
+              <strong>Disclaimer:</strong> This is advisory guidance only. Please verify product labels and consult local agricultural extension officers before farm application.
+            </div>
+          </div>
+          
           <div id="messagesContainer" className="messages-container">
             <div className="welcome-message" id="welcomeMsg" style={{ whiteSpace: 'pre-wrap' }}>
               {(WELCOME_MESSAGES as any)[language] || WELCOME_MESSAGES['en']}

@@ -27,6 +27,24 @@ export default function Page() {
 {/*  ── Advisory ──────────────────────────────────────────────  */}
 <main className="advisory-layout">
 
+  {/* Mandatory Agricultural Safety Disclaimer */}
+  <div style={{
+    background: "#fffbeb",
+    border: "1px solid #fcd34d",
+    borderRadius: "12px",
+    padding: "14px 18px",
+    marginBottom: "18px",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    boxShadow: "0 2px 6px rgba(245, 158, 11, 0.08)"
+  }}>
+    <span style={{ fontSize: "1.4rem", flexShrink: 0 }}>⚠️</span>
+    <p style={{ margin: 0, fontSize: "0.88rem", color: "#92400e", fontWeight: 500, lineHeight: 1.5 }}>
+      <strong>Disclaimer:</strong> This is advisory guidance only. Please verify product labels and consult local agricultural extension officers before farm application.
+    </p>
+  </div>
+
   {/*  Top Bar  */}
   <div className="advisory-top-bar">
     <div className="atb-left">

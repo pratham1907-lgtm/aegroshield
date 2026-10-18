@@ -24,6 +24,24 @@ export default function Page() {
 {/*  ── Main ──────────────────────────────────────────────────  */}
 <main className="calc-layout">
 
+  {/* Mandatory Agricultural Safety Disclaimer */}
+  <div style={{
+    background: "#fffbeb",
+    border: "1px solid #fcd34d",
+    borderRadius: "12px",
+    padding: "14px 18px",
+    marginBottom: "20px",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    boxShadow: "0 2px 6px rgba(245, 158, 11, 0.08)"
+  }}>
+    <span style={{ fontSize: "1.4rem", flexShrink: 0 }}>⚠️</span>
+    <p style={{ margin: 0, fontSize: "0.88rem", color: "#92400e", fontWeight: 500, lineHeight: 1.5 }}>
+      <strong>Disclaimer:</strong> This is advisory guidance only. Please verify product labels and consult local agricultural extension officers before farm application.
+    </p>
+  </div>
+
   {/*  Stats Strip  */}
   <div className="stats-strip">
     <div className="stat-card">
@@ -141,10 +159,11 @@ export default function Page() {
         <div className="tip-box-amber">
           <span style={{"fontSize":"1.3rem","flexShrink":"0"}}>⚠️</span>
           <div>
-            <strong style={{"color":"#5a3808","fontWeight":"800"}}>Safety First</strong>
-            Always wear gloves, mask and eye protection when handling pesticides.
-            Follow label instructions. Never spray in strong wind or midday heat.
-            Dispose of empty containers safely — do NOT burn them.
+            <strong style={{"color":"#5a3808","fontWeight":"800", display: "block", marginBottom: "4px"}}>Safety First & Advisory Notice</strong>
+            Disclaimer: This is advisory guidance only. Please verify product labels and consult local agricultural extension officers before farm application.
+            <div style={{ marginTop: "6px", fontSize: "0.82rem", opacity: 0.9 }}>
+              Always wear gloves, mask and eye protection when handling agrochemicals. Follow label instructions. Never spray in strong wind or midday heat. Dispose of empty containers safely.
+            </div>
           </div>
         </div>
       </div>
