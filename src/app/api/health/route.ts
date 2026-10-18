@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import * as Sentry from '@sentry/nextjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,12 @@ export async function GET() {
     );
   } catch (error: any) {
     console.error('[API/Health] Database health check failed:', error?.message || error);
+
+    // Track database outage in Sentry
+    Sentry.captureException(error, {
+      tags: { service: 'database', endpoint: '/api/health' },
+      extra: { healthStatus: 'degraded' },
+    });
 
     // Fail safely with 503 Service Unavailable without exposing stack traces or DB credentials
     return NextResponse.json(
