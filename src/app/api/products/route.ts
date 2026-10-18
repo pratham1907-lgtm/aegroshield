@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
   const firebaseUid = searchParams.get('firebaseUid');
   const category = searchParams.get('category');
   const search = searchParams.get('search');
+  const state = searchParams.get('state');
+  const district = searchParams.get('district');
 
   try {
     const whereClause: any = {};
@@ -39,6 +41,21 @@ export async function GET(request: NextRequest) {
       whereClause.category = {
         equals: category,
         mode: 'insensitive',
+      };
+    }
+
+    // Geographic filtering via seller relation
+    const sellerFilter: any = {};
+    if (state && state !== 'All') {
+      sellerFilter.state = { equals: state, mode: 'insensitive' };
+    }
+    if (district && district !== 'All') {
+      sellerFilter.district = { equals: district, mode: 'insensitive' };
+    }
+    if (Object.keys(sellerFilter).length > 0) {
+      whereClause.seller = {
+        ...(whereClause.seller || {}),
+        ...sellerFilter,
       };
     }
 

@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { auth, signInWithGoogle } from '@/lib/firebase';
 import { syncUserToDatabase } from '@/lib/sync-user-client';
 import { ALL_DISTRICTS } from '@/lib/marketplace-data';
-import { registerVendor } from '@/lib/ecommerce-service';
 import { Building2, ArrowRight, CheckCircle2, PhoneCall, KeyRound, Zap } from 'lucide-react';
 
 const SELLER_CATEGORIES = [
@@ -20,12 +19,18 @@ const SELLER_CATEGORIES = [
 export default function SellerRegisterPage() {
   const router = useRouter();
 
-  // 5 Seller Registration Fields
+  // 5 Core Seller Registration Fields
   const [ownerName, setOwnerName] = useState('');
   const [phone, setPhone] = useState('');
   const [storeName, setStoreName] = useState('');
   const [district, setDistrict] = useState(ALL_DISTRICTS[0] || 'Meerut');
   const [category, setCategory] = useState(SELLER_CATEGORIES[0]);
+
+  // Optional Compliance / Document Fields
+  const [gstin, setGstin] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [documentUrl, setDocumentUrl] = useState('');
+  const [showComplianceDocs, setShowComplianceDocs] = useState(false);
 
   // Phone OTP Verification State
   const [otpSent, setOtpSent] = useState(false);
@@ -124,6 +129,9 @@ export default function SellerRegisterPage() {
           storeName: storeName.trim(),
           district: district.trim(),
           category: category.trim(),
+          ...(gstin.trim() ? { gstin: gstin.trim().toUpperCase() } : {}),
+          ...(licenseNumber.trim() ? { licenseNumber: licenseNumber.trim() } : {}),
+          ...(documentUrl.trim() ? { documentUrl: documentUrl.trim() } : {}),
         }),
       });
 
@@ -143,16 +151,6 @@ export default function SellerRegisterPage() {
           })
         );
       }
-
-      // Keep local client state in sync
-      registerVendor({
-        name: storeName.trim(),
-        ownerName: ownerName.trim(),
-        district: district.trim(),
-        address: `${district.trim()} Main Market`,
-        phone: '+91' + cleanPhone,
-        license: 'TIER-1-PHONE-VERIFIED',
-      });
 
       showMessage(`🎉 Store registered successfully! Welcome, ${ownerName.trim()}. Your account is submitted for verification.`, 'success');
       setTimeout(() => {
@@ -366,6 +364,114 @@ export default function SellerRegisterPage() {
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* ── Compliance Documents (optional, collapsible) ── */}
+            <div
+              style={{
+                background: '#fefce8',
+                border: '1px solid #fde68a',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                marginTop: '4px',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowComplianceDocs(v => !v)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#92400e' }}>
+                  📋 Compliance Documents{' '}
+                  <span style={{ fontWeight: 400, color: '#b45309' }}>(optional — speeds up verification)</span>
+                </span>
+                <span style={{ color: '#b45309', fontSize: '1rem' }}>{showComplianceDocs ? '▲' : '▼'}</span>
+              </button>
+
+              {showComplianceDocs && (
+                <div style={{ padding: '0 16px 16px' }}>
+                  <p style={{ fontSize: '0.78rem', color: '#78350f', marginBottom: '12px', lineHeight: 1.6 }}>
+                    Sellers listing <strong>pesticides or fertilizers</strong> must hold a valid dealer
+                    licence under the <strong>Insecticides Act, 1968</strong>. Providing these details
+                    now speeds up admin approval.
+                  </p>
+
+                  <div className="form-group" style={{ marginBottom: '10px' }}>
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                      GSTIN{' '}
+                      <span style={{ fontWeight: 400, color: '#94a3b8' }}>(15-char, e.g. 09ABCDE1234F1Z5)</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Leave blank if not GST-registered"
+                      maxLength={15}
+                      value={gstin}
+                      onChange={e => setGstin(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                      style={{ letterSpacing: '0.06em', fontFamily: 'monospace' }}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: '10px' }}>
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                      Insecticide / Business Licence Number
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="State-issued dealer licence no."
+                      maxLength={100}
+                      value={licenseNumber}
+                      onChange={e => setLicenseNumber(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                      Document URL{' '}
+                      <span style={{ fontWeight: 400, color: '#94a3b8' }}>(Google Drive / Dropbox shareable link)</span>
+                    </label>
+                    <input
+                      type="url"
+                      className="form-input"
+                      placeholder="https://drive.google.com/file/..."
+                      value={documentUrl}
+                      onChange={e => setDocumentUrl(e.target.value)}
+                    />
+                    <p style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px' }}>
+                      Upload your licence scan and paste the shareable link here.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Pending Verification Status Notice ── */}
+            <div
+              style={{
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '10px',
+                padding: '12px 16px',
+                fontSize: '0.82rem',
+                color: '#166534',
+                lineHeight: 1.7,
+              }}
+            >
+              🕐 <strong>Verification process:</strong> New accounts start as{' '}
+              <strong>PENDING_VERIFICATION</strong>. An AegroShield admin reviews your profile within
+              1–2 business days before your store goes live. You can prepare your catalogue in the
+              meantime.
             </div>
 
             {/* Registration Submit Button */}

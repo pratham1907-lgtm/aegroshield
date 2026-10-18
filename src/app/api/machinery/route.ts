@@ -8,6 +8,10 @@ export async function GET(request: NextRequest) {
   const ownerId = searchParams.get('ownerId');
   const phone = searchParams.get('phone');
   const firebaseUid = searchParams.get('firebaseUid');
+  const state = searchParams.get('state');
+  const district = searchParams.get('district');
+  const machineType = searchParams.get('machineType') || searchParams.get('type');
+  const search = searchParams.get('search');
 
   try {
     const whereClause: any = { available: true };
@@ -21,6 +25,26 @@ export async function GET(request: NextRequest) {
     } else if (firebaseUid) {
       const user = await prisma.user.findUnique({ where: { firebaseUid } });
       if (user) whereClause.ownerId = user.id;
+    }
+
+    if (state && state !== 'All') {
+      whereClause.state = { equals: state, mode: 'insensitive' };
+    }
+
+    if (district && district !== 'All') {
+      whereClause.district = { equals: district, mode: 'insensitive' };
+    }
+
+    if (machineType && machineType !== 'All') {
+      whereClause.machineType = { equals: machineType, mode: 'insensitive' };
+    }
+
+    if (search) {
+      whereClause.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { machineType: { contains: search, mode: 'insensitive' } },
+        { district: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
     const items = await prisma.machinery.findMany({
@@ -81,6 +105,7 @@ export async function POST(request: NextRequest) {
       equipmentType,
       ratePerHour,
       district,
+      state: machineState,
       contactPhone,
       phone,
       available,
@@ -97,6 +122,7 @@ export async function POST(request: NextRequest) {
         machineType: type,
         ratePerHour,
         district,
+        state: (machineState || 'Uttar Pradesh').trim(),
         contactPhone: contact,
         available: available ?? true,
         isDemo: false,

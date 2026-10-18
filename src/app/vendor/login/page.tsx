@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { auth, signInWithGoogle } from '@/lib/firebase';
 import { syncUserToDatabase } from '@/lib/sync-user-client';
 import { ALL_DISTRICTS } from '@/lib/marketplace-data';
-import { registerVendor } from '@/lib/ecommerce-service';
 import { Store, ArrowRight, CheckCircle2, PhoneCall, KeyRound, Zap, ShieldCheck } from 'lucide-react';
 
 const SELLER_CATEGORIES = [
@@ -199,15 +198,6 @@ function VendorLoginPage() {
           })
         );
       }
-
-      registerVendor({
-        name: storeName.trim(),
-        ownerName: ownerName.trim(),
-        district: district.trim(),
-        address: `${district.trim()} Main Market`,
-        phone: '+91' + cleanRegPhone,
-        license: 'TIER-1-PHONE-VERIFIED',
-      });
 
       showMessage(`🎉 Store registered successfully! Welcome, ${ownerName.trim()}. Your account is submitted for verification.`, "success");
       setTimeout(() => router.push("/seller/dashboard"), 1000);

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { auth, signInWithGoogle } from '@/lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { adminLogin } from '@/lib/ecommerce-service';
 import { Shield, ArrowRight, Lock, Mail } from 'lucide-react';
 
 export default function AdminLoginPageWrapper() {
@@ -68,7 +67,6 @@ function AdminLoginPage() {
         throw new Error("Access Denied: This account is not granted Platform Administrator privileges. Missing { admin: true } claim.");
       }
 
-      adminLogin(userCredential.user.email || email, password, false);
       showMessage("🛡️ Administrator authenticated! Redirecting to Master Control Panel…", "success");
       setTimeout(() => router.push('/admin/dashboard'), 500);
     } catch (err: any) {
@@ -96,7 +94,6 @@ function AdminLoginPage() {
         throw new Error("Access Denied: Your Google account does not have Platform Administrator privileges.");
       }
 
-      adminLogin(userCredential.user.email || 'admin@aegroshield.in', 'google-auth', false);
       showMessage("🛡️ Administrator authenticated! Redirecting to Master Control Panel…", "success");
       setTimeout(() => router.push('/admin/dashboard'), 500);
     } catch (err: any) {

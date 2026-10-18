@@ -30,8 +30,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { ownerName, phone, storeName, district, category, shopAddress, licenseOrGstin } = validation.data;
+    const {
+      ownerName,
+      phone,
+      storeName,
+      district,
+      category,
+      shopAddress,
+      licenseOrGstin,
+      gstin,
+      licenseNumber,
+      documentUrl,
+    } = validation.data;
     const cleanPhone = phone;
+
+    // Shared compliance fields for create/update
+    const complianceData = {
+      ...(gstin !== undefined ? { gstin } : {}),
+      ...(licenseNumber !== undefined ? { licenseNumber } : {}),
+      ...(documentUrl !== undefined && documentUrl !== '' ? { documentUrl } : {}),
+      ...(licenseOrGstin !== undefined ? { licenseOrGstin } : {}),
+    };
 
     // 2. Update user role to SELLER and update contact name/phone
     await prisma.user.update({
@@ -44,7 +63,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 3. Upsert Seller profile associated directly with user.id
-    // Security: set isVerified to false so it requires admin approval
+    // Security: isVerified always false — requires admin approval before selling
     let seller = await prisma.seller.findFirst({
       where: { userId: user.id },
     });
@@ -56,9 +75,13 @@ export async function POST(request: NextRequest) {
           storeName: storeName.trim(),
           ownerName: ownerName.trim(),
           phone: cleanPhone,
+          state: (validation.data.state || 'Uttar Pradesh').trim(),
           district: (district || 'Meerut').trim(),
           category: (category || 'General Agri-Store').trim(),
-          isVerified: false, // Pending verification
+          shopAddress: shopAddress?.trim() || undefined,
+          verificationStatus: 'PENDING_VERIFICATION',
+          isVerified: false, // Pending admin approval
+          ...complianceData,
         },
       });
     } else {
@@ -68,9 +91,13 @@ export async function POST(request: NextRequest) {
           storeName: storeName.trim(),
           ownerName: ownerName.trim(),
           phone: cleanPhone,
+          state: (validation.data.state || 'Uttar Pradesh').trim(),
           district: (district || 'Meerut').trim(),
           category: (category || 'General Agri-Store').trim(),
-          isVerified: false, // Pending verification
+          shopAddress: shopAddress?.trim() || undefined,
+          verificationStatus: 'PENDING_VERIFICATION',
+          isVerified: false, // Pending admin approval
+          ...complianceData,
         },
       });
     }
@@ -94,6 +121,9 @@ export async function POST(request: NextRequest) {
           phone: seller.phone,
           district: seller.district,
           category: seller.category,
+          gstin: seller.gstin,
+          licenseNumber: seller.licenseNumber,
+          verificationStatus: seller.verificationStatus,
           isVerified: seller.isVerified,
         },
       },

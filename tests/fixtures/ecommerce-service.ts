@@ -6,7 +6,7 @@ import {
   MOCK_VENDORS, MOCK_PRODUCTS, MOCK_ORDERS, MOCK_MACHINERY, MOCK_LABOUR, MOCK_MARKET_PRICES,
   type MockMachinery, type MockLabour, type MockMarketPrice
 } from './mockData';
-import type { Category, Vendor, Product } from './marketplace-data';
+import type { Category, Vendor, Product } from '@/lib/marketplace-data';
 
 export type Role = 'user' | 'vendor' | 'seller' | 'admin';
 export type OrderStatus = 'Pending' | 'Accepted' | 'Out for Delivery' | 'Delivered' | 'Cancelled';

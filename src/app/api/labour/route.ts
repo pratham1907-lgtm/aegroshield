@@ -9,6 +9,10 @@ export async function GET(request: NextRequest) {
   const leaderId = searchParams.get('leaderId');
   const phone = searchParams.get('phone');
   const firebaseUid = searchParams.get('firebaseUid');
+  const state = searchParams.get('state');
+  const district = searchParams.get('district');
+  const taskType = searchParams.get('taskType') || searchParams.get('skill');
+  const search = searchParams.get('search');
 
   const targetLeader = leaderId || userId;
 
@@ -24,6 +28,26 @@ export async function GET(request: NextRequest) {
     } else if (firebaseUid) {
       const user = await prisma.user.findUnique({ where: { firebaseUid } });
       if (user) whereClause.leaderId = user.id;
+    }
+
+    if (state && state !== 'All') {
+      whereClause.state = { equals: state, mode: 'insensitive' };
+    }
+
+    if (district && district !== 'All') {
+      whereClause.district = { equals: district, mode: 'insensitive' };
+    }
+
+    if (taskType && taskType !== 'All') {
+      whereClause.primarySkill = { contains: taskType, mode: 'insensitive' };
+    }
+
+    if (search) {
+      whereClause.OR = [
+        { leaderName: { contains: search, mode: 'insensitive' } },
+        { primarySkill: { contains: search, mode: 'insensitive' } },
+        { district: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
     const items = await prisma.labourPost.findMany({
@@ -46,6 +70,7 @@ export async function GET(request: NextRequest) {
       primarySkill: p.primarySkill,
       dailyRatePerWorker: p.wagePerDay,
       wagePerDay: p.wagePerDay,
+      state: p.state || 'Uttar Pradesh',
       district: p.district,
       contactPhone: p.phone,
       phone: p.phone,
@@ -124,6 +149,7 @@ export async function POST(request: NextRequest) {
         primarySkill: skill,
         wagePerDay: wage,
         district,
+        state: (validation.data.state || 'Uttar Pradesh').trim(),
         phone: postPhone,
         isDemo: false,
       },

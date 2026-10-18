@@ -5,7 +5,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, auth, signInWithGoogle } from "@/lib/firebase";
 import { collection, getDocs, addDoc } from "firebase/firestore";
-import { Lock, Loader2 } from "lucide-react";
+import { Lock, Loader2, MapPin, X, RotateCcw } from "lucide-react";
+import { getAllIndianStates, getDistrictsForState } from "@/lib/india-locations";
 
 export default function Page() {
   const { user, userData, loading: authLoading } = useAuth();
@@ -14,6 +15,17 @@ export default function Page() {
   const [activeTab, setActiveTab] = useState<'find' | 'register' | 'received'>('find');
   const [postSubmitted, setPostSubmitted] = useState(false);
   const [listingId, setListingId] = useState('');
+
+  // Location & Search Filter State
+  const [filterType, setFilterType] = useState('All');
+  const [filterState, setFilterState] = useState('All');
+  const [filterDistrict, setFilterDistrict] = useState('All');
+
+  const allStates = useMemo(() => getAllIndianStates(), []);
+  const availableDistricts = useMemo(() => {
+    if (!filterState || filterState === 'All') return [];
+    return getDistrictsForState(filterState);
+  }, [filterState]);
 
   // Booking Modal State
   const [bookingMachine, setBookingMachine] = useState<any | null>(null);
@@ -78,7 +90,13 @@ export default function Page() {
 
     // Authenticated User: Query live database records via Prisma API
     setLoading(true);
-    fetch('/api/machinery', { cache: 'no-store' })
+    const params = new URLSearchParams();
+    if (filterState && filterState !== 'All') params.set('state', filterState);
+    if (filterDistrict && filterDistrict !== 'All') params.set('district', filterDistrict);
+    if (filterType && filterType !== 'All') params.set('machineType', filterType);
+    const url = `/api/machinery${params.toString() ? `?${params.toString()}` : ''}`;
+
+    fetch(url, { cache: 'no-store' })
       .then((res) => res.json())
       .then((json) => {
         if (json?.success && Array.isArray(json.data)) {
@@ -96,7 +114,7 @@ export default function Page() {
       });
 
     fetchBookings();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, filterState, filterDistrict, filterType]);
 
   const handleRegisterEquipment = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -293,11 +311,22 @@ export default function Page() {
   };
 
   const displayMachinery = useMemo(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !liveMachinery) {
       return [];
     }
-    return liveMachinery || [];
-  }, [isAuthenticated, liveMachinery]);
+    return liveMachinery.filter((m) => {
+      const matchType =
+        filterType === 'All' ||
+        (m.machineType && m.machineType.toLowerCase() === filterType.toLowerCase());
+      const matchState =
+        filterState === 'All' ||
+        (m.state && m.state.toLowerCase() === filterState.toLowerCase());
+      const matchDistrict =
+        filterDistrict === 'All' ||
+        (m.district && m.district.toLowerCase() === filterDistrict.toLowerCase());
+      return matchType && matchState && matchDistrict;
+    });
+  }, [isAuthenticated, liveMachinery, filterType, filterState, filterDistrict]);
 
   return (
     <main>
@@ -474,47 +503,88 @@ export default function Page() {
 
   {/*  ── Search Card ───────────────────────────────────────────  */}
   <div className="search-card">
-    <h2>🔍 Search Available Machinery</h2>
-    <div className="search-grid">
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+      <h2 style={{ margin: 0 }}>🔍 Search Available Machinery</h2>
+      {(filterType !== 'All' || filterState !== 'All' || filterDistrict !== 'All') && (
+        <button
+          onClick={() => {
+            setFilterType('All');
+            setFilterState('All');
+            setFilterDistrict('All');
+          }}
+          style={{
+            background: '#fee2e2',
+            color: '#b91c1c',
+            border: '1px solid #fecaca',
+            borderRadius: '8px',
+            padding: '6px 12px',
+            fontSize: '0.82rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+          }}
+        >
+          <X size={14} /> Reset Filters
+        </button>
+      )}
+    </div>
 
+    <div className="search-grid">
       <div className="form-group">
         <label className="form-label" htmlFor="machineType">Machine Type</label>
-        <select className="form-control" id="machineType">
-          <option defaultValue="">All Types</option>
-          <option defaultValue="Tractor">🚜 Tractor</option>
-          <option defaultValue="Harvester">🌾 Harvester</option>
-          <option defaultValue="Rotavator">🔄 Rotavator</option>
-          <option defaultValue="Thresher">⚙️ Thresher</option>
-          <option defaultValue="Sprayer">💦 Sprayer</option>
-          <option defaultValue="Seed Drill">🌱 Seed Drill</option>
-          <option defaultValue="Baler">📦 Baler</option>
-          <option defaultValue="Plough">🪵 Plough</option>
+        <select
+          className="form-control"
+          id="machineType"
+          value={filterType}
+          onChange={e => setFilterType(e.target.value)}
+        >
+          <option value="All">All Types</option>
+          <option value="Tractor">🚜 Tractor</option>
+          <option value="Harvester">🌾 Harvester</option>
+          <option value="Rotavator">🔄 Rotavator</option>
+          <option value="Thresher">⚙️ Thresher</option>
+          <option value="Sprayer">💦 Sprayer</option>
+          <option value="Seed Drill">🌱 Seed Drill</option>
+          <option value="Baler">📦 Baler</option>
+          <option value="Plough">🪵 Plough</option>
         </select>
       </div>
 
       <div className="form-group">
         <label className="form-label" htmlFor="machineState">State</label>
-        <select className="form-control" id="machineState">
-          <option defaultValue="">Select State</option>
-          <option>Andhra Pradesh</option><option>Arunachal Pradesh</option>
-          <option>Assam</option><option>Bihar</option><option>Chhattisgarh</option>
-          <option>Goa</option><option>Gujarat</option><option>Haryana</option>
-          <option>Himachal Pradesh</option><option>Jharkhand</option>
-          <option>Karnataka</option><option>Kerala</option>
-          <option>Madhya Pradesh</option><option>Maharashtra</option>
-          <option>Manipur</option><option>Meghalaya</option><option>Mizoram</option>
-          <option>Nagaland</option><option>Odisha</option><option>Punjab</option>
-          <option>Rajasthan</option><option>Sikkim</option><option>Tamil Nadu</option>
-          <option>Telangana</option><option>Tripura</option>
-          <option>Uttar Pradesh</option><option>Uttarakhand</option>
-          <option>West Bengal</option><option>Delhi</option>
-          <option>Jammu &amp; Kashmir</option><option>Ladakh</option>
+        <select
+          className="form-control"
+          id="machineState"
+          value={filterState}
+          onChange={e => {
+            setFilterState(e.target.value);
+            setFilterDistrict('All');
+          }}
+        >
+          <option value="All">All States (India)</option>
+          {allStates.map(st => (
+            <option key={st} value={st}>{st}</option>
+          ))}
         </select>
       </div>
 
       <div className="form-group">
         <label className="form-label" htmlFor="machineDistrict">District</label>
-        <input type="text" className="form-control" id="machineDistrict" placeholder="Enter your district" />
+        <select
+          className="form-control"
+          id="machineDistrict"
+          value={filterDistrict}
+          onChange={e => setFilterDistrict(e.target.value)}
+          disabled={filterState === 'All'}
+          style={{ cursor: filterState === 'All' ? 'not-allowed' : 'pointer', background: filterState === 'All' ? '#f1f5f9' : '#fff' }}
+        >
+          <option value="All">{filterState === 'All' ? 'Select State first' : 'All Districts'}</option>
+          {availableDistricts.map(dst => (
+            <option key={dst} value={dst}>{dst}</option>
+          ))}
+        </select>
       </div>
 
       <div className="form-group">
@@ -523,6 +593,12 @@ export default function Page() {
       </div>
 
     </div>
+
+    {(filterState !== 'All' || filterDistrict !== 'All') && (
+      <div style={{ marginTop: '14px', fontSize: '0.85rem', color: '#15803d', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <MapPin size={15} /> Showing machinery available in: {filterDistrict !== 'All' ? `${filterDistrict}, ` : ''}{filterState}
+      </div>
+    )}
   </div>
 
   {/*  ── Machinery Grid ────────────────────────────────────────  */}
@@ -547,7 +623,7 @@ export default function Page() {
             <p className="mc-chc">🏭 {machine.chcName || (machine.owner?.name ? `${machine.owner.name}'s Centre` : 'Local Hiring Centre')}</p>
             <div className="mc-specs">
               <span className="spec-pill">⚙️ {machine.model || machine.title || 'Standard'}</span>
-              <span className="spec-pill">📍 {machine.district || 'Meerut'}</span>
+              <span className="spec-pill">📍 {machine.district ? `${machine.district}${machine.state ? `, ${machine.state}` : ''}` : 'Meerut'}</span>
             </div>
             <div className="mc-pricing">
               <div className="mc-rate">
@@ -578,17 +654,40 @@ export default function Page() {
     ) : (
       <div style={{ gridColumn: '1 / -1', padding: '56px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1.5px dashed #cbd5e1' }}>
         <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>🚜</div>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>No machinery listings available yet in your area</h3>
-        <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 20px' }}>
-          There are currently no machinery listings available in this area. Be the first to register equipment or view your listings from the seller dashboard.
+        <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
+          {filterState !== 'All'
+            ? `No machinery available in ${filterDistrict !== 'All' ? `${filterDistrict}, ` : ''}${filterState}`
+            : filterType !== 'All'
+            ? `No ${filterType} listings currently found.`
+            : 'No machinery listings available yet in this area'}
+        </h3>
+        <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '480px', margin: '0 auto 20px' }}>
+          {filterState !== 'All'
+            ? `No registered machinery listings found in ${filterState}. You can switch to All States, or register equipment as an owner to receive booking requests.`
+            : 'There are currently no matching units. Try broadening your location filter or registering your equipment.'}
         </p>
-        <button
-          onClick={() => setActiveTab('register')}
-          className="btn btn-primary cursor-pointer"
-          style={{ padding: '9px 20px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
-        >
-          + Register Equipment
-        </button>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          {(filterState !== 'All' || filterDistrict !== 'All' || filterType !== 'All') && (
+            <button
+              onClick={() => {
+                setFilterType('All');
+                setFilterState('All');
+                setFilterDistrict('All');
+              }}
+              className="btn"
+              style={{ background: '#15803d', color: '#fff', padding: '9px 18px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', border: 'none' }}
+            >
+              <RotateCcw size={14} style={{ display: 'inline', marginRight: '6px' }} /> View All Machinery Across India
+            </button>
+          )}
+          <button
+            onClick={() => setActiveTab('register')}
+            className="btn btn-outline-primary cursor-pointer"
+            style={{ padding: '9px 20px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', border: '1px solid #15803d', color: '#15803d' }}
+          >
+            + Register Equipment
+          </button>
+        </div>
       </div>
     )}
   </div>
@@ -958,22 +1057,6 @@ export default function Page() {
 
 </div>
 )}
-
-{/*  ── Footer ────────────────────────────────────────────────  */}
-  <footer>
-    <div className="container">
-      <p style={{"fontSize":"16px","fontWeight":"600","marginBottom":"16px"}}>Aegroshield — Smart Farming Platform | Made for Indian Farmers 🇮🇳</p>
-      <div className="footer-links">
-        <a href="/">Home</a>
-        <a href="/predict">Diagnose Crop</a>
-        <a href="/machinery">Machinery</a>
-        <a href="/labour">Labour</a>
-        <a href="/market">Market Price</a>
-        <a href="/calculator">Calculator</a>
-      </div>
-      <p className="footer-copy">&copy; 2026 Aegroshield. All rights reserved.</p>
-    </div>
-  </footer>
 
 
 

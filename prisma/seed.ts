@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { MOCK_PRODUCTS, MOCK_MACHINERY, MOCK_LABOUR } from '../src/lib/mockData';
+import { MOCK_PRODUCTS, MOCK_MACHINERY, MOCK_LABOUR } from '../tests/fixtures/mockData';
 
 const prisma = new PrismaClient();
 

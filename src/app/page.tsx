@@ -265,23 +265,6 @@ export default function FarmerHomePage() {
   </div>
 </section>
 
-{/* ── 7. Footer ───────────────────────────────────────────────────── */}
-  <footer>
-    <div className="container">
-      <p style={{ fontSize: "16px", fontWeight: "600", marginBottom: "16px" }}>Aegroshield — Smart Farming Platform | Made for Indian Farmers 🇮🇳</p>
-      <div className="footer-links">
-        <Link href="/">Home</Link>
-        <Link href="/store">Store</Link>
-        <Link href="/machinery">Machinery</Link>
-        <Link href="/labour">Labour</Link>
-        <Link href="/market">Market Price</Link>
-        <Link href="/calculator">Calculator</Link>
-        <Link href="/vendor/login" style={{ color: '#ea580c', fontWeight: '700' }}>Seller Portal 🏬</Link>
-      </div>
-      <p className="footer-copy">&copy; 2026 Aegroshield. All rights reserved.</p>
-    </div>
-  </footer>
-
     </main>
   );
 }

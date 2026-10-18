@@ -33,7 +33,10 @@ export default function Navbar() {
     pathname.startsWith('/calculator') ||
     pathname.startsWith('/cart') ||
     pathname.startsWith('/checkout') ||
-    pathname.startsWith('/store');
+    pathname.startsWith('/store') ||
+    pathname.startsWith('/privacy') ||
+    pathname.startsWith('/terms') ||
+    pathname.startsWith('/advisory');
 
   // Hide on login, vendor dashboard/login/register, and admin pages
   if (!isFarmerRoute || pathname === '/login' || pathname.startsWith('/vendor') || pathname.startsWith('/admin')) {

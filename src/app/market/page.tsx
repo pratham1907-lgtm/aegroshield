@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { MOCK_MARKET_PRICES } from "@/lib/mockData";
 import { getAllIndianStates, getDistrictsForState, isStateMatching } from "@/lib/india-locations";
 
 export interface PriceHistoryItem {
@@ -242,46 +241,6 @@ export default function Page() {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
-
-  const normalizedMockPrices: MandiRateItem[] = useMemo(() => {
-    return MOCK_MARKET_PRICES.map((m, idx) => {
-      const comm = m.cropName.replace(/\s*\(.*?\)/, '').trim();
-      const rec: 'SELL_NOW' | 'HOLD' = m.recommendation === 'SELL' ? 'SELL_NOW' : 'HOLD';
-      const trnd: 'RISING' | 'FALLING' | 'STABLE' = m.trend === 'UP' ? 'RISING' : (m.trend === 'DOWN' ? 'FALLING' : 'STABLE');
-      const changePct = trnd === 'RISING' ? 2.4 : (trnd === 'FALLING' ? -1.8 : 0.3);
-      const timeline = rec === 'SELL_NOW' ? 'Immediate' : '7-10 Days';
-      const advisory = rec === 'SELL_NOW'
-        ? `${comm} ke daam is samay ₹${m.modalPrice}/quintal ke uchhtam star par hain. Abhi bechkar munafa lena behtar rahega.`
-        : `${comm} ke bhav me tezi ka rukh hai. Safe storage suvidha ho toh 7-10 din hold karein behtar daam milne ki sambhavna hai.`;
-
-      return {
-        id: `mock_${idx}`,
-        state: "Uttar Pradesh",
-        district: m.district,
-        market: m.mandiName,
-        mandiName: m.mandiName,
-        marketName: m.mandiName,
-        commodity: comm,
-        cropName: m.cropName,
-        variety: "Standard",
-        minPrice: m.minPrice,
-        maxPrice: m.maxPrice,
-        modalPrice: m.modalPrice,
-        arrivalDate: "Today",
-        type: "APMC",
-        recommendation: rec,
-        recommendationTimeline: timeline,
-        trend: trnd,
-        priceChangePercent: changePct,
-        priceHistory: [
-          { date: "02/09/2026", modalPrice: Math.round(m.modalPrice * 0.975) },
-          { date: "03/09/2026", modalPrice: Math.round(m.modalPrice * 0.985) },
-          { date: "04/09/2026", modalPrice: m.modalPrice },
-        ],
-        advisoryText: advisory,
-      };
-    });
-  }, []);
 
   const rawData: MandiRateItem[] = useMemo(() => {
     return liveMandiRates || [];
@@ -1174,24 +1133,6 @@ export default function Page() {
           )}
         </div>
       </main>
-
-      {/* ── Footer ──────────────────────────────────────────────── */}
-      <footer>
-        <div className="container">
-          <p style={{ fontSize: "16px", fontWeight: "600", marginBottom: "16px" }}>
-            Aegroshield — Smart Farming Platform | Made for Indian Farmers 🇮🇳
-          </p>
-          <div className="footer-links">
-            <Link href="/">Home</Link>
-            <Link href="/predict">Diagnose Crop</Link>
-            <Link href="/machinery">Machinery</Link>
-            <Link href="/labour">Labour</Link>
-            <Link href="/market">Market Price</Link>
-            <Link href="/calculator">Calculator</Link>
-          </div>
-          <p className="footer-copy">&copy; 2026 Aegroshield. All rights reserved.</p>
-        </div>
-      </footer>
     </main>
   );
 }

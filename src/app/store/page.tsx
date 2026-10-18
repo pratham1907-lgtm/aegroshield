@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/context/AuthContext';
 import { auth, signInWithGoogle } from '@/lib/firebase';
-import { Store, ShoppingBag, Search, Plus, Check, Lock, Loader2, RefreshCw } from 'lucide-react';
+import { Store, ShoppingBag, Search, Plus, Check, Lock, Loader2, RefreshCw, MapPin, X } from 'lucide-react';
+import { getAllIndianStates, getDistrictsForState } from '@/lib/india-locations';
 
 export default function StoreCatalogPage() {
   const { addToCart, cartCount, openCart } = useCart();
@@ -14,7 +15,15 @@ export default function StoreCatalogPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedState, setSelectedState] = useState('All');
+  const [selectedDistrict, setSelectedDistrict] = useState('All');
   const [addedIds, setAddedIds] = useState<Record<string, boolean>>({});
+
+  const allStates = useMemo(() => getAllIndianStates(), []);
+  const availableDistricts = useMemo(() => {
+    if (!selectedState || selectedState === 'All') return [];
+    return getDistrictsForState(selectedState);
+  }, [selectedState]);
 
   const isAuthenticated = Boolean(user || auth.currentUser);
 
@@ -22,7 +31,15 @@ export default function StoreCatalogPage() {
     if (!isAuthenticated) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/products', { cache: 'no-store' });
+      const params = new URLSearchParams();
+      if (selectedState && selectedState !== 'All') {
+        params.set('state', selectedState);
+      }
+      if (selectedDistrict && selectedDistrict !== 'All') {
+        params.set('district', selectedDistrict);
+      }
+      const url = `/api/products${params.toString() ? `?${params.toString()}` : ''}`;
+      const res = await fetch(url, { cache: 'no-store' });
       const data = await res.json();
       const items = Array.isArray(data) ? data : (data?.data || []);
       console.log("FARMER_STORE_ACTIVE_PRODUCTS:", items.length);
@@ -33,7 +50,7 @@ export default function StoreCatalogPage() {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, selectedState, selectedDistrict]);
 
   useEffect(() => {
     // Strict Auth Gate: Do NOT query database if unauthenticated
@@ -155,27 +172,96 @@ export default function StoreCatalogPage() {
         <>
           {/* ── Search & Filter Controls ── */}
           <div className="container" style={{ maxWidth: '1200px', margin: '30px auto 20px', padding: '0 20px' }}>
-            <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', background: '#fff', padding: '16px 20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 300px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 14px' }}>
-                <Search size={18} color="#64748b" />
-                <input
-                  type="text"
-                  placeholder="Search products, brands, or seller stores..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.95rem' }}
-                />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: '#fff', padding: '20px 24px', borderRadius: '14px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+              
+              {/* Row 1: Search & Location Filter Dropdowns */}
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {/* Search Input */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 260px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 14px' }}>
+                  <Search size={18} color="#64748b" />
+                  <input
+                    type="text"
+                    placeholder="Search products, brands, or stores..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.92rem' }}
+                  />
+                </div>
+
+                {/* State Dropdown */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '1 1 200px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '7px 12px' }}>
+                  <MapPin size={16} color="#15803d" />
+                  <select
+                    value={selectedState}
+                    onChange={e => {
+                      setSelectedState(e.target.value);
+                      setSelectedDistrict('All');
+                    }}
+                    style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.88rem', color: '#1e293b', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    <option value="All">All States (India)</option>
+                    {allStates.map(st => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* District Dropdown */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: '1 1 200px', background: selectedState === 'All' ? '#f1f5f9' : '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '7px 12px' }}>
+                  <MapPin size={16} color={selectedState === 'All' ? '#94a3b8' : '#15803d'} />
+                  <select
+                    value={selectedDistrict}
+                    onChange={e => setSelectedDistrict(e.target.value)}
+                    disabled={selectedState === 'All'}
+                    style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.88rem', color: selectedState === 'All' ? '#94a3b8' : '#1e293b', fontWeight: 600, cursor: selectedState === 'All' ? 'not-allowed' : 'pointer' }}
+                  >
+                    <option value="All">{selectedState === 'All' ? 'Select State first' : 'All Districts'}</option>
+                    {availableDistricts.map(dst => (
+                      <option key={dst} value={dst}>{dst}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Clear Filters Button (shown when any filter is active) */}
+                {(search || selectedCategory !== 'All' || selectedState !== 'All' || selectedDistrict !== 'All') && (
+                  <button
+                    onClick={() => {
+                      setSearch('');
+                      setSelectedCategory('All');
+                      setSelectedState('All');
+                      setSelectedDistrict('All');
+                    }}
+                    style={{
+                      background: '#fee2e2',
+                      color: '#b91c1c',
+                      border: '1px solid #fecaca',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <X size={14} /> Reset Filters
+                  </button>
+                )}
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {/* Row 2: Category Pills */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
+                <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600, marginRight: '4px' }}>Category:</span>
                 {['All', 'Fertilizers', 'Seeds', 'Pesticides', 'Equipment'].map(cat => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
                     style={{
-                      padding: '8px 16px',
+                      padding: '6px 14px',
                       borderRadius: '20px',
-                      fontSize: '0.85rem',
+                      fontSize: '0.82rem',
                       fontWeight: 600,
                       cursor: 'pointer',
                       border: selectedCategory === cat ? 'none' : '1px solid #e2e8f0',
@@ -193,10 +279,17 @@ export default function StoreCatalogPage() {
 
           {/* ── Products Grid ── */}
           <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
-                Available Products ({filtered.length})
-              </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                  Available Products ({filtered.length})
+                </h2>
+                {(selectedState !== 'All' || selectedDistrict !== 'All') && (
+                  <p style={{ fontSize: '0.85rem', color: '#15803d', margin: '4px 0 0 0', fontWeight: 600 }}>
+                    📍 Filtered by: {selectedDistrict !== 'All' ? `${selectedDistrict}, ` : ''}{selectedState}
+                  </p>
+                )}
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   onClick={() => loadProducts()}
@@ -232,21 +325,36 @@ export default function StoreCatalogPage() {
               <div style={{ padding: '60px 24px', textAlign: 'center', background: '#fff', borderRadius: '14px', border: '1px dashed #cbd5e1' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>📦</div>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', marginBottom: '6px' }}>
-                  {search || selectedCategory !== 'All' ? 'No products found matching your filter.' : 'No products available yet in your area.'}
+                  {selectedState !== 'All'
+                    ? `No products currently available in ${selectedDistrict !== 'All' ? `${selectedDistrict}, ` : ''}${selectedState}`
+                    : search || selectedCategory !== 'All'
+                    ? 'No products found matching your filter.'
+                    : 'No products available yet in your area.'}
                 </h3>
-                <p style={{ color: '#64748b', fontSize: '0.95rem', margin: '0 0 18px 0' }}>
-                  {search || selectedCategory !== 'All' ? 'Try changing your search term or select "All" categories.' : 'Local verified agri-stores are updating their live stock. You can refresh or add items via Seller Dashboard.'}
+                <p style={{ color: '#64748b', fontSize: '0.95rem', margin: '0 0 18px 0', maxWidth: '520px', marginLeft: 'auto', marginRight: 'auto' }}>
+                  {selectedState !== 'All'
+                    ? `Sellers in ${selectedState} have not listed catalog items yet. Try viewing All States or explore nearby districts.`
+                    : search || selectedCategory !== 'All'
+                    ? 'Try changing your search term, clearing location filters, or selecting "All" categories.'
+                    : 'Local verified agri-stores are updating their live stock. You can refresh or add items via Seller Dashboard.'}
                 </p>
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => loadProducts()}
-                    className="btn btn-outline-primary"
-                    style={{ padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
-                  >
-                    <RefreshCw size={14} /> Refresh Catalog
-                  </button>
-                  <Link href="/seller/dashboard" className="btn btn-primary" style={{ padding: '8px 16px', borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                    <Plus size={16} /> Add Product via Seller Dashboard
+                  {(selectedState !== 'All' || selectedDistrict !== 'All' || search || selectedCategory !== 'All') && (
+                    <button
+                      onClick={() => {
+                        setSearch('');
+                        setSelectedCategory('All');
+                        setSelectedState('All');
+                        setSelectedDistrict('All');
+                      }}
+                      className="btn"
+                      style={{ background: '#15803d', color: '#fff', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, border: 'none' }}
+                    >
+                      <RefreshCw size={14} /> View All India Products
+                    </button>
+                  )}
+                  <Link href="/seller/dashboard" className="btn btn-outline-primary" style={{ padding: '8px 16px', borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, border: '1px solid #15803d', color: '#15803d' }}>
+                    <Plus size={16} /> Add Product as Seller
                   </Link>
                 </div>
               </div>

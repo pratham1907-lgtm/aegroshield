@@ -3,7 +3,6 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/cart-context';
-import { getVendorById } from '@/lib/ecommerce-service';
 import {
   ShoppingBag,
   X,
@@ -259,7 +258,6 @@ export default function CartDrawer() {
             </div>
           ) : (
             cart.map(item => {
-              const vendor = getVendorById(item.product.vendorId);
               return (
                 <div
                   key={item.product.id}
@@ -308,7 +306,7 @@ export default function CartDrawer() {
                         }}
                       >
                         <Store size={12} />
-                        <span>{vendor?.name || item.product.brand || 'Verified Seller'}</span>
+                        <span>{item.product.brand || 'Verified Seller'}</span>
                       </div>
                     </div>
 

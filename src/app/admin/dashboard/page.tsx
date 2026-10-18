@@ -4,13 +4,79 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
-import {
-  getCurrentAdmin, adminLogout, getVendors, getProducts, getOrders, getMachineryListings, getLabourListings,
-  toggleVendorVerification, toggleProductBanned, updateOrderStatus, toggleMachineryAvailability, toggleLabourAvailability,
-  getPlatformAnalytics, isDemoMode, initDemoStore, type ExtendedVendor, type ExtendedProduct, type Order, type OrderStatus
-} from '@/lib/ecommerce-service';
-import type { MockMachinery, MockLabour } from '@/lib/mockData';
 import { Shield, Users, Store, Package, ShoppingBag, TrendingUp, CheckCircle2, AlertTriangle, Ban, LogOut, Check, X, Search, RefreshCw, Tractor, UserCheck } from 'lucide-react';
+
+export interface AdminVendor {
+  id: string;
+  name: string;
+  ownerName: string;
+  district: string;
+  phone: string;
+  license: string;
+  address?: string;
+  rating?: number;
+  verified: boolean;
+  accreditationStatus: 'Verified' | 'Pending';
+  createdAt?: string;
+  isDemo?: boolean;
+}
+
+export interface AdminProduct {
+  id: string;
+  vendorId: string;
+  name: string;
+  brand: string;
+  category: string;
+  price: number;
+  unit: string;
+  stock: string;
+  description?: string;
+  banned?: boolean;
+  imageUrl?: string;
+  isDemo?: boolean;
+}
+
+export interface AdminMachinery {
+  id: string;
+  chcName: string;
+  equipmentType: string;
+  model: string;
+  ratePerHour: number;
+  location: string;
+  district: string;
+  contactPhone: string;
+  available: boolean;
+  isDemo?: boolean;
+}
+
+export interface AdminLabour {
+  id: string;
+  teamLeaderName: string;
+  teamSize: number;
+  specialization: string;
+  dailyRatePerWorker: number;
+  district: string;
+  contactPhone: string;
+  available: boolean;
+  isDemo?: boolean;
+}
+
+export interface AdminOrder {
+  id: string;
+  vendorId?: string;
+  vendorName?: string;
+  customerName: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  district: string;
+  pincode?: string;
+  totalAmount: number;
+  paymentMethod?: string;
+  status: string;
+  createdAt: string;
+  items?: any[];
+  isDemo?: boolean;
+}
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -18,20 +84,118 @@ export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<'analytics' | 'dealers' | 'products' | 'machinery' | 'labour' | 'orders'>('analytics');
 
   const [analytics, setAnalytics] = useState<any | null>(null);
-  const [vendors, setVendors] = useState<ExtendedVendor[]>([]);
-  const [products, setProducts] = useState<ExtendedProduct[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [machinery, setMachinery] = useState<MockMachinery[]>([]);
-  const [labour, setLabour] = useState<MockLabour[]>([]);
+  const [vendors, setVendors] = useState<AdminVendor[]>([]);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [machinery, setMachinery] = useState<AdminMachinery[]>([]);
+  const [labour, setLabour] = useState<AdminLabour[]>([]);
   const [search, setSearch] = useState('');
 
-  const refreshData = () => {
-    setAnalytics(getPlatformAnalytics());
-    setVendors(getVendors());
-    setProducts(getProducts());
-    setOrders(getOrders());
-    setMachinery(getMachineryListings());
-    setLabour(getLabourListings());
+  const refreshData = async () => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const [sellersRes, productsRes, machRes, labourRes, ordersRes] = await Promise.all([
+        token ? fetch('/api/admin/sellers', { headers: authHeader }).then(r => r.json()).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+        fetch('/api/products').then(r => r.json()).catch(() => []),
+        fetch('/api/machinery').then(r => r.json()).catch(() => ({ data: [] })),
+        fetch('/api/labour').then(r => r.json()).catch(() => ({ data: [] })),
+        token ? fetch('/api/orders', { headers: authHeader }).then(r => r.json()).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+      ]);
+
+      const rawSellers = sellersRes?.data || [];
+      const mappedVendors: AdminVendor[] = rawSellers.map((s: any) => ({
+        id: s.id,
+        name: s.storeName,
+        ownerName: s.ownerName,
+        district: s.district,
+        phone: s.phone,
+        license: s.licenseOrGstin || 'N/A',
+        address: s.shopAddress || s.district,
+        rating: 4.8,
+        verified: Boolean(s.isVerified),
+        accreditationStatus: s.isVerified ? 'Verified' : 'Pending',
+        createdAt: s.createdAt,
+        isDemo: Boolean(s.isDemo),
+      }));
+      setVendors(mappedVendors);
+
+      const rawProducts = Array.isArray(productsRes) ? productsRes : (productsRes?.data || []);
+      const mappedProducts: AdminProduct[] = rawProducts.map((p: any) => ({
+        id: p.id,
+        vendorId: p.sellerId || p.seller?.id || '',
+        name: p.name,
+        brand: p.seller?.storeName || 'Verified Store',
+        category: p.category || 'General',
+        price: Number(p.price) || 0,
+        unit: p.unit || 'per unit',
+        stock: Number(p.stock) === 0 ? 'Out of Stock' : (Number(p.stock) <= 5 ? 'Low Stock' : 'In Stock'),
+        description: p.description || '',
+        banned: false,
+        imageUrl: p.imageUrl || '',
+        isDemo: Boolean(p.isDemo),
+      }));
+      setProducts(mappedProducts);
+
+      const rawMachinery = machRes?.data || [];
+      const mappedMachinery: AdminMachinery[] = rawMachinery.map((m: any) => ({
+        id: m.id,
+        chcName: m.owner?.name || 'Equipment Owner',
+        equipmentType: m.machineType || 'Tractor',
+        model: m.title,
+        ratePerHour: Number(m.ratePerHour) || 400,
+        location: m.district,
+        district: m.district,
+        contactPhone: m.contactPhone || m.owner?.phone || '',
+        available: Boolean(m.available),
+        isDemo: Boolean(m.isDemo),
+      }));
+      setMachinery(mappedMachinery);
+
+      const rawLabour = labourRes?.data || [];
+      const mappedLabour: AdminLabour[] = rawLabour.map((l: any) => ({
+        id: l.id,
+        teamLeaderName: l.leaderName || l.leader?.name || 'Labour Leader',
+        teamSize: Number(l.groupSize) || 1,
+        specialization: l.primarySkill || 'General Agriculture',
+        dailyRatePerWorker: Number(l.wagePerDay) || 400,
+        district: l.district,
+        contactPhone: l.phone || l.leader?.phone || '',
+        available: true,
+        isDemo: Boolean(l.isDemo),
+      }));
+      setLabour(mappedLabour);
+
+      const rawOrders = ordersRes?.data || [];
+      const mappedOrders: AdminOrder[] = rawOrders.map((o: any) => ({
+        id: o.id,
+        totalAmount: Number(o.totalAmount) || 0,
+        status: o.status || 'Pending',
+        shippingAddress: o.shippingAddress || '',
+        customerName: o.customerName || o.user?.name || 'Customer',
+        customerPhone: o.customerPhone || o.user?.phone || '',
+        district: o.district || 'Local',
+        createdAt: o.createdAt,
+        items: Array.isArray(o.items) ? o.items : [],
+      }));
+      setOrders(mappedOrders);
+
+      setAnalytics({
+        totalRevenue: mappedOrders.reduce((sum, o) => sum + o.totalAmount, 0),
+        totalOrders: mappedOrders.length,
+        activeVendors: mappedVendors.filter(v => v.accreditationStatus === 'Verified').length,
+        pendingVendors: mappedVendors.filter(v => v.accreditationStatus === 'Pending').length,
+        totalProducts: mappedProducts.length,
+        bannedProducts: 0,
+        totalMachinery: mappedMachinery.length,
+        availableMachinery: mappedMachinery.filter(m => m.available).length,
+        totalLabourTeams: mappedLabour.length,
+        totalWorkers: mappedLabour.reduce((sum, l) => sum + l.teamSize, 0),
+      });
+    } catch (err) {
+      console.error('[AdminDashboard] Failed to refresh live data:', err);
+    }
   };
 
   useEffect(() => {
@@ -41,12 +205,6 @@ export default function AdminDashboardPage() {
       if (!isMounted) return;
 
       if (!currentUser) {
-        const current = getCurrentAdmin();
-        if (current) {
-          setAdmin(current);
-          refreshData();
-          return;
-        }
         router.push('/admin/login');
         return;
       }
@@ -82,33 +240,45 @@ export default function AdminDashboardPage() {
     try {
       await auth.signOut();
     } catch {}
-    adminLogout();
     router.push('/admin/login');
   };
 
-  const handleToggleAccreditation = (vendorId: string) => {
-    toggleVendorVerification(vendorId);
-    refreshData();
+  const handleToggleAccreditation = async (vendorId: string) => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+      const target = vendors.find(v => v.id === vendorId);
+      const nextStatus = target ? target.accreditationStatus !== 'Verified' : true;
+      const res = await fetch('/api/admin/sellers', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sellerId: vendorId, isVerified: nextStatus }),
+      });
+      if (res.ok) {
+        refreshData();
+      }
+    } catch (err) {
+      console.error('[AdminDashboard] Toggle seller error:', err);
+    }
   };
 
   const handleToggleBan = (productId: string) => {
-    toggleProductBanned(productId);
-    refreshData();
+    setProducts(prev => prev.map(p => (p.id === productId ? { ...p, banned: !p.banned } : p)));
   };
 
-  const handleOrderStatusChange = (orderId: string, status: OrderStatus) => {
-    updateOrderStatus(orderId, status);
-    refreshData();
+  const handleOrderStatusChange = (orderId: string, status: any) => {
+    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, status } : o)));
   };
 
   const handleToggleMachinery = (machId: string) => {
-    toggleMachineryAvailability(machId);
-    refreshData();
+    setMachinery(prev => prev.map(m => (m.id === machId ? { ...m, available: !m.available } : m)));
   };
 
   const handleToggleLabour = (labId: string) => {
-    toggleLabourAvailability(labId);
-    refreshData();
+    setLabour(prev => prev.map(l => (l.id === labId ? { ...l, available: !l.available } : l)));
   };
 
   if (!admin) return null;
@@ -407,7 +577,6 @@ export default function AdminDashboardPage() {
                     <tr key={p.id}>
                       <td>
                         <strong style={{ color: '#f8fafc' }}>{p.name}</strong>
-                        <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{p.nameHi}</div>
                       </td>
                       <td><span className="cat-pill">{p.category}</span></td>
                       <td><strong>₹{p.price}</strong> <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{p.unit}</span></td>
@@ -625,7 +794,7 @@ export default function AdminDashboardPage() {
                       <td>
                         <select
                           value={o.status}
-                          onChange={e => handleOrderStatusChange(o.id, e.target.value as OrderStatus)}
+                          onChange={e => handleOrderStatusChange(o.id, e.target.value as string)}
                           className="status-select"
                           style={{ background: '#0f172a', color: '#fff', border: '1px solid #334155' }}
                         >

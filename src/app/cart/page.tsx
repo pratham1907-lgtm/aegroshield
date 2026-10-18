@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useCart } from '@/lib/cart-context';
-import { getVendorById } from '@/lib/ecommerce-service';
 import { ShoppingBag, Trash2, Plus, Minus, ArrowRight, ArrowLeft, Store } from 'lucide-react';
 
 export default function CartPage() {
@@ -76,19 +75,14 @@ export default function CartPage() {
           {/* Cart Items List */}
           <div className="cart-items-container">
             {cart.map(item => {
-              const vendor = getVendorById(item.product.vendorId);
               return (
                 <div key={item.product.id} className="cart-item-card">
                   <div className="cart-item-info">
                     <span className="cart-item-cat">{item.product.category}</span>
                     <h3 className="cart-item-title">{item.product.name}</h3>
-                    <p className="cart-item-brand">Brand: {item.product.brand}</p>
-                    
-                    {vendor && (
-                      <Link href={`/store/${vendor.id}`} className="cart-vendor-link">
-                        <Store size={14} /> {vendor.name} ({vendor.district})
-                      </Link>
-                    )}
+                    <p className="cart-item-brand" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Store size={14} /> Store: {item.product.brand || 'Verified Seller'}
+                    </p>
 
                     <div className="cart-item-price">
                       ₹{item.product.price} <span className="cart-unit">{item.product.unit}</span>

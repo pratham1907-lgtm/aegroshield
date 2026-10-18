@@ -3,6 +3,7 @@ import { LanguageProvider } from '@/lib/language-context';
 import { CartProvider } from '@/lib/cart-context';
 import NavbarClient from '@/components/Navbar';
 import CartDrawer from '@/components/cart/CartDrawer';
+import Footer from '@/components/Footer';
 
 import Chatbot from '@/components/Chatbot';
 import './globals.css';
@@ -29,6 +30,7 @@ export default function RootLayout({
               <NavbarClient />
               <CartDrawer />
               {children}
+              <Footer />
               <Chatbot />
             </CartProvider>
           </LanguageProvider>

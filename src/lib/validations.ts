@@ -148,6 +148,7 @@ export const createLabourPostSchema = z
       .positive()
       .optional(),
     district: z.string().trim().min(1, 'District is required').max(100),
+    state: z.string().trim().max(100).optional().default('Uttar Pradesh'),
     phone: z.string().trim().max(20).optional(),
     contactPhone: z.string().trim().max(20).optional(),
     available: z.boolean().optional().default(true),
@@ -204,14 +205,55 @@ export const createOrderSchema = z.object({
 });
 
 /**
+ * GSTIN format: 15 characters — 2-digit state code, 10-char PAN, 1-digit entity
+ * number, 1 char 'Z' (default), 1 check digit.
+ * Regex: /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
+ */
+const GSTIN_REGEX = /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
+/**
  * Seller registration schema.
  */
-export const registerSellerSchema = z.object({
-  storeName: z.string().trim().min(1, 'Store name is required').max(100),
-  ownerName: z.string().trim().min(1, 'Owner name is required').max(100),
-  phone: phoneSchema,
-  district: z.string().trim().min(1, 'District is required').max(100),
-  category: z.string().trim().min(1, 'Category is required').max(100),
-  shopAddress: z.string().trim().max(300).optional(),
-  licenseOrGstin: z.string().trim().max(100).optional(),
-});
+export const registerSellerSchema = z
+  .object({
+    storeName: z.string().trim().min(1, 'Store name is required').max(100),
+    ownerName: z.string().trim().min(1, 'Owner name is required').max(100),
+    phone: phoneSchema,
+    district: z.string().trim().min(1, 'District is required').max(100),
+    state: z.string().trim().max(100).optional().default('Uttar Pradesh'),
+    category: z.string().trim().min(1, 'Category is required').max(100),
+    shopAddress: z.string().trim().max(300).optional(),
+    // Legacy combined field (still accepted for backward compat)
+    licenseOrGstin: z.string().trim().max(100).optional(),
+    // Dedicated compliance fields
+    gstin: z
+      .string()
+      .trim()
+      .max(15)
+      .optional()
+      .transform(v => (v ? v.toUpperCase() : v)),
+    licenseNumber: z
+      .string()
+      .trim()
+      .max(100, 'Licence number too long')
+      .optional(),
+    documentUrl: z
+      .string()
+      .trim()
+      .url('Document URL must be a valid URL')
+      .max(1000)
+      .optional()
+      .or(z.literal('')),
+  })
+  .superRefine((data, ctx) => {
+    // Only validate GSTIN format when a non-empty value is supplied
+    if (data.gstin && data.gstin.length > 0 && !GSTIN_REGEX.test(data.gstin)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Invalid GSTIN format. Expected 15-character format e.g. 09ABCDE1234F1Z5',
+        path: ['gstin'],
+      });
+    }
+  });
+

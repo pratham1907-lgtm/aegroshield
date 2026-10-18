@@ -5,7 +5,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db, auth, signInWithGoogle } from "@/lib/firebase";
 import { collection, getDocs, query, where, addDoc } from "firebase/firestore";
-import { Lock, Loader2 } from "lucide-react";
+import { Lock, Loader2, MapPin, X, RotateCcw } from "lucide-react";
+import { getAllIndianStates, getDistrictsForState } from "@/lib/india-locations";
 
 export default function Page() {
   const { user, userData, loading: authLoading } = useAuth();
@@ -17,6 +18,18 @@ export default function Page() {
   const [userBookings, setUserBookings] = useState<any[]>([]);
   const [receivedBookings, setReceivedBookings] = useState<any[]>([]);
   const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
+
+  // Search & Location Filter State
+  const [filterTask, setFilterTask] = useState('All');
+  const [filterState, setFilterState] = useState('All');
+  const [filterDistrict, setFilterDistrict] = useState('All');
+  const [activeFilterPill, setActiveFilterPill] = useState('all');
+
+  const allStates = useMemo(() => getAllIndianStates(), []);
+  const availableDistricts = useMemo(() => {
+    if (!filterState || filterState === 'All') return [];
+    return getDistrictsForState(filterState);
+  }, [filterState]);
 
   // Booking Modal State
   const [bookingLabour, setBookingLabour] = useState<any | null>(null);
@@ -78,7 +91,13 @@ export default function Page() {
 
     // Authenticated User: Query live database records via Prisma API
     setLoading(true);
-    fetch('/api/labour', { cache: 'no-store' })
+    const params = new URLSearchParams();
+    if (filterState && filterState !== 'All') params.set('state', filterState);
+    if (filterDistrict && filterDistrict !== 'All') params.set('district', filterDistrict);
+    if (filterTask && filterTask !== 'All') params.set('taskType', filterTask);
+    const url = `/api/labour${params.toString() ? `?${params.toString()}` : ''}`;
+
+    fetch(url, { cache: 'no-store' })
       .then((res) => res.json())
       .then((json) => {
         if (json?.success && Array.isArray(json.data)) {
@@ -96,7 +115,7 @@ export default function Page() {
       });
 
     fetchUserBookings();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, filterState, filterDistrict, filterTask]);
 
   const handlePostAvailability = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -293,11 +312,38 @@ export default function Page() {
   };
 
   const displayLabour = useMemo(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !liveLabour) {
       return [];
     }
-    return liveLabour || [];
-  }, [isAuthenticated, liveLabour]);
+    return liveLabour.filter((item) => {
+      const matchTask =
+        filterTask === 'All' ||
+        (item.specialization || item.primarySkill || '')
+          .toLowerCase()
+          .includes(filterTask.toLowerCase());
+      const matchState =
+        filterState === 'All' ||
+        (item.state || 'Uttar Pradesh').toLowerCase() === filterState.toLowerCase();
+      const matchDistrict =
+        filterDistrict === 'All' ||
+        (item.district || '').toLowerCase() === filterDistrict.toLowerCase();
+
+      let matchPill = true;
+      if (activeFilterPill === 'under-400') {
+        const rate = Number(item.dailyRatePerWorker || item.wagePerDay || 0);
+        matchPill = rate > 0 && rate <= 400;
+      } else if (activeFilterPill === 'group') {
+        const size = Number(item.teamSize || item.groupSize || 1);
+        matchPill = size >= 5;
+      } else if (activeFilterPill === 'harvesting') {
+        matchPill = (item.specialization || item.primarySkill || '')
+          .toLowerCase()
+          .includes('harvest');
+      }
+
+      return matchTask && matchState && matchDistrict && matchPill;
+    });
+  }, [isAuthenticated, liveLabour, filterTask, filterState, filterDistrict, activeFilterPill]);
 
   return (
     <main>
@@ -474,62 +520,150 @@ export default function Page() {
 
     {/*  Search Card  */}
     <div className="search-card">
-      <h2>🔍 Search Available Labour Groups</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+        <h2 style={{ margin: 0 }}>🔍 Search Available Labour Groups</h2>
+        {(filterTask !== 'All' || filterState !== 'All' || filterDistrict !== 'All' || activeFilterPill !== 'all') && (
+          <button
+            onClick={() => {
+              setFilterTask('All');
+              setFilterState('All');
+              setFilterDistrict('All');
+              setActiveFilterPill('all');
+            }}
+            style={{
+              background: '#fee2e2',
+              color: '#b91c1c',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <X size={14} /> Reset Filters
+          </button>
+        )}
+      </div>
+
       <div className="search-grid">
         <div className="form-group">
           <label className="form-label" htmlFor="taskType">Task Required</label>
-          <select className="form-control" id="taskType">
-            <option defaultValue="">All Tasks</option>
-            <option defaultValue="Harvesting">🌾 Harvesting</option>
-            <option defaultValue="Sowing">🌱 Sowing &amp; Planting</option>
-            <option defaultValue="Weeding">🪴 Weeding &amp; Hoeing</option>
-            <option defaultValue="Spraying">🧪 Pesticide Spraying</option>
-            <option defaultValue="Irrigation">💦 Irrigation Work</option>
-            <option defaultValue="Loading">📦 Loading / Packing</option>
+          <select
+            className="form-control"
+            id="taskType"
+            value={filterTask}
+            onChange={e => setFilterTask(e.target.value)}
+          >
+            <option value="All">All Tasks</option>
+            <option value="Harvesting">🌾 Harvesting</option>
+            <option value="Sowing">🌱 Sowing &amp; Planting</option>
+            <option value="Weeding">🪴 Weeding &amp; Hoeing</option>
+            <option value="Spraying">🧪 Pesticide Spraying</option>
+            <option value="Irrigation">💦 Irrigation Work</option>
+            <option value="Loading">📦 Loading / Packing</option>
           </select>
         </div>
+
         <div className="form-group">
           <label className="form-label" htmlFor="labourState">State</label>
-          <select className="form-control" id="labourState">
-            <option defaultValue="">Select State</option>
-            <option>Uttar Pradesh</option><option>Haryana</option>
-            <option>Punjab</option><option>Bihar</option>
-            <option>Madhya Pradesh</option><option>Rajasthan</option>
+          <select
+            className="form-control"
+            id="labourState"
+            value={filterState}
+            onChange={e => {
+              setFilterState(e.target.value);
+              setFilterDistrict('All');
+            }}
+          >
+            <option value="All">All States (India)</option>
+            {allStates.map(st => (
+              <option key={st} value={st}>{st}</option>
+            ))}
           </select>
         </div>
+
         <div className="form-group">
           <label className="form-label" htmlFor="labourDistrict">District</label>
-          <input type="text" className="form-control" id="labourDistrict" placeholder="e.g. Meerut, Hapur" />
+          <select
+            className="form-control"
+            id="labourDistrict"
+            value={filterDistrict}
+            onChange={e => setFilterDistrict(e.target.value)}
+            disabled={filterState === 'All'}
+            style={{ cursor: filterState === 'All' ? 'not-allowed' : 'pointer', background: filterState === 'All' ? '#f1f5f9' : '#fff' }}
+          >
+            <option value="All">{filterState === 'All' ? 'Select State first' : 'All Districts'}</option>
+            {availableDistricts.map(dst => (
+              <option key={dst} value={dst}>{dst}</option>
+            ))}
+          </select>
         </div>
+
         <div className="form-group">
           <label className="form-label" htmlFor="workDate">Work Start Date</label>
           <input type="date" className="form-control" id="workDate" />
         </div>
+
         <div className="form-group">
           <label className="form-label" htmlFor="workersNeeded">Workers Needed</label>
           <input type="number" className="form-control" id="workersNeeded" placeholder="e.g. 5" min="1" max="50" defaultValue="4" />
         </div>
       </div>
-      <div style={{"marginTop":"18px","display":"flex","justifyContent":"flex-end"}}>
-        <button className="btn btn-primary btn-lg" id="searchLabour">
-          🔍 Search Available Labour →
-        </button>
-      </div>
+
+      {(filterState !== 'All' || filterDistrict !== 'All') && (
+        <div style={{ marginTop: '14px', fontSize: '0.85rem', color: '#15803d', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <MapPin size={15} /> Showing labour groups available in: {filterDistrict !== 'All' ? `${filterDistrict}, ` : ''}{filterState}
+        </div>
+      )}
     </div>
 
     {/*  Filter Pills  */}
     <div className="filter-pills-bar">
       <span className="filter-pills-label">Filter:</span>
-      <button className="filter-pill active" data-filter="all">All</button>
-      <button className="filter-pill" data-filter="available-today">✅ Available Now</button>
-      <button className="filter-pill" data-filter="under-400">💰 Under ₹400/day</button>
-      <button className="filter-pill" data-filter="harvesting">🌾 Harvesting</button>
-      <button className="filter-pill" data-filter="group">👥 Groups (5+)</button>
+      <button
+        className={`filter-pill cursor-pointer ${activeFilterPill === 'all' ? 'active' : ''}`}
+        onClick={() => setActiveFilterPill('all')}
+      >
+        All
+      </button>
+      <button
+        className={`filter-pill cursor-pointer ${activeFilterPill === 'available-today' ? 'active' : ''}`}
+        onClick={() => setActiveFilterPill('available-today')}
+      >
+        ✅ Available Now
+      </button>
+      <button
+        className={`filter-pill cursor-pointer ${activeFilterPill === 'under-400' ? 'active' : ''}`}
+        onClick={() => setActiveFilterPill('under-400')}
+      >
+        💰 Under ₹400/day
+      </button>
+      <button
+        className={`filter-pill cursor-pointer ${activeFilterPill === 'harvesting' ? 'active' : ''}`}
+        onClick={() => setActiveFilterPill('harvesting')}
+      >
+        🌾 Harvesting
+      </button>
+      <button
+        className={`filter-pill cursor-pointer ${activeFilterPill === 'group' ? 'active' : ''}`}
+        onClick={() => setActiveFilterPill('group')}
+      >
+        👥 Groups (5+)
+      </button>
     </div>
 
     {/*  Results Header  */}
     <div className="results-header">
-      <div className="results-count">Showing <span id="labourResultsCount">{displayLabour.length}</span> labour groups near Meerut, UP</div>
+      <div className="results-count">
+        Showing <span id="labourResultsCount">{displayLabour.length}</span> labour groups{' '}
+        {filterState !== 'All'
+          ? `in ${filterDistrict !== 'All' ? `${filterDistrict}, ` : ''}${filterState}`
+          : 'across India'}
+      </div>
       <select className="sort-select">
         <option>Sort: Nearest First</option>
         <option>Sort: Price: Low to High</option>
@@ -553,7 +687,7 @@ export default function Page() {
               <div className="lc-top">
                 <div>
                   <div className="lc-name">{item.teamLeaderName || item.workerName || item.leaderName || 'Work Group'}</div>
-                  <div className="lc-location">📍 {item.district || 'Nearby'}</div>
+                  <div className="lc-location">📍 {item.district ? `${item.district}${item.state ? `, ${item.state}` : ''}` : 'Nearby'}</div>
                 </div>
                 <span className="lc-avail available">● Available</span>
               </div>
@@ -593,17 +727,41 @@ export default function Page() {
       ) : (
         <div style={{ padding: '56px 24px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1.5px dashed #cbd5e1', margin: '20px 0' }}>
           <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>👥</div>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>No labour postings available in your area yet</h3>
-          <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '440px', margin: '0 auto 20px' }}>
-            There are currently no active worker listings in this area. Be the first to list your squad or post worker availability.
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
+            {filterState !== 'All'
+              ? `No labour groups available in ${filterDistrict !== 'All' ? `${filterDistrict}, ` : ''}${filterState}`
+              : filterTask !== 'All'
+              ? `No labour squads available for ${filterTask}`
+              : 'No labour postings available matching your filter yet'}
+          </h3>
+          <p style={{ color: '#64748b', fontSize: '0.92rem', maxWidth: '480px', margin: '0 auto 20px' }}>
+            {filterState !== 'All'
+              ? `No labour groups registered in ${filterState} yet. Try expanding to All States, or post availability to receive farm work offers.`
+              : 'There are currently no active worker listings matching your criteria. Be the first to list your squad or post worker availability.'}
           </p>
-          <button
-            onClick={() => setActiveTab('register')}
-            className="btn btn-primary cursor-pointer"
-            style={{ padding: '9px 20px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
-          >
-            + Post Worker Availability
-          </button>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            {(filterState !== 'All' || filterDistrict !== 'All' || filterTask !== 'All' || activeFilterPill !== 'all') && (
+              <button
+                onClick={() => {
+                  setFilterTask('All');
+                  setFilterState('All');
+                  setFilterDistrict('All');
+                  setActiveFilterPill('all');
+                }}
+                className="btn"
+                style={{ background: '#15803d', color: '#fff', padding: '9px 18px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', border: 'none' }}
+              >
+                <RotateCcw size={14} style={{ display: 'inline', marginRight: '6px' }} /> View All Labour Across India
+              </button>
+            )}
+            <button
+              onClick={() => setActiveTab('register')}
+              className="btn btn-outline-primary cursor-pointer"
+              style={{ padding: '9px 20px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', border: '1px solid #15803d', color: '#15803d' }}
+            >
+              + Post Worker Availability
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -1055,22 +1213,6 @@ export default function Page() {
 
 </div>
 )}
-
-{/*  ── Footer ────────────────────────────────────────────────  */}
-  <footer>
-    <div className="container">
-      <p style={{"fontSize":"16px","fontWeight":"600","marginBottom":"16px"}}>Aegroshield — Smart Farming Platform | Made for Indian Farmers 🇮🇳</p>
-      <div className="footer-links">
-        <a href="/">Home</a>
-        <a href="/predict">Diagnose Crop</a>
-        <a href="/machinery">Machinery</a>
-        <a href="/labour">Labour</a>
-        <a href="/market">Market Price</a>
-        <a href="/calculator">Calculator</a>
-      </div>
-      <p className="footer-copy">&copy; 2026 Aegroshield. All rights reserved.</p>
-    </div>
-  </footer>
 
 
 

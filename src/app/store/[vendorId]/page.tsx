@@ -2,7 +2,6 @@
 
 import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getVendorById, getProductsByVendorId } from '@/lib/ecommerce-service';
 import type { Vendor, Product } from '@/lib/marketplace-data';
 import { useCart } from '@/lib/cart-context';
 import { db } from '@/lib/firebase';
@@ -31,18 +30,11 @@ export default function VendorStorefrontPage({ params }: { params: Promise<{ ven
   const [addedIds, setAddedIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    const v = getVendorById(vendorId);
-    if (v) {
-      setVendor(v);
-      setProducts(getProductsByVendorId(vendorId));
-    }
-
     // Fetch live products for this vendor directly from Supabase PostgreSQL
-    fetch('/api/products')
+    fetch(`/api/products?sellerId=${encodeURIComponent(vendorId)}`)
       .then(res => res.json())
       .then(json => {
-        const list = Array.isArray(json) ? json : (json?.data || []);
-        const matching = list.filter((p: any) => p.sellerId === vendorId || p.seller?.id === vendorId);
+        const matching = Array.isArray(json) ? json : (json?.data || []);
           if (matching.length > 0) {
             const first = matching[0];
             if (first.seller) {
