@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { scrubHeaders, scrubSensitiveData, scrubString } from "./src/lib/scrubber";
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -6,7 +7,6 @@ Sentry.init({
   // Adjust sample rate in production
   tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
 
-  // Enable debugging only in development if needed
   debug: false,
 
   replaysOnErrorSampleRate: 1.0,
@@ -15,9 +15,21 @@ Sentry.init({
   // Scrub sensitive tokens, passwords, and authorization headers before sending
   beforeSend(event) {
     if (event.request?.headers) {
-      delete event.request.headers["authorization"];
-      delete event.request.headers["cookie"];
+      event.request.headers = scrubHeaders(event.request.headers);
     }
+
+    if (event.request?.data) {
+      event.request.data = scrubSensitiveData(event.request.data);
+    }
+
+    if (event.request?.url) {
+      event.request.url = scrubString(event.request.url);
+    }
+
+    if (event.extra) {
+      event.extra = scrubSensitiveData(event.extra);
+    }
+
     return event;
   },
 });

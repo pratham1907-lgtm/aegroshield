@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json.schemastore.org/sentry-alert-rule.json",
+  "name": "AegroShield Production Alert Configuration",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "p1-database-timeout",
+      "name": "P1 Critical: Database Timeout or Connection Failure",
+      "environment": "production",
+      "actionMatch": "all",
+      "filterMatch": "any",
+      "conditions": [
+        {
+          "id": "sentry.rules.conditions.tagged_event.TaggedEventCondition",
+          "key": "error_type",
+          "match": "eq",
+          "value": "database_timeout"
+        },
+        {
+          "id": "sentry.rules.conditions.event_attribute.EventAttributeCondition",
+          "attribute": "level",
+          "match": "eq",
+          "value": "fatal"
+        }
+      ],
+      "actions": [
+        {
+          "id": "sentry.rules.actions.notify_email.NotifyEmailAction",
+          "targetType": "Team",
+          "targetIdentifier": "on-call-ops"
+        },
+        {
+          "id": "sentry.rules.actions.notify_service.NotifyServiceAction",
+          "service": "slack",
+          "channel": "#alerts-p1-critical"
+        }
+      ],
+      "frequency": 5,
+      "threshold": 1,
+      "description": "Fires instantly on first occurrence of database timeout or connection pool exhaustion."
+    },
+    {
+      "id": "p1-healthcheck-degraded",
+      "name": "P1 Critical: Health Check Service Degraded",
+      "environment": "production",
+      "actionMatch": "all",
+      "filterMatch": "all",
+      "conditions": [
+        {
+          "id": "sentry.rules.conditions.tagged_event.TaggedEventCondition",
+          "key": "endpoint",
+          "match": "eq",
+          "value": "/api/health"
+        },
+        {
+          "id": "sentry.rules.conditions.tagged_event.TaggedEventCondition",
+          "key": "critical",
+          "match": "eq",
+          "value": "true"
+        }
+      ],
+      "actions": [
+        {
+          "id": "sentry.rules.actions.notify_service.NotifyServiceAction",
+          "service": "slack",
+          "channel": "#alerts-p1-critical"
+        }
+      ],
+      "frequency": 5,
+      "threshold": 1,
+      "description": "Triggered immediately when /api/health returns 503 Service Unavailable."
+    },
+    {
+      "id": "p2-http-500-spike",
+      "name": "P2 High: Backend HTTP 500 Spike",
+      "environment": "production",
+      "actionMatch": "all",
+      "filterMatch": "all",
+      "conditions": [
+        {
+          "id": "sentry.rules.conditions.tagged_event.TaggedEventCondition",
+          "key": "error_type",
+          "match": "eq",
+          "value": "http_500"
+        }
+      ],
+      "actions": [
+        {
+          "id": "sentry.rules.actions.notify_service.NotifyServiceAction",
+          "service": "slack",
+          "channel": "#alerts-backend"
+        }
+      ],
+      "frequency": 15,
+      "threshold": 5,
+      "description": "Fires when more than 5 server 500 errors occur within 5 minutes."
+    }
+  ]
+}
