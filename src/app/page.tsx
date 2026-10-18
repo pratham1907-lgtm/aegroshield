@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Store, ArrowRight, ShoppingBag, Tractor, Users, TrendingUp, Calculator, CheckCircle2 } from "lucide-react";
+import { Store, ArrowRight, ShoppingBag, Tractor, Users, TrendingUp, Calculator, CheckCircle2, ShieldCheck, FileText, Lock, Scale, Mail } from "lucide-react";
 
 export default function FarmerHomePage() {
   return (
@@ -265,6 +265,273 @@ export default function FarmerHomePage() {
   </div>
 </section>
 
+{/* ── 7. LEGAL COMPLIANCE & FARMER PROTECTION SECTION ─────────────────────── */}
+<section style={{ padding: "64px 0", background: "#f8fafc", borderTop: "1px solid #e2e8f0" }}>
+  <div className="container" style={{ maxWidth: "1140px", margin: "0 auto", padding: "0 24px" }}>
+    <div style={{ textAlign: "center", marginBottom: "40px" }}>
+      <p
+        style={{
+          background: "#dcfce7",
+          color: "#166534",
+          fontSize: "0.82rem",
+          fontWeight: "700",
+          padding: "6px 14px",
+          borderRadius: "20px",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "6px",
+          marginBottom: "12px",
+        }}
+      >
+        <ShieldCheck size={16} /> Pan-India Regulatory Compliance &amp; Farmer Safety
+      </p>
+      <h2 className="section-title" style={{ textAlign: "center", fontSize: "clamp(1.7rem, 3vw, 2.3rem)", color: "#1b4332", marginBottom: "12px" }}>
+        Built on Transparency &amp; Legal Readiness
+      </h2>
+      <p style={{ color: "#475569", maxWidth: "680px", margin: "0 auto", fontSize: "1rem", lineHeight: "1.6" }}>
+        AegroShield adheres to statutory agricultural regulations, personal data privacy principles, and verified dealer accreditation across every Indian state.
+      </p>
+    </div>
+
+    {/* Compliance Cards Grid */}
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+        gap: "24px",
+        marginBottom: "36px",
+      }}
+    >
+      {/* Card 1: Privacy Policy */}
+      <div
+        style={{
+          background: "#ffffff",
+          borderRadius: "16px",
+          padding: "28px 24px",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.04)",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "12px",
+              background: "#eff6ff",
+              color: "#2563eb",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: "18px",
+            }}
+          >
+            <Lock size={24} />
+          </div>
+          <h3 style={{ fontSize: "1.2rem", fontWeight: "700", color: "#0f172a", marginBottom: "10px" }}>
+            Privacy Policy
+          </h3>
+          <p style={{ color: "#64748b", fontSize: "0.92rem", lineHeight: "1.6", marginBottom: "20px" }}>
+            How we protect farmer identity, mobile numbers, and order histories under the IT Act (2000) and SPDI Rules. No third-party data selling.
+          </p>
+        </div>
+        <Link
+          href="/privacy"
+          style={{
+            color: "#166534",
+            fontWeight: "700",
+            fontSize: "0.92rem",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          Read Privacy Policy <ArrowRight size={16} />
+        </Link>
+      </div>
+
+      {/* Card 2: Terms of Use */}
+      <div
+        style={{
+          background: "#ffffff",
+          borderRadius: "16px",
+          padding: "28px 24px",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.04)",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "12px",
+              background: "#f0fdf4",
+              color: "#16a34a",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: "18px",
+            }}
+          >
+            <FileText size={24} />
+          </div>
+          <h3 style={{ fontSize: "1.2rem", fontWeight: "700", color: "#0f172a", marginBottom: "10px" }}>
+            Terms of Use
+          </h3>
+          <p style={{ color: "#64748b", fontSize: "0.92rem", lineHeight: "1.6", marginBottom: "20px" }}>
+            Marketplace terms governing agrochemical transactions, mandatory dealer licensing, transparent pricing, and AI crop advisory disclaimers.
+          </p>
+        </div>
+        <Link
+          href="/terms"
+          style={{
+            color: "#166534",
+            fontWeight: "700",
+            fontSize: "0.92rem",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          Read Terms of Use <ArrowRight size={16} />
+        </Link>
+      </div>
+
+      {/* Card 3: Statutory Agricultural Acts */}
+      <div
+        style={{
+          background: "#ffffff",
+          borderRadius: "16px",
+          padding: "28px 24px",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.04)",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "12px",
+              background: "#fffbeb",
+              color: "#d97706",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: "18px",
+            }}
+          >
+            <Scale size={24} />
+          </div>
+          <h3 style={{ fontSize: "1.2rem", fontWeight: "700", color: "#0f172a", marginBottom: "10px" }}>
+            Statutory Standards
+          </h3>
+          <p style={{ color: "#64748b", fontSize: "0.92rem", lineHeight: "1.6", marginBottom: "20px" }}>
+            Strict enforcement of the Insecticides Act, 1968, Fertiliser (Control) Order, and Seeds Act, 1966. Only authorized and licensed formulations allowed.
+          </p>
+        </div>
+        <Link
+          href="/seller/register"
+          style={{
+            color: "#b45309",
+            fontWeight: "700",
+            fontSize: "0.92rem",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          Seller Verification Info <ArrowRight size={16} />
+        </Link>
+      </div>
+    </div>
+
+    {/* Grievance & Direct Quick Contact Strip */}
+    <div
+      style={{
+        background: "#ecfdf5",
+        border: "1px solid #a7f3d0",
+        borderRadius: "16px",
+        padding: "20px 24px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: "16px",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div
+          style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: "#10b981",
+            color: "#ffffff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          <Mail size={20} />
+        </div>
+        <div>
+          <div style={{ fontWeight: "700", color: "#065f46", fontSize: "0.95rem" }}>
+            Grievance Redressal &amp; Legal Support Desk
+          </div>
+          <div style={{ color: "#047857", fontSize: "0.85rem" }}>
+            Have compliance questions or need regulatory assistance? Email us directly at{" "}
+            <a href="mailto:support@aegroshield.app" style={{ color: "#065f46", fontWeight: "700", textDecoration: "underline" }}>
+              support@aegroshield.app
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+        <Link
+          href="/privacy"
+          className="btn btn-outline"
+          style={{
+            padding: "8px 16px",
+            fontSize: "0.85rem",
+            fontWeight: "600",
+            borderColor: "#059669",
+            color: "#065f46",
+            background: "#ffffff",
+          }}
+        >
+          Privacy Policy
+        </Link>
+        <Link
+          href="/terms"
+          className="btn btn-primary"
+          style={{
+            padding: "8px 16px",
+            fontSize: "0.85rem",
+            fontWeight: "600",
+            background: "#059669",
+            borderColor: "#059669",
+            color: "#ffffff",
+          }}
+        >
+          Terms of Use
+        </Link>
+      </div>
+    </div>
+  </div>
+</section>
     </main>
   );
 }
