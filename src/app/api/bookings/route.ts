@@ -252,20 +252,65 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    // 1. Require authentication using verified Firebase ID token
+    const user = await requireUser(request);
+
     const body = await request.json();
     const { bookingId, status } = body;
 
-    if (!bookingId) {
-      return NextResponse.json(
-        { success: false, error: 'bookingId is required' },
-        { status: 400 }
+    if (!bookingId || typeof bookingId !== 'string') {
+      throw new HttpError('bookingId is required and must be a string', 400);
+    }
+
+    // 2. Fetch existing booking with machinery and labourPost relations
+    const existingBooking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        machinery: true,
+        labourPost: true,
+      },
+    });
+
+    if (!existingBooking) {
+      throw new HttpError('Booking not found', 404);
+    }
+
+    // 3. Authorization check:
+    // Only the booking customer, the assigned machinery vendor / labour leader, or an ADMIN can update status.
+    const userCleanPhone = user.phone ? user.phone.replace(/\D/g, '').slice(-10) : '';
+    const isAdmin = user.role === 'ADMIN';
+    const isBookingOwner = existingBooking.userId === user.id;
+
+    const isMachineryOwner =
+      existingBooking.machinery?.ownerId === user.id ||
+      (!!userCleanPhone &&
+        !!existingBooking.machinery?.contactPhone &&
+        existingBooking.machinery.contactPhone.replace(/\D/g, '').endsWith(userCleanPhone));
+
+    const isLabourLeader =
+      existingBooking.labourPost?.leaderId === user.id ||
+      (!!userCleanPhone &&
+        !!(existingBooking.labourPost as any)?.phone &&
+        String((existingBooking.labourPost as any).phone).replace(/\D/g, '').endsWith(userCleanPhone));
+
+    if (!isAdmin && !isBookingOwner && !isMachineryOwner && !isLabourLeader) {
+      throw new HttpError(
+        'Forbidden: You are not authorized to update this booking. Only the customer, assigned provider, or admin can update status.',
+        403
       );
+    }
+
+    // 4. Validate status value
+    const validStatuses = ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'REJECTED'];
+    const newStatus = status ? String(status).toUpperCase() : 'CONFIRMED';
+    if (!validStatuses.includes(newStatus)) {
+      throw new HttpError(`Invalid status "${status}". Allowed values: ${validStatuses.join(', ')}`, 400);
     }
 
     const updated = await prisma.booking.update({
       where: { id: bookingId },
       data: {
-        status: status || 'CONFIRMED',
+        status: newStatus,
       },
       include: {
         user: {
@@ -283,10 +328,7 @@ export async function PATCH(request: NextRequest) {
     });
   } catch (err: any) {
     console.error('[API/Bookings] PATCH error:', err?.message || err);
-    return NextResponse.json(
-      { success: false, error: 'Failed to update booking status. Internal server error.' },
-      { status: 500 }
-    );
+    return handleAuthError(err);
   }
 }
 
