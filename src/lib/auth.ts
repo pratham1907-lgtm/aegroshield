@@ -50,7 +50,7 @@ export async function requireUser(req: Request) {
     throw new HttpError('Invalid token payload: missing UID', 401);
   }
 
-  const user = await prisma.user.findUnique({
+  let user = await prisma.user.findUnique({
     where: { firebaseUid: decodedToken.uid },
     include: {
       sellers: true,
@@ -58,10 +58,19 @@ export async function requireUser(req: Request) {
   });
 
   if (!user) {
-    throw new HttpError(
-      'Access forbidden: User account not found in database. Please ensure account is registered and synced.',
-      403
-    );
+    user = await prisma.user.create({
+      data: {
+        firebaseUid: decodedToken.uid,
+        email: decodedToken.email || null,
+        name: decodedToken.name || null,
+        phone: decodedToken.phone_number || null,
+        role: 'FARMER',
+        isDemo: false,
+      },
+      include: {
+        sellers: true,
+      },
+    });
   }
 
   return user;

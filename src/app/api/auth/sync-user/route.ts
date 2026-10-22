@@ -1,77 +1,60 @@
 /**
  * POST /api/auth/sync-user
  *
- * Accepts a Firebase Auth user payload from the client and upserts the
- * corresponding record in the Supabase PostgreSQL User table via Prisma.
+ * Accepts a Firebase Auth user synchronization request.
  *
- * Security notes:
- * - This route does NOT use the Supabase anon key and connects via Prisma.
- * - If an Authorization: Bearer <token> is provided, the token UID is cryptographically verified.
-
+ * Security:
+ * - Enforces valid Firebase ID token verification using requireUser(request).
+ * - Rejects unauthenticated requests with HTTP 401 Unauthorized.
+ * - Prevents role spoofing: Any role sent in the request body is discarded.
+ *   Newly synced users default to role 'FARMER' unless explicitly managed
+ *   through secure admin or seller registration workflows. Existing roles
+ *   (ADMIN, SELLER) are safely preserved.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { syncFirebaseUserToPrisma } from '@/lib/auth-sync';
-import { adminAuth } from '@/lib/firebaseAdmin';
+import { requireUser, handleAuthError } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization') || '';
-    let authenticatedUid: string | null = null;
+    // 1. Enforce valid Firebase ID token verification (rejects missing/invalid tokens with 401)
+    const authenticatedUser = await requireUser(request);
 
-    if (authHeader.startsWith('Bearer ')) {
-      const token = authHeader.slice(7).trim();
-      if (token) {
-        try {
-          const decoded = await adminAuth.verifyIdToken(token);
-          authenticatedUid = decoded.uid;
-        } catch (tokenErr) {
-          console.warn('[API/Auth/SyncUser] Warning verifying sync token:', tokenErr);
-        }
-      }
-    }
+    // 2. Parse body for profile fields (displayName, email, phoneNumber)
+    const body = await request.json().catch(() => ({}));
+    const { email, displayName, phoneNumber } = body;
 
+    const cleanName = typeof displayName === 'string' ? displayName.trim() : null;
+    const cleanEmail = typeof email === 'string' ? email.trim() : null;
+    const cleanPhone = typeof phoneNumber === 'string' ? phoneNumber.trim() : null;
 
-    // ── Parse body ──────────────────────────────────────────────────────────
-    const body = await request.json();
-    const { uid, email, displayName, phoneNumber, role } = body;
-
-    if (!uid || typeof uid !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'Missing or invalid uid' },
-        { status: 400 }
-      );
-    }
-
-    const targetUid = authenticatedUid || uid;
-
-    // ── Upsert into Supabase via Prisma ─────────────────────────────────────
-    const user = await syncFirebaseUserToPrisma({
-      uid:         targetUid,
-      email:       email       || null,
-      displayName: displayName || null,
-      phoneNumber: phoneNumber || null,
-      role:        role        || 'FARMER',
+    // 3. Security: Prevent role spoofing from request body.
+    // We do NOT accept 'role' from the client body.
+    // The role is strictly managed server-side and preserved from the database record.
+    const updatedUser = await prisma.user.update({
+      where: { id: authenticatedUser.id },
+      data: {
+        email: cleanEmail || authenticatedUser.email || undefined,
+        name: cleanName || authenticatedUser.name || undefined,
+        phone: cleanPhone || authenticatedUser.phone || undefined,
+        // Role is intentionally excluded to prevent privilege escalation / role spoofing.
+      },
     });
-
 
     return NextResponse.json({
       success: true,
-      action: 'upsert',
+      action: 'sync',
       user: {
-        id:          user.id,
-        firebaseUid: user.firebaseUid,
-        email:       user.email,
-        name:        user.name,
-        role:        user.role,
-        createdAt:   user.createdAt,
-        updatedAt:   user.updatedAt,
+        id: updatedUser.id,
+        firebaseUid: updatedUser.firebaseUid,
+        email: updatedUser.email,
+        name: updatedUser.name,
+        role: updatedUser.role, // Authoritative role from database
+        createdAt: updatedUser.createdAt,
+        updatedAt: updatedUser.updatedAt,
       },
     });
   } catch (error: any) {
-    console.error('[API/auth/sync-user] Error:', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Internal server error' },
-      { status: 500 }
-    );
+    return handleAuthError(error);
   }
 }
