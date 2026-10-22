@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireUser, handleAuthError, HttpError } from '@/lib/auth';
 import { createOrderSchema, formatZodError } from '@/lib/validations';
+import { sendOrderPlacedAlert } from '@/lib/notifications';
 
 export async function GET(request: NextRequest) {
   try {
@@ -198,6 +199,16 @@ export async function POST(request: NextRequest) {
     });
 
     console.log("SECURE_ORDER_CREATED:", createdOrder.id, "Total:", createdOrder.totalAmount);
+
+    // Dispatch non-blocking SMS/WhatsApp order alerts to farmer and seller
+    sendOrderPlacedAlert({
+      orderId: createdOrder.id,
+      customerName: createdOrder.customerName || user.name || 'Farmer',
+      customerPhone: createdOrder.customerPhone || user.phone || customerPhone,
+      totalAmount: createdOrder.totalAmount,
+      paymentMethod: createdOrder.paymentMethod,
+      itemCount: Array.isArray(createdOrder.items) ? createdOrder.items.length : 1,
+    }).catch(err => console.error('[Order Alert Error]:', err));
 
     return NextResponse.json(
       {

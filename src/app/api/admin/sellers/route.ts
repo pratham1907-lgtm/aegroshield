@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin, handleAuthError, HttpError } from '@/lib/auth';
+import { sendSellerVerifiedAlert } from '@/lib/notifications';
 
 /**
  * GET /api/admin/sellers
@@ -63,6 +64,15 @@ export async function PATCH(request: NextRequest) {
     });
 
     console.log(`ADMIN_SELLER_ACCREDITATION_UPDATED: sellerId=${sellerId}, isVerified=${isVerified} by admin ${admin.email || admin.id}`);
+
+    // Dispatch congratulatory SMS/WhatsApp alert to seller upon admin accreditation
+    if (isVerified && updatedSeller.phone) {
+      sendSellerVerifiedAlert({
+        sellerName: updatedSeller.ownerName || updatedSeller.user?.name || 'Dealer',
+        sellerPhone: updatedSeller.phone,
+        storeName: updatedSeller.storeName,
+      }).catch(err => console.error('[Seller Verified Alert Error]:', err));
+    }
 
     return NextResponse.json({
       success: true,

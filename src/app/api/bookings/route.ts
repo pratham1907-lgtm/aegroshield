@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireUser, handleAuthError, HttpError } from '@/lib/auth';
+import { sendBookingConfirmedAlert } from '@/lib/notifications';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -222,6 +223,18 @@ export async function POST(request: NextRequest) {
     });
 
     console.log("REAL_BOOKING_CREATED:", createdBooking.id, "Type:", rawType);
+
+    // Dispatch non-blocking SMS/WhatsApp booking alerts to farmer and service provider
+    sendBookingConfirmedAlert({
+      bookingId: createdBooking.id,
+      serviceType: createdBooking.bookingType === 'LABOUR' ? 'LABOUR' : 'MACHINERY',
+      itemName: createdBooking.itemTitle || (createdBooking.bookingType === 'MACHINERY' ? 'Farm Equipment' : 'Farm Labour'),
+      farmerName: createdBooking.customerName || name,
+      farmerPhone: createdBooking.customerPhone || phone || '',
+      ownerPhone: createdBooking.machinery?.contactPhone || undefined,
+      duration: createdBooking.duration || undefined,
+      totalAmount: createdBooking.totalAmount,
+    }).catch(err => console.error('[Booking Alert Error]:', err));
 
     return NextResponse.json(
       {
