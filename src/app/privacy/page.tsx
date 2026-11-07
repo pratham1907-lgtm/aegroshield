@@ -106,7 +106,7 @@ export default function PrivacyPage() {
           <SubHeading>2.3 Information from Third Parties</SubHeading>
           <ul>
             <li>Firebase Authentication provides a secure identity token when you sign in with phone OTP or email/password. We do not receive your raw OTP.</li>
-            <li>Government mandi rate data is sourced from the Agmarknet/data.gov.in API — no personal data is involved.</li>
+            <li>Market commodity arrival and pricing data is aggregated from standard agricultural market feeds — no personal data is involved.</li>
           </ul>
         </Section>
 

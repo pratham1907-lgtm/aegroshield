@@ -238,9 +238,9 @@ export default function TermsPage() {
               (b) approved in their State, and (c) within the prescribed pre-harvest interval (PHI).
             </li>
             <li>
-              <strong>Mandi price data:</strong> Mandi rates are sourced from Agmarknet and
-              data.gov.in and are updated periodically. They are indicative only and may not reflect
-              real-time prices at your local mandi.
+              <strong>Mandi price data:</strong> Mandi rates and market arrival figures are aggregated from
+              regional market price feeds and are updated periodically. They are indicative only and may not reflect
+              real-time spot prices at your local mandi.
             </li>
             <li>
               <strong>No liability for crop losses:</strong> AegroShield shall not be liable for any

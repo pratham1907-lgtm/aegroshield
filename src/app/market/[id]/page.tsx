@@ -733,7 +733,7 @@ export default function MandiDetailPage({
             )}
           </div>
 
-          {/* ── Official Data Source & Trading Transparency Strip ─────────── */}
+          {/* ── Official Market Intelligence & Trading Overview Strip ─────────── */}
           <div style={{
             marginTop: 20,
             padding: "12px 16px",
@@ -749,9 +749,9 @@ export default function MandiDetailPage({
             color: "#166534",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: "1.1rem" }}>🏛️</span>
+              <span style={{ fontSize: "1.1rem" }}>📈</span>
               <span>
-                <strong>Official Data Source:</strong> Agmarknet (Directorate of Marketing &amp; Inspection, MoAFW, Govt. of India)
+                <strong>Market Rates:</strong> Live APMC Mandi Commodity &amp; Arrival Insights
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>

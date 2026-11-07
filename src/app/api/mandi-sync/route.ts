@@ -897,7 +897,7 @@ export async function GET(req: Request) {
           console.warn('[mandi-sync] Failed to record live sync metadata:', metaErr);
         }
         console.log(`[mandi-sync] Saved ${count} live records to Firestore collection mandi_rates.`);
-        return NextResponse.json({ success: true, count, source: 'live_agmarknet' });
+        return NextResponse.json({ success: true, count, source: 'live' });
       }
 
       // External API was reached and returned 0 records for specific filters
@@ -916,7 +916,7 @@ export async function GET(req: Request) {
           return NextResponse.json({
             success: false,
             source: 'fallback_seeded',
-            reason: `Agmarknet API reported 0 active arrivals for filter. Seeded ${count} baseline records.`,
+            reason: `Mandi rates service reported 0 active arrivals for filter. Seeded ${count} baseline records.`,
             count,
           });
         }
@@ -925,8 +925,8 @@ export async function GET(req: Request) {
       return NextResponse.json({
         success: true,
         count: 0,
-        source: 'live_agmarknet',
-        message: 'Agmarknet API responded with 0 active arrivals for specified filter.',
+        source: 'live',
+        message: 'Mandi arrival service responded with 0 active arrivals for specified filter.',
       });
     }
 
@@ -935,7 +935,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       success: false,
       source: 'fallback_seeded',
-      reason: apiErrorReason || 'Live Agmarknet API unavailable',
+      reason: 'Live market rate service unavailable',
       count,
     });
 

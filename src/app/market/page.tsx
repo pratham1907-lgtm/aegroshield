@@ -342,7 +342,7 @@ export default function Page() {
       if (json.success) {
         if (json.source === 'live' || json.source === 'live_agmarknet') {
           if (json.count > 0) {
-            setSyncMessage(`Successfully fetched ${json.count} live Mandi rates from Agmarknet!`);
+            setSyncMessage(`Successfully refreshed ${json.count} live Mandi rates across markets!`);
           } else {
             setSyncMessage(json.message || `No new live arrivals reported today for specified filter.`);
           }
@@ -557,7 +557,6 @@ export default function Page() {
       {/* ── Main Layout ────────────────────────────────────────── */}
       <main className="market-layout">
         {/* Stats Strip */}
-        {/* Stats Strip */}
         <div className="stats-strip">
           <div className="stat-card">
             <div className="stat-icon green">📊</div>
@@ -580,24 +579,24 @@ export default function Page() {
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon blue">⚖️</div>
+            <div className="stat-icon blue">📦</div>
+            <div>
+              <div className="stat-label">Crops Tracked</div>
+              <div className="stat-value">{availableCrops.length > 0 ? `${availableCrops.length}+` : "280+"}</div>
+              <div className="stat-sub">Recorded varieties</div>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon green">⚖️</div>
             <div>
               <div className="stat-label">Standard Unit</div>
               <div className="stat-value">₹ / Quintal</div>
               <div className="stat-sub">1 Quintal = 100 kg</div>
             </div>
           </div>
-          <div className="stat-card">
-            <div className="stat-icon green">🏛️</div>
-            <div>
-              <div className="stat-label">Data Source</div>
-              <div className="stat-value">Agmarknet</div>
-              <div className="stat-sub">DMI, Govt of India</div>
-            </div>
-          </div>
         </div>
 
-        {/* ── Official Mandi Data Source & Trading Transparency Banner ───────────────────────── */}
+        {/* ── Official Mandi Market Rates & Trading Overview Banner ───────────────────────── */}
         <div style={{
           background: "#f0fdf4",
           border: "1px solid #86efac",
@@ -623,14 +622,14 @@ export default function Page() {
               fontSize: "1.25rem",
               flexShrink: 0
             }}>
-              🏛️
+              📈
             </div>
             <div>
               <div style={{ fontSize: "0.86rem", fontWeight: 700, color: "#14532d" }}>
-                Official Data Source: Directorate of Marketing & Inspection (Agmarknet / DMI)
+                Live APMC Mandi Rates &amp; Market Intelligence
               </div>
               <div style={{ fontSize: "0.78rem", color: "#15803d", lineHeight: 1.4 }}>
-                Ministry of Agriculture & Farmers Welfare, Government of India • Real-time APMC Mandi price feeds
+                Real-time daily mandi commodity prices and market arrivals across India
               </div>
             </div>
           </div>
@@ -1069,7 +1068,7 @@ export default function Page() {
                           🗓️ {item.arrivalDate || "Today"}
                         </span>
                         <span style={{ fontSize: "0.68rem", color: "#94a3b8" }}>
-                          Agmarknet • ₹/quintal (100kg)
+                          Daily APMC Arrival • ₹/quintal
                         </span>
                       </div>
 
@@ -1177,7 +1176,7 @@ export default function Page() {
                   : "Chuni gayi fasal ya mandi ke liye vartaman me koi rate darj nahi hai."}
               </p>
               <p style={{ color: "#94a3b8", fontSize: "0.85rem", maxWidth: "500px", margin: "0 auto 20px" }}>
-                Official Agmarknet / APMC portal par aavak darj hote hi yahan live rates update ho jayenge.
+                Official APMC portal par aavak darj hote hi yahan live rates update ho jayenge.
               </p>
               <div style={{ display: "flex", gap: "10px", justifyContent: "center", flexWrap: "wrap" }}>
                 {selectedDistrict !== "All" && selectedState !== "All" && (
