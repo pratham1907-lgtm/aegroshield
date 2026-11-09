@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { GoogleGenAI } from '@google/genai';
+import { requireUser, handleAuthError, HttpError } from '@/lib/auth';
+import { mandiAdvisorySchema, formatZodError } from '@/lib/validations';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 function sanitizeDocIdPart(str: string = ''): string {
   return str.toString().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -55,7 +58,32 @@ function getFallbackDetailedAdvisory(
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    // 1. Mandatory User Authentication
+    const user = await requireUser(req);
+
+    // 2. Sliding Window Rate Limiting (30 requests / minute / user)
+    const rateLimit = checkRateLimit(`mandi_advisory_${user.id}`, 30, 60 * 1000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Too many advisory requests. Please wait ${rateLimit.resetInSec} seconds.`,
+        },
+        { status: 429 }
+      );
+    }
+
+    // 3. Payload Parsing and Strict Input Validation
+    const rawBody = await req.json().catch(() => null);
+    if (!rawBody) {
+      throw new HttpError('Invalid or missing JSON payload in request body', 400);
+    }
+
+    const parseResult = mandiAdvisorySchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      throw new HttpError(formatZodError(parseResult.error), 400);
+    }
+
     const {
       id,
       market,
@@ -67,7 +95,7 @@ export async function POST(req: Request) {
       trend,
       recommendation,
       depth,
-    } = body;
+    } = parseResult.data;
 
     const isDetailed = depth === 'detailed';
 
@@ -76,7 +104,7 @@ export async function POST(req: Request) {
     const distName = district || '';
     const stName = state || '';
     const varName = variety || '';
-    const mPrice = parseFloat(modalPrice) || 0;
+    const mPrice = modalPrice || 0;
     const trnd = trend || 'STABLE';
     const rec = recommendation || 'HOLD';
 
@@ -299,6 +327,9 @@ Provide exactly 2 actionable lines in Hinglish for the farmer.`;
       cached: false,
     });
   } catch (error: any) {
+    if (error instanceof HttpError) {
+      return handleAuthError(error);
+    }
     console.error('[mandi-advisory] Critical route error:', error);
     return NextResponse.json(
       {

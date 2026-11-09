@@ -32,6 +32,7 @@ export interface MandiRateItem {
   priceHistory?: PriceHistoryItem[];
   advisoryText?: string;
   advisoryUpdatedAt?: any;
+  detailedAdvisory?: any;
 }
 
 const COMMODITY_HINDI_MAP: Record<string, string> = {

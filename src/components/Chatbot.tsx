@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { MessageCircle, X, Send } from 'lucide-react';
+import { auth } from '@/lib/firebase';
 
 const LANGUAGE_NAMES = {
   'en': 'English', 'hi': 'हिन्दी', 'pa': 'ਪੰਜਾਬੀ', 'hi-en': 'Hinglish', 'te': 'తెలుగు',
@@ -72,10 +73,14 @@ export default function Chatbot() {
   };
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    const rawText = input.trim();
+    if (!rawText) return;
+
+    // Strict input length validation on client side
+    const cleanText = rawText.slice(0, 1000);
 
     const userTime = formatTime();
-    const newMsg: Message = { role: 'user', text: input.trim(), time: userTime };
+    const newMsg: Message = { role: 'user', text: cleanText, time: userTime };
     const updatedMessages = [...messages, newMsg];
     
     saveMessages(updatedMessages);
@@ -86,14 +91,32 @@ export default function Chatbot() {
     const districtContext = 'Unknown';
 
     try {
-      const historyPayload = updatedMessages.map(msg => ({
+      // Check user authentication
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        setIsLoading(false);
+        const loginNotice: Message = {
+          role: 'agent',
+          text: '🔒 AI Assistant se baat karne ke liye kripya login karein. (Please log in to your account to use AI chat).',
+          time: formatTime(),
+        };
+        saveMessages([...updatedMessages, loginNotice]);
+        return;
+      }
+
+      // Limit payload to the last 15 messages and truncate parts
+      const recentMessages = updatedMessages.slice(-15);
+      const historyPayload = recentMessages.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.text }]
+        parts: [{ text: msg.text.slice(0, 1000) }]
       }));
 
       const res = await fetch('/api/v1/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           messages: historyPayload,
           context: {
@@ -105,17 +128,39 @@ export default function Chatbot() {
         })
       });
       
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       setIsLoading(false);
       
-      if (data.success) {
+      if (res.status === 401) {
+        saveMessages([...updatedMessages, {
+          role: 'agent',
+          text: '🔒 Session expired ya login anivarya hai. Kripya login karein.',
+          time: formatTime()
+        }]);
+        return;
+      }
+
+      if (res.status === 429) {
+        saveMessages([...updatedMessages, {
+          role: 'agent',
+          text: data?.error || '⏳ Bahut zyada requests. Kripya thoda intezaar karein.',
+          time: formatTime()
+        }]);
+        return;
+      }
+
+      if (data?.success) {
         if (data.action?.type === 'navigate') {
           router.push(data.action.target);
         }
         const agentMsg: Message = { role: 'agent', text: data.message, time: formatTime() };
         saveMessages([...updatedMessages, agentMsg]);
       } else {
-        saveMessages([...updatedMessages, { role: 'agent', text: 'Error connecting to server. Please try again later.', time: formatTime() }]);
+        saveMessages([...updatedMessages, {
+          role: 'agent',
+          text: data?.error || 'Error connecting to server. Please try again later.',
+          time: formatTime()
+        }]);
       }
     } catch (e) {
       setIsLoading(false);
@@ -191,6 +236,7 @@ export default function Chatbot() {
               className="user-input" 
               placeholder={(INPUT_PLACEHOLDERS as any)[language] || INPUT_PLACEHOLDERS['en']}
               value={input}
+              maxLength={1000}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               autoComplete="off" 

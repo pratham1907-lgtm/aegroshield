@@ -257,3 +257,55 @@ export const registerSellerSchema = z
     }
   });
 
+/**
+ * Single chat message content part schema with strict length limits.
+ */
+export const chatPartSchema = z.object({
+  text: z.string().trim().min(1, 'Message text cannot be empty').max(1000, 'Message text exceeds 1,000 characters limit'),
+});
+
+/**
+ * Chat history message schema.
+ */
+export const chatMessageSchema = z.object({
+  role: z.enum(['user', 'model', 'agent']),
+  parts: z.array(chatPartSchema).min(1, 'At least one message part is required').max(5, 'Too many parts per message'),
+});
+
+/**
+ * Chat endpoint request schema.
+ * Enforces maximum message history count and maximum context length.
+ */
+export const chatRequestSchema = z.object({
+  messages: z
+    .array(chatMessageSchema)
+    .min(1, 'Messages array cannot be empty')
+    .max(20, 'Conversation history exceeds maximum limit of 20 messages'),
+  context: z
+    .object({
+      language: z.string().trim().max(20, 'Language code too long').optional().default('en'),
+      crop: z.string().trim().max(100, 'Crop name too long').optional(),
+      district: z.string().trim().max(100, 'District name too long').optional(),
+      currentPage: z.string().trim().max(200, 'Current page path too long').optional(),
+    })
+    .optional(),
+});
+
+/**
+ * Mandi AI advisory request schema.
+ * Enforces strict limits on commodity, market names, and parameters.
+ */
+export const mandiAdvisorySchema = z.object({
+  id: z.string().trim().max(200).optional(),
+  market: z.string().trim().max(100, 'Market name too long').optional(),
+  district: z.string().trim().max(100, 'District name too long').optional(),
+  state: z.string().trim().max(100, 'State name too long').optional(),
+  commodity: z.string().trim().max(100, 'Commodity name too long').optional(),
+  variety: z.string().trim().max(100, 'Variety name too long').optional(),
+  modalPrice: z.coerce.number().min(0, 'Modal price cannot be negative').max(1000000, 'Modal price unrealistic').optional().default(0),
+  trend: z.string().trim().max(50).optional().default('STABLE'),
+  recommendation: z.string().trim().max(50).optional().default('HOLD'),
+  depth: z.enum(['simple', 'detailed']).optional().default('simple'),
+});
+
+

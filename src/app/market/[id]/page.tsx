@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { auth } from "@/lib/firebase";
 import type { PriceHistoryItem, MandiRateItem } from "@/app/market/page";
 
 // ─── MSP Reference Map (Rabi/Kharif 2025-26) ────────────────────────────────
@@ -426,11 +427,26 @@ export default function MandiDetailPage({
 
   // ─ Fetch advisory ──────────────────────────────────────────────────────────
   const fetchAdvisory = useCallback(async (rec: MandiRateItem) => {
-    setAdvisoryLoading(true);
+    // If detailed advisory is already loaded from cached mandi record, no need to call API
+    if (rec.detailedAdvisory) {
+      setDetailedAdvisory(rec.detailedAdvisory as DetailedAdvisory);
+      return;
+    }
+
     try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        // Unauthenticated visitor: skip on-demand AI call to protect quota
+        return;
+      }
+
+      setAdvisoryLoading(true);
       const res = await fetch("/api/mandi-advisory", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
         body: JSON.stringify({
           id: rec.id,
           market: rec.market,
