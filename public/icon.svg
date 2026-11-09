@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#16a34a" />
+      <stop offset="100%" stop-color="#14532d" />
+    </linearGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#dcfce7" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#bgGrad)" />
+  <!-- Shield Shape -->
+  <path d="M256 70 C350 70, 410 110, 410 200 C410 320, 310 400, 256 442 C202 400, 102 320, 102 200 C102 110, 162 70, 256 70 Z" fill="url(#shieldGrad)" />
+  <!-- Farm Leaf / Plant Emblem -->
+  <path d="M256 160 C256 160, 330 200, 330 270 C330 330, 275 365, 256 375 C237 365, 182 330, 182 270 C182 200, 256 160, 256 160 Z" fill="#15803d" />
+  <path d="M256 185 L256 360" stroke="#86efac" stroke-width="8" stroke-linecap="round" />
+  <path d="M256 250 Q290 230, 310 250" stroke="#86efac" stroke-width="6" stroke-linecap="round" fill="none" />
+  <path d="M256 280 Q222 260, 202 280" stroke="#86efac" stroke-width="6" stroke-linecap="round" fill="none" />
+</svg>

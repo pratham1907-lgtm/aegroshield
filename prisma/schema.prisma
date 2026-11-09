@@ -52,6 +52,11 @@ model Seller {
   updatedAt          DateTime @updatedAt
 
   products           Product[]
+
+  @@index([userId])
+  @@index([district])
+  @@index([isVerified])
+  @@index([verificationStatus])
 }
 
 model Product {
@@ -68,6 +73,10 @@ model Product {
   isDemo      Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([sellerId])
+  @@index([category])
+  @@index([createdAt])
 }
 
 model Machinery {
@@ -86,6 +95,11 @@ model Machinery {
   updatedAt    DateTime @updatedAt
 
   bookings     Booking[]
+
+  @@index([ownerId])
+  @@index([district])
+  @@index([machineType])
+  @@index([available])
 }
 
 model LabourPost {
@@ -104,6 +118,10 @@ model LabourPost {
   updatedAt    DateTime @updatedAt
 
   bookings     Booking[]
+
+  @@index([leaderId])
+  @@index([district])
+  @@index([primarySkill])
 }
 
 model Booking {
@@ -128,6 +146,12 @@ model Booking {
   totalAmount   Float
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([machineryId])
+  @@index([labourPostId])
+  @@index([status])
+  @@index([bookingDate])
 }
 
 model Order {
@@ -145,4 +169,8 @@ model Order {
   paymentMethod   String   @default("Cash on Delivery (COD)")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }

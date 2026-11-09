@@ -88,6 +88,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/orders" style={{ color: '#86efac', fontWeight: '600', textDecoration: 'none' }}>
+                  📦 My Orders &amp; Tracking
+                </Link>
+              </li>
+              <li>
                 <Link href="/machinery" style={{ color: '#cbd5e1', textDecoration: 'none' }}>
                   🚜 Machinery Rentals (CHC)
                 </Link>
@@ -178,6 +183,11 @@ export default function Footer() {
               <li>
                 <Link href="/terms" style={{ color: '#cbd5e1', textDecoration: 'none', fontWeight: 600 }}>
                   📄 Terms of Use
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" style={{ color: '#86efac', textDecoration: 'none', fontWeight: 600 }}>
+                  📞 Kisan Helpline &amp; Contact
                 </Link>
               </li>
               <li>

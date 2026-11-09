@@ -4,13 +4,26 @@ import { CartProvider } from '@/lib/cart-context';
 import NavbarClient from '@/components/Navbar';
 import CartDrawer from '@/components/cart/CartDrawer';
 import Footer from '@/components/Footer';
-
 import Chatbot from '@/components/Chatbot';
+import WhatsAppSupport from '@/components/WhatsAppSupport';
+import PwaRegister from '@/components/PwaRegister';
 import './globals.css';
 
 export const metadata = {
-  title: 'Aegroshield — Smart Farming Platform',
-  description: 'Smart Farming Platform for Indian Farmers',
+  title: 'AegroShield — Kisan Agri OS & Marketplace',
+  description: 'Unified smart agriculture platform for Indian farmers. Order verified farm inputs, book machinery & labour, and check live mandi rates.',
+  manifest: '/manifest.json',
+  icons: {
+    icon: '/icon.svg',
+    apple: '/icon.svg',
+  },
+  openGraph: {
+    title: 'AegroShield — Kisan Agri OS & Marketplace',
+    description: 'Direct farm inputs, verified local agri-stores, live APMC mandi prices, and smart crop advisory for Indian farmers.',
+    type: 'website',
+    locale: 'en_IN',
+    siteName: 'AegroShield',
+  },
 };
 
 export default function RootLayout({
@@ -32,6 +45,8 @@ export default function RootLayout({
               {children}
               <Footer />
               <Chatbot />
+              <WhatsAppSupport />
+              <PwaRegister />
             </CartProvider>
           </LanguageProvider>
         </AuthProvider>

@@ -357,12 +357,27 @@ export default function CheckoutPage() {
             {/* Bottom Actions */}
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link
-                href="/store"
+                href="/orders"
                 className="btn btn-primary"
                 style={{
                   padding: '12px 24px',
                   borderRadius: '10px',
                   fontWeight: '700',
+                  fontSize: '0.92rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                Track in My Orders →
+              </Link>
+              <Link
+                href="/store"
+                className="btn btn-outline"
+                style={{
+                  padding: '12px 20px',
+                  borderRadius: '10px',
+                  fontWeight: '600',
                   fontSize: '0.92rem',
                 }}
               >

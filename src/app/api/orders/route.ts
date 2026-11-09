@@ -224,4 +224,91 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * PATCH /api/orders
+ * Updates the order status (e.g. cancellation by customer, or fulfillment by seller/admin).
+ */
+export async function PATCH(request: NextRequest) {
+  try {
+    const user = await requireUser(request);
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      throw new HttpError('Invalid JSON in request body', 400);
+    }
+
+    const { orderId, status } = body;
+
+    if (!orderId || !status) {
+      throw new HttpError('Both orderId and status are required', 400);
+    }
+
+    const validStatuses = ['PENDING', 'CONFIRMED', 'DISPATCHED', 'DELIVERED', 'CANCELLED'];
+    if (!validStatuses.includes(status)) {
+      throw new HttpError(`Invalid status. Allowed values: ${validStatuses.join(', ')}`, 400);
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { user: true },
+    });
+
+    if (!order) {
+      throw new HttpError('Order not found', 404);
+    }
+
+    const isCustomerOwner = order.userId === user.id;
+    const isAdmin = user.role === 'ADMIN';
+    const isSeller = Boolean(user.sellers && user.sellers.length > 0);
+    const sellerIds = (user.sellers || []).map(s => s.id);
+    const orderItems = Array.isArray(order.items) ? (order.items as any[]) : [];
+    const isOrderSeller = orderItems.some(item => sellerIds.includes(item.sellerId));
+
+    if (isCustomerOwner && !isAdmin && !isOrderSeller) {
+      if (status !== 'CANCELLED') {
+        throw new HttpError('Customers are only authorized to cancel their own orders.', 403);
+      }
+      if (order.status !== 'PENDING') {
+        throw new HttpError('Only pending orders can be cancelled. Order is already ' + order.status, 400);
+      }
+    } else if (!isAdmin && !isOrderSeller) {
+      throw new HttpError('Forbidden: Unauthorized to update this order.', 403);
+    }
+
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      // Restore product stock if cancelling an active order
+      if (status === 'CANCELLED' && order.status !== 'CANCELLED') {
+        for (const item of orderItems) {
+          if (item.productId && item.quantity) {
+            try {
+              await tx.product.update({
+                where: { id: item.productId },
+                data: { stock: { increment: Number(item.quantity) || 1 } },
+              });
+            } catch (stockErr) {
+              console.warn('[Orders/PATCH] Could not increment stock for product', item.productId, stockErr);
+            }
+          }
+        }
+      }
+
+      return tx.order.update({
+        where: { id: orderId },
+        data: { status },
+      });
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: updatedOrder,
+      message: `Order status successfully updated to ${status}`,
+    });
+  } catch (error: any) {
+    console.error('[API/Orders] PATCH error:', error);
+    return handleAuthError(error);
+  }
+}
+
+
 
