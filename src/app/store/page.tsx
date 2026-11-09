@@ -336,7 +336,7 @@ export default function StoreCatalogPage() {
                     ? `Sellers in ${selectedState} have not listed catalog items yet. Try viewing All States or explore nearby districts.`
                     : search || selectedCategory !== 'All'
                     ? 'Try changing your search term, clearing location filters, or selecting "All" categories.'
-                    : 'Local verified agri-stores are updating their live stock. You can refresh or add items via Seller Dashboard.'}
+                    : 'Local verified agri-stores are updating their live stock. Please check back soon or explore other categories.'}
                 </p>
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
                   {(selectedState !== 'All' || selectedDistrict !== 'All' || search || selectedCategory !== 'All') && (
@@ -353,9 +353,6 @@ export default function StoreCatalogPage() {
                       <RefreshCw size={14} /> View All India Products
                     </button>
                   )}
-                  <Link href="/seller/dashboard" className="btn btn-outline-primary" style={{ padding: '8px 16px', borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, border: '1px solid #15803d', color: '#15803d' }}>
-                    <Plus size={16} /> Add Product as Seller
-                  </Link>
                 </div>
               </div>
             ) : (
