@@ -23,6 +23,7 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyBhToIfOHC91I6KaleLev3pO_6oMYYR9FQ',
@@ -36,6 +37,7 @@ const firebaseConfig = {
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 export const auth = getAuth(app);
 

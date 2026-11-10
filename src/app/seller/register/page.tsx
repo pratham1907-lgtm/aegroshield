@@ -7,6 +7,7 @@ import { auth, signInWithGoogle } from '@/lib/firebase';
 import { syncUserToDatabase } from '@/lib/sync-user-client';
 import { ALL_DISTRICTS } from '@/lib/marketplace-data';
 import { Building2, ArrowRight, CheckCircle2, PhoneCall, KeyRound, Zap } from 'lucide-react';
+import FileUploader from '@/components/FileUploader';
 
 const SELLER_CATEGORIES = [
   'General Agri-Store',
@@ -436,21 +437,17 @@ export default function SellerRegisterPage() {
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                      Document URL{' '}
-                      <span style={{ fontWeight: 400, color: '#94a3b8' }}>(Google Drive / Dropbox shareable link)</span>
-                    </label>
-                    <input
-                      type="url"
-                      className="form-input"
-                      placeholder="https://drive.google.com/file/..."
-                      value={documentUrl}
-                      onChange={e => setDocumentUrl(e.target.value)}
+                  <div className="form-group" style={{ marginTop: '12px' }}>
+                    <FileUploader
+                      label="Fertilizer / Pesticide Dealer Licence Scan (Optional)"
+                      accept="image/*,.pdf"
+                      folder="documents"
+                      currentValue={documentUrl}
+                      onUploadComplete={(url) => setDocumentUrl(url)}
+                      onClear={() => setDocumentUrl('')}
+                      helperText="Upload scanned copy or camera photo of state dealer licence (Max 5MB)"
+                      allowManualUrl={true}
                     />
-                    <p style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px' }}>
-                      Upload your licence scan and paste the shareable link here.
-                    </p>
                   </div>
                 </div>
               )}

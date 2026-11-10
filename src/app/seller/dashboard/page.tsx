@@ -25,6 +25,7 @@ import {
   Check,
   Building2,
 } from 'lucide-react';
+import FileUploader from '@/components/FileUploader';
 
 export interface SellerProduct {
   id: string;
@@ -1161,39 +1162,34 @@ export default function SellerDashboardPage() {
                 </div>
               </div>
 
-              {/* Image URL with preset picker */}
+              {/* Product Photo Upload with preset picker */}
               <div className="form-group">
-                <label style={{ fontWeight: 600, fontSize: '0.88rem', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <ImageIcon size={16} /> Image URL (Optional)
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://example.com/product-image.jpg"
-                  value={formData.imageUrl}
-                  onChange={e => setFormData({ ...formData, imageUrl: e.target.value })}
-                  style={{
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.9rem',
-                    outline: 'none',
-                  }}
+                <FileUploader
+                  label="Product Photo (Optional)"
+                  accept="image/*"
+                  folder="products"
+                  currentValue={formData.imageUrl}
+                  onUploadComplete={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))}
+                  onClear={() => setFormData(prev => ({ ...prev, imageUrl: '' }))}
+                  helperText="Upload clear photo or packaging image (Max 5MB)"
+                  allowManualUrl={true}
                 />
-                <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Quick Presets:</span>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Or select a quick stock image:</span>
                   {PRESET_IMAGES.map(img => (
                     <button
                       key={img.label}
                       type="button"
-                      onClick={() => setFormData({ ...formData, imageUrl: img.url })}
+                      onClick={() => setFormData(prev => ({ ...prev, imageUrl: img.url }))}
                       style={{
-                        padding: '3px 8px',
+                        padding: '4px 10px',
                         fontSize: '0.75rem',
                         background: formData.imageUrl === img.url ? '#e8f5d6' : '#f1f5f9',
                         color: formData.imageUrl === img.url ? '#15803d' : '#475569',
                         border: '1px solid #cbd5e1',
                         borderRadius: '6px',
                         cursor: 'pointer',
+                        fontWeight: formData.imageUrl === img.url ? 600 : 400,
                       }}
                     >
                       {img.label}
