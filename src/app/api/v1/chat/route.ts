@@ -66,10 +66,51 @@ export async function POST(req: Request) {
     }
 
     const lastUserQuery = messages[messages.length - 1]?.parts?.[0]?.text || '';
+    const userLanguage = context?.language || 'hi-en';
 
-    // Smart Agricultural Fallback Advisor (Active if external AI service is offline or rate-capped)
-    const getFallbackAgriReply = (query: string) => {
+    // Smart Multilingual Agricultural Fallback Advisor (Active if external AI service is offline or rate-capped)
+    const getFallbackAgriReply = (query: string, lang: string) => {
       const q = query.toLowerCase();
+
+      if (lang === 'hi') {
+        if (q.includes('mandi') || q.includes('bhav') || q.includes('rate') || q.includes('मंडी') || q.includes('भाव')) {
+          return "🌾 आज के ताज़ा APMC मंडी भाव देखने के लिए कृपया हमारे '📈 मंडी भाव' पोर्टल पर जाएं, जहां देशभर की मंडियों के प्रति घंटे सत्यापित भाव उपलब्ध हैं।\n\nविशेष फसल सलाह हेतु टोल-फ्री किसान हेल्पलाइन 1800-180-1551 पर संपर्क करें।";
+        }
+        if (q.includes('khad') || q.includes('खाद') || q.includes('यूरिया') || q.includes('बीज') || q.includes('दवाई') || q.includes('कीटनाशक')) {
+          return "🌱 फसल के अनुसार संतुलित खाद (यूरिया, डीएपी, पोटाश) का प्रयोग करें। प्रति एकड़ सही मात्रा जानने के लिए हमारा 'कैलकुलेटर' उपयोग करें या नजदीकी प्रमाणित स्टोर से ऑर्डर करें।\n\nव्हाट्सएप सहायता: +91 98765 43210";
+        }
+        if (q.includes('tractor') || q.includes('ट्रैक्टर') || q.includes('मशीनरी') || q.includes('किराया')) {
+          return "🚜 ट्रैक्टर, रोटावेटर, कंबाइन हार्वेस्टर और स्प्रेयर किराए पर लेने के लिए हमारे 'मशीनरी किराया' पोर्टल पर जाएं जहां सत्यापित कस्टम हायरिंग केंद्रों से उपकरण बुक किए जा सकते हैं।";
+        }
+        if (q.includes('मजदूर') || q.includes('labour') || q.includes('majdoor')) {
+          return "👥 फसल कटाई, बुवाई या छिड़काव के लिए सत्यापित मजदूर दल खोजने के लिए 'खेत मजदूर' अनुभाग देखें।";
+        }
+        if (q.includes('help') || q.includes('हेल्पलाइन') || q.includes('कॉल') || q.includes('नंबर')) {
+          return "📞 किसान सहायता हेल्पलाइन:\n• टोल-फ्री किसान कॉल सेंटर: 1800-180-1551\n• आधिकारिक व्हाट्सएप डेस्क: +91 98765 43210\n• कार्य समय: सुबह 8:00 से रात 8:00 (सभी 7 दिन)";
+        }
+        return "नमस्ते! मैं AegroShield AI सहायक हूँ। फसल रोग, खाद की मात्रा, उन्नत बीज, ट्रैक्टर किराया, मजदूर और ताज़ा मंडी भाव के बारे में आप मुझसे पूछ सकते हैं।\n\nकिसान हेल्पलाइन: 1800-180-1551 / व्हाट्सएप: +91 98765 43210";
+      }
+
+      if (lang === 'en') {
+        if (q.includes('mandi') || q.includes('bhav') || q.includes('rate') || q.includes('price')) {
+          return "🌾 To check today's live APMC Mandi prices, please visit our '📈 Mandi Rates' portal where hourly verified rates are published.\n\nFor personalized crop advice, contact our Toll-Free Kisan Helpline: 1800-180-1551.";
+        }
+        if (q.includes('khad') || q.includes('fertilizer') || q.includes('urea') || q.includes('dap') || q.includes('pesticide')) {
+          return "🌱 Apply balanced fertilizers (Urea, DAP, MOP) according to soil test and crop stage. Use our Smart Input Calculator to determine exact per-acre dosage or order certified batches from local agri-stores.\n\nWhatsApp Support: +91 98765 43210.";
+        }
+        if (q.includes('tractor') || q.includes('machinery') || q.includes('rent') || q.includes('harvester')) {
+          return "🚜 To rent tractors, rotavators, sprayers, or combine harvesters, visit our '🚜 Machinery Rentals' portal to book from nearby verified Custom Hiring Centres (CHCs).";
+        }
+        if (q.includes('labour') || q.includes('labor') || q.includes('worker')) {
+          return "👥 For harvesting, sowing, or chemical spraying squads, check our '👥 Farm Labour' board to hire verified agricultural teams.";
+        }
+        if (q.includes('help') || q.includes('helpline') || q.includes('call') || q.includes('contact')) {
+          return "📞 24/7 Kisan Sahayata Helpline:\n• Toll-Free Kisan Helpline: 1800-180-1551 (Kisan Call Centre)\n• Official WhatsApp Helpdesk: +91 98765 43210\n• Operating Hours: 8:00 AM – 8:00 PM (Monday to Sunday)";
+        }
+        return "Hello! I am the AegroShield AI Assistant. You can ask me anything about crop diseases, fertilizer dosages, seed varieties, machinery rental, farm labour, and live APMC mandi rates.\n\nKisan Helpline: 1800-180-1551 / WhatsApp: +91 98765 43210";
+      }
+
+      // Default: Hinglish ('hi-en')
       if (q.includes('mandi') || q.includes('bhav') || q.includes('rate') || q.includes('price')) {
         return "🌾 Aaj ke taaza APMC Mandi rates dekhne ke liye aap hamare '📈 Mandi Rates' section par ja sakte hain jaha har ghante verify kiye gaye daam uplabdh hain.\n\nVishesh fasal ki jankari ke liye Kisan Helpline: 1800-180-1551 par call karein.";
       }
@@ -93,51 +134,55 @@ export async function POST(req: Request) {
     if (!ai) {
       return NextResponse.json({
         success: true,
-        message: getFallbackAgriReply(lastUserQuery),
+        message: getFallbackAgriReply(lastUserQuery, userLanguage),
       });
     }
 
-    const userLanguage = context?.language || 'en';
     const currentPage = context?.currentPage || 'Unknown Page';
-    
-    const systemPrompt = `You are Aegroshield Assistant, an AI web agent for Indian farmers, local agricultural vendors, and platform administrators.
-PERSONALITY: Friendly, warm, practical, encouraging.
-CRITICAL: You MUST respond in the ISO language code: ${userLanguage}. If 'hi-en', use Hinglish.
-NEVER show raw file names (like .html), paths, or URLs to the user in your messages. Always use friendly, natural names for the pages (e.g., "Agri-Store", "Shopping Cart", "Seller Portal", "Admin Panel").
+
+    const languageInstruction =
+      userLanguage === 'hi'
+        ? `CRITICAL LANGUAGE DIRECTIVE: The user has chosen HINDI (हिन्दी).
+You MUST reply ENTIRELY in pure Hindi using the Devanagari script (हिन्दी लिपि).
+Do NOT output in English or Roman script.
+Use clear, courteous, and accurate agricultural Hindi terms (e.g. फसल, खाद, यूरिया, डीएपी, बीज, कीटनाशक, रोग, मंडी भाव, सिंचाई, उपज).
+Even if the user types in English or Roman Hinglish, you MUST formulate your entire response in pure Devanagari Hindi.`
+        : userLanguage === 'en'
+        ? `CRITICAL LANGUAGE DIRECTIVE: The user has chosen ENGLISH.
+You MUST reply ENTIRELY in clear, fluent English.
+Use proper agricultural English terminology and accurate dosage recommendations.`
+        : `CRITICAL LANGUAGE DIRECTIVE: The user has chosen HINGLISH.
+You MUST reply in natural, friendly Hinglish (Hindi written using the English alphabet).
+For example: "Aapki gehu ki fasal me nitrogen ki kami lag rahi hai. 1 acre me 45 kg urea ka chhidkaw karein."
+Keep tone respectful, encouraging, and easy to read.`;
+
+    const systemPrompt = `You are Aegroshield Assistant, an AI expert and companion for Indian farmers, local agricultural vendors, and platform administrators.
+PERSONALITY: Friendly, respectful, practical, farmer-first.
+
+${languageInstruction}
+
+NEVER show raw file names (like .html), paths, or URLs to the user in your messages. Always use friendly names for the pages (e.g., "Agri-Store", "Shopping Cart", "Seller Portal", "Admin Panel").
 
 CONTEXT AWARENESS:
 - User's current webpage: ${currentPage}
-- District: ${context?.district || 'Unknown'}
+- District: ${context?.district || 'India'}
+- Selected Platform Language: ${userLanguage}
 
 YOUR CAPABILITIES (AGENT ACTIONS):
 You have access to a tool called 'navigate_to_page'.
 If the user asks to go somewhere, buy fertilizers/seeds/pesticides, check cart, checkout, register as a seller, or access admin master panel, CALL THE TOOL 'navigate_to_page':
-- '/' (Master Gateway Portal Selector)
-- '/farmer/home' (Farmer App Home Page)
-- '/login' (for Unified Role Login: Farmer, Seller, Admin)
-- '/marketplace' (for Local Agri-Marketplace storefront)
-- '/cart' (for viewing Shopping Cart & items)
-- '/checkout' (for Cash on Delivery Checkout)
-- '/vendor/dashboard' (for Seller Dashboard & Order Queue)
-- '/vendor/register' (for Registering a new Agri-Store)
-- '/admin/dashboard' (for Admin Master Control Panel & Dealer Accreditation)
-- '/machinery' (for Booking Tractors/Machinery)
-- '/labour' (for Finding/Offering Farm Labour)
-- '/market' (for Live Mandi/Market Prices)
-- '/calculator' (for Fertilizer/Pesticide Input Calculator)
+- '/' (Home)
+- '/marketplace' (Local Agri-Marketplace)
+- '/cart' (Shopping Cart)
+- '/checkout' (Checkout)
+- '/vendor/dashboard' (Seller Dashboard)
+- '/admin/dashboard' (Admin Panel)
+- '/machinery' (Machinery Booking)
+- '/labour' (Farm Labour Board)
+- '/market' (Live Mandi Prices)
+- '/calculator' (Fertilizer Calculator)
 
-MULTI-ROLE ARCHITECTURE & SYSTEM KNOWLEDGE:
-- Unified Login ('/login') lets users choose their role: Farmer/User, Local Seller, or Platform Admin.
-- Farmers browse local store products, add to cart, and checkout with Cash on Delivery (COD).
-- Sellers use '/vendor/dashboard' to manage product inventory, toggle stock, and fulfill farmer orders.
-- Platform Admin uses '/admin/dashboard' to inspect dealer license certificates, grant official platform accreditation, flag banned chemicals, and review regional analytics.
-
-If user asks:
-- "Login kaise karein?" / "Sign in" -> NAVIGATE to '/login'.
-- "Dukaan register / Seller dashboard" -> NAVIGATE to '/vendor/dashboard' or '/vendor/register'.
-- "Admin dashboard / Dealer verification" -> NAVIGATE to '/admin/dashboard'.
-
-If you use a tool, you DO NOT need to output text, the system will handle the redirect. If just answering, KEEP IT concise (2-3 sentences), actionable, and stay within Aegroshield features.`;
+If you use a tool, you DO NOT need to output text, the system will handle the redirect. If just answering, KEEP IT concise (2-4 sentences), highly actionable, and tailored to Indian agricultural seasons.`;
 
     const tools = [{
       functionDeclarations: [
@@ -180,7 +225,7 @@ If you use a tool, you DO NOT need to output text, the system will handle the re
       console.warn('[Chat] Gemini API error, falling back to local advisor:', modelErr?.message);
       return NextResponse.json({
         success: true,
-        message: getFallbackAgriReply(lastUserQuery),
+        message: getFallbackAgriReply(lastUserQuery, userLanguage),
       });
     }
 

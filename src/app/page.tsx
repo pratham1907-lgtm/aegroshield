@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { Store, ArrowRight, ShoppingBag, Tractor, Users, TrendingUp, Calculator, CheckCircle2, ShieldCheck, FileText, Lock, Scale, Mail } from "lucide-react";
+import { useLanguage } from "@/lib/language-context";
 
 export default function FarmerHomePage() {
+  const { lang, t } = useLanguage();
+
   return (
     <main>
 
@@ -9,24 +14,24 @@ export default function FarmerHomePage() {
 <section className="hero">
   <div className="hero-inner">
     <div>
-      <div className="hero-tag"><span></span> Free for Every Indian Farmer 🇮🇳</div>
-      <h1>Smart Farming —<br /><em>All Tools in</em><br />One Place</h1>
+      <div className="hero-tag"><span></span> {t('home.hero_tag')}</div>
+      <h1>{t('home.hero_title_1')}<br /><em>{t('home.hero_title_2')}</em></h1>
       <p className="hero-sub">
-        Order farm inputs, book machinery, find labour, check live mandi prices, and calculate inputs — completely free for Indian farmers.
+        {t('home.hero_sub')}
       </p>
       <div className="hero-actions">
         <Link href="/store" className="btn btn-primary btn-lg">
-          🛒 Explore Marketplace →
+          {t('home.btn_store')}
         </Link>
         <a href="#features" className="btn btn-outline btn-lg">
-          Explore All Tools ↓
+          {t('home.btn_tools')}
         </a>
       </div>
       <div className="hero-trust">
         <div className="trust-avatars">
           <span>रा</span><span>सु</span><span>मो</span><span>गी</span><span>+</span>
         </div>
-        <p className="trust-text"><strong>50,000+ farmers</strong> already using Aegroshield across 18 states</p>
+        <p className="trust-text"><strong>50,000+ farmers</strong> {t('home.trust_text')}</p>
       </div>
     </div>
 
@@ -34,8 +39,8 @@ export default function FarmerHomePage() {
     <div className="hero-visual">
       <div className="hero-card-main pipeline-card" style={{ display: "flex", flexDirection: "column", gap: "12px", maxWidth: "420px", width: "100%" }}>
         <div style={{ fontWeight: "800", color: "var(--primary)", fontSize: "1.1rem", borderBottom: "1.5px solid var(--gray-100)", paddingBottom: "10px", marginBottom: "2px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span>🌾 Aegroshield Smart Hub</span>
-          <span style={{ fontSize: "0.75rem", background: "#e8f5d6", color: "var(--primary)", padding: "3px 8px", borderRadius: "6px", fontWeight: "700" }}>5 Tools Included</span>
+          <span>{t('home.hub_title')}</span>
+          <span style={{ fontSize: "0.75rem", background: "#e8f5d6", color: "var(--primary)", padding: "3px 8px", borderRadius: "6px", fontWeight: "700" }}>{t('home.hub_badge')}</span>
         </div>
 
         {/* TOOL 1: AGRI-STORE */}
@@ -44,9 +49,9 @@ export default function FarmerHomePage() {
             <ShoppingBag size={18} />
           </div>
           <div className="step-content">
-            <div className="step-label green">Agri-Store</div>
-            <h4 className="step-title">Local Marketplace</h4>
-            <p className="step-desc">Buy seeds, fertilizers & pesticides</p>
+            <div className="step-label green">{t('home.hub_store_title')}</div>
+            <h4 className="step-title">{t('home.hub_store_sub')}</h4>
+            <p className="step-desc">{t('home.hub_store_desc')}</p>
           </div>
           <div className="step-arrow green">→</div>
         </Link>
@@ -57,9 +62,9 @@ export default function FarmerHomePage() {
             <Tractor size={18} />
           </div>
           <div className="step-content">
-            <div className="step-label">Rentals</div>
-            <h4 className="step-title">Machinery Booking</h4>
-            <p className="step-desc">Book tractors & harvesters nearby</p>
+            <div className="step-label">{t('home.hub_mach_title')}</div>
+            <h4 className="step-title">{t('home.hub_mach_sub')}</h4>
+            <p className="step-desc">{t('home.hub_mach_desc')}</p>
           </div>
           <div className="step-arrow">→</div>
         </Link>
@@ -70,9 +75,9 @@ export default function FarmerHomePage() {
             <Users size={18} />
           </div>
           <div className="step-content">
-            <div className="step-label">Hiring</div>
-            <h4 className="step-title">Farm Labour Board</h4>
-            <p className="step-desc">Hire skilled farm workers & teams</p>
+            <div className="step-label">{t('home.hub_labour_title')}</div>
+            <h4 className="step-title">{t('home.hub_labour_sub')}</h4>
+            <p className="step-desc">{t('home.hub_labour_desc')}</p>
           </div>
           <div className="step-arrow">→</div>
         </Link>
@@ -83,14 +88,14 @@ export default function FarmerHomePage() {
             <TrendingUp size={18} />
           </div>
           <div className="step-content">
-            <div className="step-label">Mandi Rates</div>
-            <h4 className="step-title">Live Market Prices</h4>
-            <p className="step-desc">Real-time crop prices & sell insights</p>
+            <div className="step-label">{t('home.hub_mandi_title')}</div>
+            <h4 className="step-title">{t('home.hub_mandi_sub')}</h4>
+            <p className="step-desc">{t('home.hub_mandi_desc')}</p>
           </div>
           <div className="step-arrow">→</div>
         </Link>
       </div>
-      <div className="hero-badge-float hbf-1">✅ Verified Inputs & CHCs</div>
+      <div className="hero-badge-float hbf-1">{t('home.badge_verified')}</div>
     </div>
   </div>
 </section>
@@ -99,19 +104,19 @@ export default function FarmerHomePage() {
 <div className="stats-banner">
   <div className="sb-item">
     <div className="sb-num">50K+</div>
-    <div className="sb-lbl">Farmers Served</div>
+    <div className="sb-lbl">{t('home.stat_farmers_lbl')}</div>
   </div>
   <div className="sb-item">
     <div className="sb-num">18</div>
-    <div className="sb-lbl">States Covered</div>
+    <div className="sb-lbl">{t('home.stat_states_lbl')}</div>
   </div>
   <div className="sb-item">
-    <div className="sb-num">26+</div>
-    <div className="sb-lbl">Products Listed</div>
+    <div className="sb-num">100+</div>
+    <div className="sb-lbl">{t('home.stat_products_lbl')}</div>
   </div>
   <div className="sb-item">
     <div className="sb-num">5</div>
-    <div className="sb-lbl">Smart Tools</div>
+    <div className="sb-lbl">{t('home.stat_tools_lbl')}</div>
   </div>
 </div>
 
@@ -120,11 +125,11 @@ export default function FarmerHomePage() {
   <div className="container">
     <div style={{ textAlign: "center", marginBottom: "0" }}>
       <p className="page-hero-badge" style={{ background: "#e8f5d6", color: "var(--primary)", display: "inline-flex", marginBottom: "14px" }}>
-        🌱 Complete Smart Farming Suite
+        {t('home.feat_badge')}
       </p>
-      <h2 className="section-title" style={{ textAlign: "center" }}>Platform Features</h2>
+      <h2 className="section-title" style={{ textAlign: "center" }}>{t('home.feat_title')}</h2>
       <p className="section-sub" style={{ textAlign: "center", maxWidth: "580px", margin: "0 auto 48px" }}>
-        Five powerful tools designed to simplify every aspect of farming for Indian agriculturalists.
+        {t('home.feat_sub')}
       </p>
     </div>
     
@@ -132,40 +137,40 @@ export default function FarmerHomePage() {
       {/* TOOL 1: MARKETPLACE */}
       <Link href="/store" className="feature-card">
         <div className="feature-icon-circle">🛒</div>
-        <h3>Local Marketplace</h3>
-        <p>Buy seeds, fertilizers, and pesticides from nearby verified local dealers with Cash on Delivery.</p>
+        <h3>{t('nav.store')}</h3>
+        <p>{t('home.hub_store_desc')}</p>
         <span className="fc-arrow">Shop Now →</span>
       </Link>
 
       {/* TOOL 2: MACHINERY BOOKING */}
       <Link href="/machinery" className="feature-card">
         <div className="feature-icon-circle">🚜</div>
-        <h3>Machinery Booking</h3>
-        <p>Rent tractors and harvesters from nearby Custom Hiring Centres (CHCs) at affordable hourly rates.</p>
+        <h3>{t('nav.machinery')}</h3>
+        <p>{t('home.hub_mach_desc')}</p>
         <span className="fc-arrow">Browse Equipment →</span>
       </Link>
 
       {/* TOOL 3: LABOUR BOARD */}
       <Link href="/labour" className="feature-card">
         <div className="feature-icon-circle">👥</div>
-        <h3>Labour Board</h3>
-        <p>Find available farm workers or post job listings for harvesting, sowing, and field maintenance.</p>
+        <h3>{t('nav.labour')}</h3>
+        <p>{t('home.hub_labour_desc')}</p>
         <span className="fc-arrow">Find Workers →</span>
       </Link>
 
       {/* TOOL 4: MARKET PRICES */}
       <Link href="/market" className="feature-card">
         <div className="feature-icon-circle">📈</div>
-        <h3>Market Prices</h3>
-        <p>Live mandi rates with intelligent sell or wait recommendations to maximize your crop revenue.</p>
+        <h3>{t('nav.mandi')}</h3>
+        <p>{t('home.hub_mandi_desc')}</p>
         <span className="fc-arrow">Check Mandi Rates →</span>
       </Link>
 
       {/* TOOL 5: INPUT CALCULATOR */}
       <Link href="/calculator" className="feature-card">
         <div className="feature-icon-circle">🧪</div>
-        <h3>Input Calculator</h3>
-        <p>Accurate pesticide and fertilizer dosage calculation tailored to your crop and field size.</p>
+        <h3>{t('nav.calculator')}</h3>
+        <p>{t('calc.sub')}</p>
         <span className="fc-arrow">Calculate Dosage →</span>
       </Link>
     </div>

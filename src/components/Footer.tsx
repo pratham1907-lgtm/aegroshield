@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ShieldCheck, Mail } from 'lucide-react';
+import { useLanguage } from '@/lib/language-context';
 
 export default function Footer() {
   const pathname = usePathname() || '';
+  const { t } = useLanguage();
 
   // Hide footer on admin & dedicated vendor dashboard backends
   const isDashboardRoute =
@@ -48,7 +50,7 @@ export default function Footer() {
               </span>
             </div>
             <p style={{ fontSize: '0.9rem', color: '#cbd5e1', lineHeight: '1.6', marginBottom: '16px' }}>
-              Unified smart agriculture platform for Indian farmers. Providing verified inputs, on-demand machinery, farm labour, mandi prices, and crop advisory across India.
+              {t('footer.brand_desc')}
             </p>
             <div
               style={{
@@ -62,7 +64,7 @@ export default function Footer() {
                 color: '#86efac',
               }}
             >
-              <ShieldCheck size={16} /> Pan-India Verified Network 🇮🇳
+              <ShieldCheck size={16} /> {t('footer.badge')}
             </div>
           </div>
 
@@ -79,7 +81,7 @@ export default function Footer() {
                 display: 'inline-block',
               }}
             >
-              Farmer Tools
+              {t('footer.tools_head')}
             </h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.9rem' }}>
               <li>
@@ -138,7 +140,7 @@ export default function Footer() {
                 display: 'inline-block',
               }}
             >
-              Sellers &amp; Partners
+              {t('footer.dealers_head')}
             </h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.9rem' }}>
               <li>
@@ -251,7 +253,7 @@ export default function Footer() {
           }}
         >
           <div>
-            &copy; 2026 AegroShield Technologies Pvt. Ltd. All rights reserved.
+            &copy; 2026 AegroShield Technologies Pvt. Ltd. {t('footer.rights')}
           </div>
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
             <Link href="/privacy" style={{ color: '#cbd5e1', textDecoration: 'none' }}>

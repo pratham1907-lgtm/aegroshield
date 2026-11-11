@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getAllIndianStates, getDistrictsForState, isStateMatching } from "@/lib/india-locations";
 import WeatherWidget from "@/components/WeatherWidget";
+import { useLanguage } from "@/lib/language-context";
 
 export interface PriceHistoryItem {
   date: string;
@@ -230,6 +231,7 @@ function ensureItemAnalytics(item: MandiRateItem): MandiRateItem {
 }
 
 export default function Page() {
+  const { lang, t } = useLanguage();
   const { user, userData } = useAuth();
 
   // Reactive search filter selections
@@ -544,9 +546,9 @@ export default function Page() {
       {/* ── Page Hero ───────────────────────────────────────────── */}
       <div className="page-hero">
         <div className="container">
-          <div className="page-hero-badge">📈 Live Mandi Rates & AI Advisory</div>
-          <h1>Live Mandi Prices & Market Analysis</h1>
-          <p>Real-time official APMC rates with price trends and AI-driven Hold vs. Sell guidance</p>
+          <div className="page-hero-badge">📈 {t('mandi.title')}</div>
+          <h1>{t('mandi.title')}</h1>
+          <p>{t('mandi.sub')}</p>
         </div>
 
         <div className="hero-wave">
@@ -668,7 +670,7 @@ export default function Page() {
         {/* ── Search & Filter Card ─────────────────────────────────── */}
         <div className="search-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <h3 style={{ margin: 0 }}>🔍 Search Mandi Prices</h3>
+            <h3 style={{ margin: 0 }}>🔍 {lang === 'hi' ? 'मंडी भाव खोजें' : 'Search Mandi Prices'}</h3>
             <div style={{
               fontSize: "0.82rem",
               color: "#047857",
@@ -764,7 +766,7 @@ export default function Page() {
                     Fetching...
                   </span>
                 ) : (
-                  "Get Live Prices →"
+                  lang === 'hi' ? 'लाइव भाव देखें →' : 'Get Live Prices →'
                 )}
               </button>
             </div>

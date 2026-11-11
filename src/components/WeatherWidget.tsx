@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
+import { useLanguage } from '@/lib/language-context';
 import {
   CloudSun,
   CloudRain,
@@ -52,6 +53,7 @@ export interface WeatherData {
 }
 
 export default function WeatherWidget({ compact = false }: { compact?: boolean }) {
+  const { lang, t } = useLanguage();
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictOption>(DISTRICT_LIST[0]);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,7 +77,12 @@ export default function WeatherWidget({ compact = false }: { compact?: boolean }
       const times = daily.time || [];
       for (let i = 0; i < Math.min(times.length, 3); i++) {
         const d = new Date(times[i]);
-        const dayName = i === 0 ? 'Today (आज)' : i === 1 ? 'Tomorrow (कल)' : d.toLocaleDateString('en-IN', { weekday: 'short' });
+        const dayName =
+          i === 0
+            ? lang === 'hi' ? 'आज' : lang === 'en' ? 'Today' : 'Today (Aaj)'
+            : i === 1
+            ? lang === 'hi' ? 'कल' : lang === 'en' ? 'Tomorrow' : 'Tomorrow (Kal)'
+            : d.toLocaleDateString(lang === 'hi' ? 'hi-IN' : 'en-IN', { weekday: 'short' });
         days.push({
           date: times[i],
           dayName,
@@ -138,9 +145,24 @@ export default function WeatherWidget({ compact = false }: { compact?: boolean }
     if (w.rainProbabilityToday >= 50 || w.precipitation > 0.5) {
       return {
         status: 'warning',
-        badge: '⚠️ छिड़काव स्थगित रखें (Do Not Spray)',
-        title: 'High Rain Probability (बारिश की संभावना)',
-        desc: 'अगले 24 घंटे में बारिश का अनुमान है। कीटनाशक व खाद का छिड़काव धुलने के जोखिम से बचें।',
+        badge:
+          lang === 'hi'
+            ? '⚠️ छिड़काव स्थगित रखें (Do Not Spray)'
+            : lang === 'en'
+            ? '⚠️ Postpone Chemical Spraying'
+            : '⚠️ Spray Postpone Karein (Rain Risk)',
+        title:
+          lang === 'hi'
+            ? 'बारिश का जोखिम'
+            : lang === 'en'
+            ? 'High Rain Probability'
+            : 'Barish Ki Sambhavna',
+        desc:
+          lang === 'hi'
+            ? 'अगले 24 घंटे में बारिश का अनुमान है। कीटनाशक व खाद का छिड़काव धुलने के जोखिम से बचें।'
+            : lang === 'en'
+            ? 'Rain forecasted in the next 24 hours. Avoid chemical spraying to prevent wash-off.'
+            : 'Agale 24 ghante me barish ka anuman hai. Fasal par dawai ya khad spray karne se bachein.',
         bg: '#fef2f2',
         border: '#fecaca',
         color: '#dc2626',
@@ -149,9 +171,24 @@ export default function WeatherWidget({ compact = false }: { compact?: boolean }
     if (w.windSpeed > 15) {
       return {
         status: 'caution',
-        badge: '🌬️ तेज़ हवा का अलर्ट (Wind > 15 km/h)',
-        title: 'Chemical Drift Risk',
-        desc: 'तेज़ हवा के कारण कीटनाशक का बहाव हो सकता है। छिड़काव शाम को या हवा शांत होने पर करें।',
+        badge:
+          lang === 'hi'
+            ? '🌬️ तेज़ हवा का अलर्ट (Wind > 15 km/h)'
+            : lang === 'en'
+            ? '🌬️ High Wind Alert (> 15 km/h)'
+            : '🌬️ Tez Hawa Alert (> 15 km/h)',
+        title:
+          lang === 'hi'
+            ? 'कीटनाशक बहाव का खतरा'
+            : lang === 'en'
+            ? 'Chemical Spray Drift Risk'
+            : 'Chemical Drift Risk',
+        desc:
+          lang === 'hi'
+            ? 'तेज़ हवा के कारण कीटनाशक का बहाव हो सकता है। छिड़काव शाम को या हवा शांत होने पर करें।'
+            : lang === 'en'
+            ? 'Strong winds may cause pesticide spray drift. Delay spraying until evening or calm winds.'
+            : 'Tez hawa ke karan chemical drift ho sakta hai. Chhidkaw shaam ko ya hawa rukne par karein.',
         bg: '#fffbeb',
         border: '#fde68a',
         color: '#d97706',
@@ -160,9 +197,24 @@ export default function WeatherWidget({ compact = false }: { compact?: boolean }
     if (w.humidity > 80) {
       return {
         status: 'info',
-        badge: '💧 उच्च आर्द्रता (High Humidity > 80%)',
-        title: 'Fungal Infection Alert',
-        desc: 'अधिक नमी से पत्तियों में फफूंद रोग फैलने की संभावना है। फसल का सघन निरीक्षण रखें।',
+        badge:
+          lang === 'hi'
+            ? '💧 उच्च आर्द्रता (नमी > 80%)'
+            : lang === 'en'
+            ? '💧 High Humidity (> 80%)'
+            : '💧 High Humidity (> 80%)',
+        title:
+          lang === 'hi'
+            ? 'फफूंद रोग की चेतावनी'
+            : lang === 'en'
+            ? 'Fungal Disease Alert'
+            : 'Fungal Infection Alert',
+        desc:
+          lang === 'hi'
+            ? 'अधिक नमी से पत्तियों में फफूंद रोग फैलने की संभावना है। फसल का सघन निरीक्षण रखें।'
+            : lang === 'en'
+            ? 'Elevated moisture promotes fungal leaf blight. Inspect your crop canopy closely.'
+            : 'Zyada nami se pattiyon me fungus rog lagne ka khatra hai. Fasal inspect karein.',
         bg: '#eff6ff',
         border: '#bfdbfe',
         color: '#2563eb',
@@ -170,9 +222,24 @@ export default function WeatherWidget({ compact = false }: { compact?: boolean }
     }
     return {
       status: 'success',
-      badge: '✅ छिड़काव व सिंचाई के लिए उत्तम (Ideal Weather)',
-      title: 'Optimal Spray Window',
-      desc: 'मौसम शांत और साफ है। कीटनाशक, पोटाश स्प्रे और हल्की सिंचाई के लिए उपयुक्त समय है।',
+      badge:
+        lang === 'hi'
+          ? '✅ छिड़काव व सिंचाई के लिए उत्तम समय'
+          : lang === 'en'
+          ? '✅ Optimal Spray & Irrigation Window'
+          : '✅ Spray & Irrigation ke liye Best Weather',
+      title:
+        lang === 'hi'
+          ? 'अनुकूल मौसम'
+          : lang === 'en'
+          ? 'Optimal Conditions'
+          : 'Optimal Conditions',
+      desc:
+        lang === 'hi'
+          ? 'मौसम शांत और साफ है। कीटनाशक, पोटाश स्प्रे और हल्की सिंचाई के लिए उपयुक्त समय है।'
+          : lang === 'en'
+          ? 'Weather is calm and clear. Ideal condition for foliar spray and light irrigation.'
+          : 'Mausam shaant aur saaf hai. Fertilizer, dawai chhidkaw aur sinchai ke liye best time hai.',
       bg: '#f0fdf4',
       border: '#bbf7d0',
       color: '#15803d',
@@ -221,10 +288,10 @@ export default function WeatherWidget({ compact = false }: { compact?: boolean }
           </div>
           <div>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
-              Agro-Weather & Spray Advisory
+              {t('weather.title')}
             </h3>
             <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-              मौसम एवं कृषि छिड़काव परामर्श
+              {t('weather.sub')}
             </div>
           </div>
         </div>
@@ -325,7 +392,7 @@ export default function WeatherWidget({ compact = false }: { compact?: boolean }
                 <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b' }}>
                   {weather.temperature}°C
                 </div>
-                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Temperature</div>
+                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{t('weather.temp')}</div>
               </div>
             </div>
 
@@ -348,7 +415,7 @@ export default function WeatherWidget({ compact = false }: { compact?: boolean }
                 <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b' }}>
                   {weather.humidity}%
                 </div>
-                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Humidity (नमी)</div>
+                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{t('weather.humidity')}</div>
               </div>
             </div>
 
@@ -371,7 +438,7 @@ export default function WeatherWidget({ compact = false }: { compact?: boolean }
                 <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b' }}>
                   {weather.windSpeed} <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>km/h</span>
                 </div>
-                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Wind (हवा)</div>
+                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{t('weather.wind')}</div>
               </div>
             </div>
 
@@ -394,7 +461,7 @@ export default function WeatherWidget({ compact = false }: { compact?: boolean }
                 <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b' }}>
                   {weather.rainProbabilityToday}%
                 </div>
-                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Rain Chance</div>
+                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{t('weather.rain')}</div>
               </div>
             </div>
           </div>

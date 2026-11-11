@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import WeatherWidget from "@/components/WeatherWidget";
+import { useLanguage } from "@/lib/language-context";
 
 export default function FarmerHomePage() {
+  const { lang, t } = useLanguage();
+
   return (
     <main>
 
@@ -9,22 +14,22 @@ export default function FarmerHomePage() {
 <section className="hero">
   <div className="hero-inner">
     <div>
-      <div className="hero-tag"><span></span> Free for Every Indian Farmer 🇮🇳</div>
-      <h1>Direct Farm Inputs —<br /><em>Connect with Local</em><br />Sellers & Agri-Stores</h1>
+      <div className="hero-tag"><span></span> {t('home.hero_tag')}</div>
+      <h1>{t('home.hero_title_1')}<br /><em>{t('home.hero_title_2')}</em></h1>
       <p className="hero-sub">
-        Order fertilizers, seeds, and pesticides directly from verified local dealers in your district with easy home delivery or store pickup.
+        {t('home.hero_sub')}
       </p>
       <div className="hero-actions">
         <a href="/store" className="btn btn-primary btn-lg">
-          🛒 Explore Local Marketplace →
+          {t('home.btn_store')}
         </a>
-        <a href="#features" className="btn btn-outline btn-lg">Explore All Tools</a>
+        <a href="#features" className="btn btn-outline btn-lg">{t('home.btn_tools')}</a>
       </div>
       <div className="hero-trust">
         <div className="trust-avatars">
           <span>रा</span><span>सु</span><span>मो</span><span>गी</span><span>+</span>
         </div>
-        <p className="trust-text"><strong>50,000+ farmers</strong> already using Aegroshield across 18 states</p>
+        <p className="trust-text"><strong>50,000+ farmers</strong> {t('home.trust_text')}</p>
       </div>
     </div>
 

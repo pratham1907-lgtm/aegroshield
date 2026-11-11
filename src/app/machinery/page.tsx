@@ -7,8 +7,10 @@ import { db, auth, signInWithGoogle } from "@/lib/firebase";
 import { collection, getDocs, addDoc } from "firebase/firestore";
 import { Lock, Loader2, MapPin, X, RotateCcw } from "lucide-react";
 import { getAllIndianStates, getDistrictsForState } from "@/lib/india-locations";
+import { useLanguage } from "@/lib/language-context";
 
 export default function Page() {
+  const { lang, t } = useLanguage();
   const { user, userData, loading: authLoading } = useAuth();
   const [liveMachinery, setLiveMachinery] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -337,9 +339,9 @@ export default function Page() {
 {/*  ── Page Hero ─────────────────────────────────────────────  */}
 <div className="page-hero">
   <div className="container">
-    <div className="page-hero-badge">🚜 CHC Equipment Hire</div>
-    <h1>Book Farm Machinery Near You</h1>
-    <p>Find tractors, harvesters, tillers and more from nearby Custom Hiring Centres</p>
+    <div className="page-hero-badge">🚜 {t('nav.machinery')}</div>
+    <h1>{t('mach.title')}</h1>
+    <p>{t('mach.sub')}</p>
   </div>
 
   <div className="hero-wave">

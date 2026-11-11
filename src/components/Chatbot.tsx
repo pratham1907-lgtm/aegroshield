@@ -4,45 +4,49 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { MessageCircle, X, Send, Phone, Trash2, ExternalLink, ShieldCheck, Sparkles, HelpCircle, Mic, MicOff } from 'lucide-react';
 import { auth } from '@/lib/firebase';
+import { useLanguage, type Language } from '@/lib/language-context';
 
-const LANGUAGE_NAMES: Record<string, string> = {
-  'en': 'English',
-  'hi': 'हिन्दी',
-  'pa': 'ਪੰਜਾਬੀ',
-  'hi-en': 'Hinglish',
-  'te': 'తెలుగు',
-  'ta': 'தமிழ்',
-  'kn': 'ಕನ್ನಡ',
-  'mr': 'मराठी',
-  'gu': 'ગુજરાતી',
-  'bn': 'বাংলা',
-  'or': 'ଓଡ଼ିଆ',
-  'ml': 'മലയാളം',
-  'as': 'অসমীয়া',
-  'ur': 'اردو',
+const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
+  { value: 'en', label: '🇬🇧 English' },
+  { value: 'hi', label: '🇮🇳 हिन्दी' },
+  { value: 'hi-en', label: '🇮🇳 Hinglish' },
+];
+
+const WELCOME_MESSAGES: Record<Language, string> = {
+  'en': "👋 Hello! I'm AegroShield AI Assistant.\n\nI can help you with:\n🌾 Crop diseases, fertilizer doses & seed selection\n📈 Today's live APMC Mandi rates\n🚜 Machinery rental (Tractors, Harvesters)\n👥 Hiring agricultural labour squads\n📞 24/7 Kisan Helpline & WhatsApp Support\n\nHow can I help you today?",
+  'hi': "👋 नमस्ते! मैं AegroShield AI सहायक हूँ।\n\nमैं आपकी सहायता कर सकता हूँ:\n🌾 फसल रोग, खाद (यूरिया/डीएपी) और प्रमाणित बीज\n📈 आज के ताज़ा सरकारी APMC मंडी भाव\n🚜 ट्रैक्टर व कृषि यंत्र किराया बुकिंग\n👥 बुवाई व कटाई हेतु खेत मजदूर दल\n📞 24/7 किसान हेल्पलाइन व व्हाट्सएप सहायता\n\nआज आपकी क्या सहायता करूँ?",
+  'hi-en': "👋 Namaste! Main AegroShield AI Assistant hoon.\n\nMain aapki help kar sakta hoon:\n🌾 Fasal bimari, fertilizer aur certified seed guidance\n📈 Live APMC Mandi rates\n🚜 Tractor aur machinery rental booking\n👥 Khet majdoor squad booking\n📞 24/7 Kisan Helpline & WhatsApp Help\n\nAap kis cheez me jankari chahte hain?",
 };
 
-const WELCOME_MESSAGES: Record<string, string> = {
-  'en': "👋 Hello! I'm AegroShield AI Assistant.\n\nI can help you with:\n🌾 Crop disease, fertilizer & seed guidance\n📈 Today's live APMC Mandi rates\n🚜 Machinery rental (Tractors, Harvesters)\n👥 Hiring agricultural labour squads\n📞 24/7 Kisan Helpline & WhatsApp Support\n\nHow can I help you today?",
-  'hi': "👋 नमस्ते! मैं AegroShield AI सहायक हूँ।\n\nमैं आपकी मदद कर सकता हूँ:\n🌾 फसल बीमारी, खाद और बीज की सही सलाह\n📈 आज के ताज़ा APMC मंडी भाव\n🚜 ट्रैक्टर व कृषि उपकरण किराया\n👥 खेत मजदूर दल खोजना\n📞 24/7 किसान हेल्पलाइन व व्हाट्सएप सहायता\n\nआज मैं आपकी क्या सहायता करूँ?",
-  'pa': "👋 ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ AegroShield AI ਸਹਾਇਕ ਹਾਂ।\n\nਮੈਂ ਤੁਹਾਡੀ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ:\n🌾 ਫ਼ਸਲ ਬਿਮਾਰੀ, ਖਾਦ ਅਤੇ ਬੀਜ ਦੀ ਸਲਾਹ\n📈 ਅੱਜ ਦੇ ਤਾਜ਼ਾ ਮੰਡੀ ਭਾਅ\n🚜 ਟਰੈਕਟਰ ਅਤੇ ਮਸ਼ੀਨਰੀ ਕਿਰਾਇਆ\n👥 ਖੇਤ ਮਜ਼ਦੂਰ ਲੱਭਣਾ\n📞 24/7 ਕਿਸਾਨ ਹੈਲਪਲਾਈਨ ਅਤੇ ਵਟਸਐਪ ਸਹਾਇਤਾ\n\nਅੱਜ ਮੈਂ ਤੁਹਾਡੀ ਕੀ ਮਦਦ ਕਰਾਂ?",
-  'hi-en': "👋 Namaste! Main AegroShield AI Assistant hoon.\n\nMain aapki help kar sakta hoon:\n🌾 Fasal bimari, fertilizer aur seed guidance\n📈 Live APMC Mandi rates\n🚜 Tractor aur machinery rental\n👥 Khet majdoor squad booking\n📞 24/7 Kisan Helpline & WhatsApp Help\n\nAap kis cheez me jankari chahte hain?",
-};
-
-const INPUT_PLACEHOLDERS: Record<string, string> = {
+const INPUT_PLACEHOLDERS: Record<Language, string> = {
   'en': 'Ask anything about crops, fertilizers, mandi...',
   'hi': 'फसल, खाद, दवाई या मंडी भाव के बारे में पूछें...',
-  'pa': 'ਫ਼ਸਲ, ਖਾਦ ਜਾਂ ਮੰਡੀ ਭਾਅ ਬਾਰੇ ਪੁੱਛੋ...',
   'hi-en': 'Fasal, fertilizer, mandi bhav ke baare me poochhein...',
 };
 
-const QUICK_ACTIONS = [
-  { label: '📞 Kisan Helpline', query: 'Kisan Helpline number aur contact details' },
-  { label: '💬 WhatsApp Support', query: 'WhatsApp Helpline par support chahiye' },
-  { label: '📈 Mandi Rates', query: 'Aaj ke taza mandi rates kya hain?' },
-  { label: '🌾 Fasal Salah', query: 'Gehu aur dhaan me khad ki sahi matra kitni honi chahiye?' },
-  { label: '🚜 Machinery', query: 'Tractor aur rotavator kiraye par kaise lein?' },
-];
+const QUICK_ACTIONS: Record<Language, Array<{ label: string; query: string }>> = {
+  'en': [
+    { label: '📞 Kisan Helpline', query: 'Kisan Helpline number and contact details' },
+    { label: '💬 WhatsApp Support', query: 'Connect with WhatsApp agricultural desk' },
+    { label: '📈 Mandi Rates', query: 'What are today live APMC mandi rates?' },
+    { label: '🌾 Crop Advisory', query: 'What is the recommended fertilizer dose for wheat and paddy?' },
+    { label: '🚜 Machinery', query: 'How can I rent a tractor and rotavator near me?' },
+  ],
+  'hi': [
+    { label: '📞 किसान हेल्पलाइन', query: 'किसान हेल्पलाइन नंबर और संपर्क विवरण चाहिए' },
+    { label: '💬 व्हाट्सएप सहायता', query: 'व्हाट्सएप कृषि डेस्क से संपर्क करें' },
+    { label: '📈 आज के मंडी भाव', query: 'आज के ताज़ा APMC मंडी भाव क्या हैं?' },
+    { label: '🌾 फसल व खाद सलाह', query: 'गेहूँ और धान में यूरिया और डीएपी की सही मात्रा कितनी होनी चाहिए?' },
+    { label: '🚜 ट्रैक्टर किराया', query: 'ट्रैक्टर और रोटावेटर किराए पर कैसे बुक करें?' },
+  ],
+  'hi-en': [
+    { label: '📞 Kisan Helpline', query: 'Kisan Helpline number aur contact details' },
+    { label: '💬 WhatsApp Support', query: 'WhatsApp Helpline par support chahiye' },
+    { label: '📈 Mandi Rates', query: 'Aaj ke taza mandi rates kya hain?' },
+    { label: '🌾 Fasal Salah', query: 'Gehu aur dhaan me khad ki sahi matra kitni honi chahiye?' },
+    { label: '🚜 Machinery', query: 'Tractor aur rotavator kiraye par kaise lein?' },
+  ],
+};
 
 export interface ChatMessage {
   role: 'user' | 'agent';
@@ -54,8 +58,8 @@ export interface ChatMessage {
 export default function Chatbot() {
   const router = useRouter();
   const pathname = usePathname();
+  const { lang, setLang, t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
-  const [language, setLanguage] = useState('hi-en');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,7 +75,11 @@ export default function Chatbot() {
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert('Voice Recognition is supported on Chrome, Edge & Android browsers. Please use a supported browser.');
+      alert(
+        lang === 'hi'
+          ? 'आपके ब्राउज़र में वॉयस रिकॉग्निशन उपलब्ध नहीं है। कृपया Chrome या Edge का उपयोग करें।'
+          : 'Voice recognition is supported on Chrome, Edge & Android browsers. Please use a supported browser.'
+      );
       return;
     }
 
@@ -87,20 +95,7 @@ export default function Chatbot() {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
-
-      const langMap: Record<string, string> = {
-        'hi': 'hi-IN',
-        'hi-en': 'hi-IN',
-        'pa': 'pa-Guru-IN',
-        'te': 'te-IN',
-        'ta': 'ta-IN',
-        'mr': 'mr-IN',
-        'gu': 'gu-IN',
-        'bn': 'bn-IN',
-        'kn': 'kn-IN',
-        'en': 'en-IN',
-      };
-      recognition.lang = langMap[language] || 'hi-IN';
+      recognition.lang = lang === 'hi' ? 'hi-IN' : lang === 'en' ? 'en-IN' : 'hi-IN';
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -131,12 +126,9 @@ export default function Chatbot() {
     }
   };
 
-  // Load chat history and language preference from localStorage on mount
+  // Load chat history from localStorage on mount
   useEffect(() => {
     try {
-      const savedLang = localStorage.getItem('agrishield_language') || localStorage.getItem('aegroshield_lang') || 'hi-en';
-      setLanguage(savedLang);
-
       const savedHistory =
         localStorage.getItem('aegroshield_chat_history_v2') ||
         localStorage.getItem('agrishield_chat_history');
@@ -162,9 +154,8 @@ export default function Chatbot() {
   }, [messages, isLoading, isOpen]);
 
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newLang = e.target.value;
-    setLanguage(newLang);
-    localStorage.setItem('agrishield_language', newLang);
+    const newLang = e.target.value as Language;
+    setLang(newLang);
   };
 
   const formatTime = () => {
@@ -184,7 +175,14 @@ export default function Chatbot() {
 
   const handleClearHistory = () => {
     if (messages.length === 0) return;
-    const confirmClear = window.confirm('Kya aap chat history saaf karna chahte hain? (Clear conversation history?)');
+    const confirmMsg =
+      lang === 'hi'
+        ? 'क्या आप चैट इतिहास साफ करना चाहते हैं?'
+        : lang === 'en'
+        ? 'Do you want to clear the conversation history?'
+        : 'Kya aap conversation history saaf karna chahte hain?';
+
+    const confirmClear = window.confirm(confirmMsg);
     if (!confirmClear) return;
     setMessages([]);
     try {
@@ -213,13 +211,22 @@ export default function Chatbot() {
       qLower.includes('kisan helpline') ||
       qLower.includes('call') ||
       qLower.includes('contact') ||
-      qLower.includes('whatsapp')
+      qLower.includes('whatsapp') ||
+      qLower.includes('हेल्पलाइन') ||
+      qLower.includes('कॉल')
     ) {
       setTimeout(() => {
         setIsLoading(false);
+        const helplineCardText =
+          lang === 'hi'
+            ? `📞 **24/7 किसान सहायता हेल्पलाइन व व्हाट्सएप सेवा**\n\n• **टोल-फ्री किसान कॉल सेंटर**: 1800-180-1551\n• **आधिकारिक व्हाट्सएप डेस्क**: +91 98765 43210\n• **कार्य समय**: सुबह 8:00 से रात 8:00 (सभी 7 दिन)\n\nआप ऊपर दिए गए बटन से सीधे कॉल या व्हाट्सएप कर सकते हैं।`
+            : lang === 'en'
+            ? `📞 **24/7 Kisan Support Helpline & WhatsApp Desk**\n\n• **Toll-Free Helpline**: 1800-180-1551 (Kisan Call Centre)\n• **Official WhatsApp Helpdesk**: +91 98765 43210\n• **Operating Hours**: 8:00 AM – 8:00 PM (Monday to Sunday)\n\nYou can call or WhatsApp our official support desk directly using the buttons above.`
+            : `📞 **24/7 Kisan Sahayata Helpline & WhatsApp Desk**\n\n• **Toll-Free Helpline**: 1800-180-1551 (Kisan Call Centre)\n• **Official WhatsApp Helpdesk**: +91 98765 43210\n• **Operating Hours**: 8:00 AM – 8:00 PM (Somvaar se Ravivaar)\n\nAap upar diye gaye buttons se seedhe Call ya WhatsApp kar sakte hain.`;
+
         const helplineCard: ChatMessage = {
           role: 'agent',
-          text: `📞 **24/7 Kisan Sahayata Helpline & WhatsApp Desk**\n\n• **Toll-Free Helpline**: 1800-180-1551 (Kisan Call Centre)\n• **Official WhatsApp**: +91 98765 43210\n• **Direct Phone**: +91 99999 99999\n• **Operating Hours**: 8:00 AM – 8:00 PM (All 7 Days)\n\nAap niche diye gaye button se seedhe Call ya WhatsApp kar sakte hain.`,
+          text: helplineCardText,
           isHelpline: true,
           time: formatTime(),
         };
@@ -256,7 +263,7 @@ export default function Chatbot() {
         body: JSON.stringify({
           messages: historyPayload,
           context: {
-            language: language,
+            language: lang,
             crop: 'All Crops',
             district: 'Local District',
             currentPage: pathname,
@@ -268,15 +275,26 @@ export default function Chatbot() {
       setIsLoading(false);
 
       if (data?.success && data.message) {
-        if (data.action?.type === 'navigate') {
+        const agentMsg: ChatMessage = {
+          role: 'agent',
+          text: data.message,
+          time: formatTime(),
+        };
+
+        if (data.action?.type === 'navigate' && data.action.target) {
           router.push(data.action.target);
         }
-        const agentMsg: ChatMessage = { role: 'agent', text: data.message, time: formatTime() };
+
         saveMessages([...updatedMessages, agentMsg]);
       } else {
         const fallbackText =
           data?.error ||
-          'Kisan Sahayak filhal offline hai. Kisi bhi fasal ya mandi jankari ke liye kripya Kisan Helpline: 1800-180-1551 par sampark karein.';
+          (lang === 'hi'
+            ? 'किसान सहायक फिलहाल ऑफलाइन है। किसी भी फसल या मंडी जानकारी हेतु टोल-फ्री किसान हेल्पलाइन 1800-180-1551 पर संपर्क करें।'
+            : lang === 'en'
+            ? 'Kisan Assistant is currently offline. For immediate farming or mandi guidance, please call Toll-Free Helpline: 1800-180-1551.'
+            : 'Kisan Sahayak filhal offline hai. Kisi bhi fasal ya mandi jankari ke liye kripya Kisan Helpline: 1800-180-1551 par sampark karein.');
+
         saveMessages([
           ...updatedMessages,
           {
@@ -288,19 +306,30 @@ export default function Chatbot() {
       }
     } catch (e) {
       setIsLoading(false);
+      const netErrorText =
+        lang === 'hi'
+          ? 'नेटवर्क संपर्क में समस्या आई। कृपया अपना इंटरनेट कनेक्शन जांचें या किसान हेल्पलाइन 1800-180-1551 पर कॉल करें।'
+          : lang === 'en'
+          ? 'Network connection issue. Please check your internet connection or call Toll-Free Helpline: 1800-180-1551.'
+          : 'Network sambandh me samasya aayi. Kripya internet connection check karein ya Helpline: 1800-180-1551 par call karein.';
+
       saveMessages([
         ...updatedMessages,
         {
           role: 'agent',
-          text: 'Network sambandh me samasya aayi. Kripya apna internet connection check karein ya Toll-Free Helpline: 1800-180-1551 par call karein.',
+          text: netErrorText,
           time: formatTime(),
         },
       ]);
     }
   };
 
-  const WHATSAPP_URL = `https://wa.me/919999999999?text=${encodeURIComponent(
-    'Namaste AegroShield Team! Mujhe fasal advisory, mandi rate ya order ke baare me jankari chahiye.'
+  const WHATSAPP_URL = `https://wa.me/919876543210?text=${encodeURIComponent(
+    lang === 'hi'
+      ? 'नमस्ते AegroShield टीम! मुझे फसल परामर्श, खाद-बीज या मंडी भाव के बारे में सहायता चाहिए।'
+      : lang === 'en'
+      ? 'Hello AegroShield Team! I need assistance regarding crop advisory, farm inputs, or mandi rates.'
+      : 'Namaste AegroShield Team! Mujhe fasal advisory, mandi rate ya order ke baare me jankari chahiye.'
   )}`;
 
   return (
@@ -326,11 +355,11 @@ export default function Chatbot() {
             fontSize: '0.9rem',
             transition: 'all 0.2s ease',
           }}
-          title="AegroShield AI & Kisan Helpline"
-          aria-label="Open AI Chat & Kisan Helpline"
+          title={t('chat.launcher')}
+          aria-label={t('chat.launcher')}
         >
           <span style={{ fontSize: '1.2rem' }}>🌱</span>
-          <span>AI Sahayak &amp; Helpline</span>
+          <span>{t('chat.launcher')}</span>
           <span
             style={{
               width: '8px',
@@ -344,7 +373,7 @@ export default function Chatbot() {
         </button>
       )}
 
-      {/* ── Expanded Chat Window ── */}
+      {/* ── Chat Window ── */}
       {isOpen && (
         <div
           id="chatWindow"
@@ -380,21 +409,23 @@ export default function Chatbot() {
               <span style={{ fontSize: '1.25rem' }}>🌱</span>
               <div>
                 <strong style={{ fontSize: '0.92rem', display: 'block', lineHeight: 1.2 }}>
-                  AegroShield Assistant
+                  {t('chat.title')}
                 </strong>
                 <span style={{ fontSize: '0.72rem', color: '#bbf7d0' }}>
-                  AI Sahayak • Online
+                  {t('chat.status')}
                 </span>
               </div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {/* Synchronized Platform Language Selector */}
               <select
                 id="languageSelector"
                 className="language-selector"
-                value={language}
+                value={lang}
                 onChange={handleLanguageChange}
-                aria-label="Select language"
+                aria-label="Select platform language"
+                title="Change Platform Language"
                 style={{
                   backgroundColor: '#166534',
                   color: '#ffffff',
@@ -403,11 +434,13 @@ export default function Chatbot() {
                   fontSize: '0.76rem',
                   padding: '3px 6px',
                   cursor: 'pointer',
+                  outline: 'none',
+                  fontWeight: 600,
                 }}
               >
-                {Object.entries(LANGUAGE_NAMES).map(([code, name]) => (
-                  <option key={code} value={code} style={{ background: '#166534', color: '#fff' }}>
-                    {name}
+                {LANGUAGE_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value} style={{ background: '#166534', color: '#fff' }}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
@@ -416,7 +449,7 @@ export default function Chatbot() {
                 <button
                   type="button"
                   onClick={handleClearHistory}
-                  title="Clear conversation history (चैट साफ़ करें)"
+                  title={t('chat.clear')}
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -434,8 +467,8 @@ export default function Chatbot() {
               <button
                 id="closeChat"
                 className="close-btn"
-                aria-label="Close chat"
                 onClick={() => setIsOpen(false)}
+                title="Close chat"
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -446,7 +479,7 @@ export default function Chatbot() {
                   alignItems: 'center',
                 }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
           </div>
@@ -466,7 +499,7 @@ export default function Chatbot() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#065f46', fontWeight: 600 }}>
               <Phone size={14} color="#059669" />
-              <span>Helpline: <strong>1800-180-1551</strong></span>
+              <span>{t('chat.helpline')}</span>
             </div>
 
             <div style={{ display: 'flex', gap: '6px' }}>
@@ -483,7 +516,7 @@ export default function Chatbot() {
                   fontSize: '0.74rem',
                 }}
               >
-                📞 Call
+                {t('chat.call')}
               </a>
               <a
                 href={WHATSAPP_URL}
@@ -500,7 +533,7 @@ export default function Chatbot() {
                   fontSize: '0.74rem',
                 }}
               >
-                💬 WhatsApp
+                {t('chat.wa')}
               </a>
             </div>
           </div>
@@ -519,114 +552,96 @@ export default function Chatbot() {
               backgroundColor: '#f8fafc',
             }}
           >
-            {/* Show Welcome Message ONLY when no history exists */}
+            {/* Contextual Welcome Message when history is empty */}
             {messages.length === 0 && (
               <div
-                className="welcome-message"
                 style={{
-                  backgroundColor: '#ffffff',
+                  alignSelf: 'flex-start',
+                  maxWidth: '90%',
+                  padding: '12px 14px',
                   borderRadius: '12px',
-                  padding: '14px',
+                  backgroundColor: '#ffffff',
                   border: '1px solid #e2e8f0',
-                  fontSize: '0.86rem',
-                  lineHeight: 1.5,
                   color: '#1e293b',
-                  whiteSpace: 'pre-wrap',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                  fontSize: '0.86rem',
+                  lineHeight: '1.5',
+                  whiteSpace: 'pre-line',
                 }}
               >
-                {WELCOME_MESSAGES[language] || WELCOME_MESSAGES['hi-en']}
+                {WELCOME_MESSAGES[lang] || WELCOME_MESSAGES['hi-en']}
               </div>
             )}
 
-            {/* Persistent Conversation History */}
-            {messages.map((msg, idx) => {
+            {messages.map((msg, index) => {
               const isUser = msg.role === 'user';
               return (
                 <div
-                  key={idx}
+                  key={index}
                   style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: isUser ? 'flex-end' : 'flex-start',
-                    maxWidth: '100%',
+                    alignSelf: isUser ? 'flex-end' : 'flex-start',
+                    maxWidth: '85%',
+                    padding: '10px 14px',
+                    borderRadius: isUser ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
+                    backgroundColor: isUser ? '#15803d' : '#ffffff',
+                    color: isUser ? '#ffffff' : '#1e293b',
+                    fontSize: '0.86rem',
+                    lineHeight: '1.45',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                    border: isUser ? 'none' : '1px solid #e2e8f0',
+                    wordBreak: 'break-word',
                   }}
                 >
-                  <div
-                    style={{
-                      maxWidth: '85%',
-                      padding: '10px 14px',
-                      borderRadius: isUser ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
-                      backgroundColor: isUser ? '#15803d' : '#ffffff',
-                      color: isUser ? '#ffffff' : '#0f172a',
-                      fontSize: '0.86rem',
-                      lineHeight: 1.5,
-                      border: isUser ? 'none' : '1px solid #e2e8f0',
-                      boxShadow: '0 2px 5px rgba(0,0,0,0.04)',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                    }}
-                  >
-                    {msg.text}
+                  <div style={{ whiteSpace: 'pre-line' }}>{msg.text}</div>
 
-                    {/* Rich Interactive Card if Helpline query */}
-                    {msg.isHelpline && (
-                      <div
+                  {/* If message is a dedicated helpline response, show quick trigger buttons */}
+                  {msg.isHelpline && (
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                      <a
+                        href="tel:18001801551"
                         style={{
-                          marginTop: '10px',
-                          paddingTop: '10px',
-                          borderTop: '1px solid #cbd5e1',
-                          display: 'flex',
-                          gap: '8px',
-                          flexWrap: 'wrap',
+                          backgroundColor: '#15803d',
+                          color: '#ffffff',
+                          padding: '5px 12px',
+                          borderRadius: '6px',
+                          fontWeight: 700,
+                          fontSize: '0.78rem',
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
                         }}
                       >
-                        <a
-                          href="tel:18001801551"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            backgroundColor: '#15803d',
-                            color: '#ffffff',
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            fontSize: '0.78rem',
-                            fontWeight: 700,
-                            textDecoration: 'none',
-                          }}
-                        >
-                          <Phone size={12} /> Call 1800-180-1551
-                        </a>
-                        <a
-                          href={WHATSAPP_URL}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            backgroundColor: '#25D366',
-                            color: '#ffffff',
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            fontSize: '0.78rem',
-                            fontWeight: 700,
-                            textDecoration: 'none',
-                          }}
-                        >
-                          💬 Open WhatsApp
-                        </a>
-                      </div>
-                    )}
-                  </div>
+                        <Phone size={12} /> {t('chat.call')} 1800-180-1551
+                      </a>
+                      <a
+                        href={WHATSAPP_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          backgroundColor: '#25D366',
+                          color: '#ffffff',
+                          padding: '5px 12px',
+                          borderRadius: '6px',
+                          fontWeight: 700,
+                          fontSize: '0.78rem',
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        {t('chat.wa')}
+                      </a>
+                    </div>
+                  )}
 
                   <span
                     style={{
+                      display: 'block',
                       fontSize: '0.68rem',
-                      color: '#94a3b8',
-                      marginTop: '3px',
-                      padding: '0 4px',
+                      color: isUser ? 'rgba(255,255,255,0.7)' : '#94a3b8',
+                      marginTop: '4px',
+                      textAlign: isUser ? 'right' : 'left',
                     }}
                   >
                     {msg.time}
@@ -651,7 +666,7 @@ export default function Chatbot() {
                 }}
               >
                 <Sparkles size={14} className="spin" />
-                <span>AI soch raha hai...</span>
+                <span>{t('chat.thinking')}</span>
               </div>
             )}
 
@@ -670,7 +685,7 @@ export default function Chatbot() {
               whiteSpace: 'nowrap',
             }}
           >
-            {QUICK_ACTIONS.map(action => (
+            {(QUICK_ACTIONS[lang] || QUICK_ACTIONS['hi-en']).map(action => (
               <button
                 key={action.label}
                 type="button"
@@ -718,7 +733,7 @@ export default function Chatbot() {
                     animation: 'pulse 1s infinite',
                   }}
                 />
-                <span>🎙️ बोलिए... हम सुन रहे हैं (Listening... speak clearly)</span>
+                <span>{t('chat.listening')}</span>
               </div>
               <button
                 type="button"
@@ -732,7 +747,7 @@ export default function Chatbot() {
                   fontSize: '0.75rem',
                 }}
               >
-                Stop ✕
+                {t('chat.stop')}
               </button>
             </div>
           )}
@@ -755,8 +770,8 @@ export default function Chatbot() {
               className="user-input"
               placeholder={
                 isListening
-                  ? 'Listening to your voice...'
-                  : INPUT_PLACEHOLDERS[language] || INPUT_PLACEHOLDERS['hi-en']
+                  ? t('chat.listening')
+                  : INPUT_PLACEHOLDERS[lang] || INPUT_PLACEHOLDERS['hi-en']
               }
               value={input}
               maxLength={1000}
@@ -777,7 +792,7 @@ export default function Chatbot() {
             <button
               type="button"
               onClick={toggleVoiceInput}
-              title={isListening ? 'Stop recording' : 'बोलकर पूछें (Voice input)'}
+              title={isListening ? t('chat.stop') : t('chat.voice_tip')}
               style={{
                 width: '38px',
                 height: '38px',

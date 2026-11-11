@@ -7,8 +7,10 @@ import { useAuth } from '@/context/AuthContext';
 import { auth, signInWithGoogle } from '@/lib/firebase';
 import { Store, ShoppingBag, Search, Plus, Check, Lock, Loader2, RefreshCw, MapPin, X } from 'lucide-react';
 import { getAllIndianStates, getDistrictsForState } from '@/lib/india-locations';
+import { useLanguage } from '@/lib/language-context';
 
 export default function StoreCatalogPage() {
+  const { lang, t } = useLanguage();
   const { addToCart, cartCount, openCart } = useCart();
   const { user, loading: authLoading } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
@@ -116,13 +118,13 @@ export default function StoreCatalogPage() {
                 style={{ background: 'rgba(255,255,255,0.18)', color: '#fff', fontWeight: 600, padding: '10px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 title="Refresh product catalog"
               >
-                <RefreshCw size={15} className={loading ? "spin" : ""} /> Refresh
+                <RefreshCw size={15} className={loading ? "spin" : ""} /> {lang === 'hi' ? 'ताज़ा करें' : 'Refresh'}
               </button>
               <Link href="/seller/dashboard" className="btn" style={{ background: '#fff', color: '#15803d', fontWeight: 600, padding: '10px 18px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
-                <Plus size={16} /> Seller Dashboard
+                <Plus size={16} /> {lang === 'hi' ? 'विक्रेता पोर्टल' : 'Seller Dashboard'}
               </Link>
               <button onClick={openCart} className="btn" style={{ background: '#f59e0b', color: '#fff', fontWeight: 600, padding: '10px 18px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <ShoppingBag size={16} /> Cart ({cartCount})
+                <ShoppingBag size={16} /> {t('nav.cart')} ({cartCount})
               </button>
             </div>
           </div>
@@ -451,10 +453,12 @@ export default function StoreCatalogPage() {
                           >
                             {isAdded ? (
                               <>
-                                <Check size={16} /> Added
+                                <Check size={16} /> {lang === 'hi' ? 'जोड़ दिया गया' : 'Added'}
                               </>
+                            ) : !inStock ? (
+                              lang === 'hi' ? 'स्टॉक समाप्त' : 'Out of Stock'
                             ) : (
-                              'Add to Cart'
+                              lang === 'hi' ? 'कार्ट में जोड़ें' : lang === 'hi-en' ? 'Cart me Jodein' : 'Add to Cart'
                             )}
                           </button>
                         </div>

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/cart-context';
+import { useLanguage } from '@/lib/language-context';
 import {
   ShoppingBag,
   X,
@@ -17,6 +18,7 @@ import {
 
 export default function CartDrawer() {
   const router = useRouter();
+  const { lang, t } = useLanguage();
   const {
     cart,
     cartCount,
@@ -130,10 +132,10 @@ export default function CartDrawer() {
             </div>
             <div>
               <h2 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#111827', margin: 0 }}>
-                Shopping Cart
+                {lang === 'hi' ? 'शॉपिंग कार्ट' : lang === 'hi-en' ? 'Shopping Cart' : 'Shopping Cart'}
               </h2>
               <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>
-                {cartCount} {cartCount === 1 ? 'item' : 'items'} selected
+                {cartCount} {lang === 'hi' ? 'वस्तुएं चुनी गईं' : lang === 'hi-en' ? 'items selected' : cartCount === 1 ? 'item selected' : 'items selected'}
               </span>
             </div>
           </div>
@@ -234,10 +236,14 @@ export default function CartDrawer() {
                 <ShoppingBag size={32} />
               </div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#1e293b', marginBottom: '6px' }}>
-                Your cart is empty
+                {lang === 'hi' ? 'आपकी कार्ट खाली है' : lang === 'hi-en' ? 'Aapka Cart Khali Hai' : 'Your cart is empty'}
               </h3>
               <p style={{ fontSize: '0.85rem', color: '#64748b', maxWidth: '260px', marginBottom: '20px' }}>
-                Explore quality seeds, fertilizers, and equipment from verified local sellers.
+                {lang === 'hi'
+                  ? 'स्थानीय प्रमाणित विक्रेताओं से बीज, खाद और कीटनाशक देखें।'
+                  : lang === 'hi-en'
+                  ? 'Local verified sellers se certified beej, khad aur dawai explore karein.'
+                  : 'Explore quality seeds, fertilizers, and equipment from verified local sellers.'}
               </p>
               <button
                 onClick={() => {
@@ -253,7 +259,7 @@ export default function CartDrawer() {
                   cursor: 'pointer',
                 }}
               >
-                Browse Marketplace →
+                {lang === 'hi' ? '🛒 खाद-बीज स्टोर देखें →' : lang === 'hi-en' ? '🛒 Store Dekhein →' : 'Browse Marketplace →'}
               </button>
             </div>
           ) : (
@@ -418,14 +424,14 @@ export default function CartDrawer() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#475569' }}>
-              <span>Items Subtotal:</span>
+              <span>{lang === 'hi' ? 'सामान का मूल्य:' : lang === 'hi-en' ? 'Items Subtotal:' : 'Items Subtotal:'}</span>
               <strong style={{ color: '#1e293b' }}>₹{cartTotal.toLocaleString()}</strong>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', color: '#475569' }}>
-              <span>Delivery Fee:</span>
+              <span>{lang === 'hi' ? 'डिलीवरी शुल्क:' : lang === 'hi-en' ? 'Delivery Fee:' : 'Delivery Fee:'}</span>
               {deliveryFee === 0 ? (
-                <span style={{ color: '#16a34a', fontWeight: '700' }}>FREE</span>
+                <span style={{ color: '#16a34a', fontWeight: '700' }}>{lang === 'hi' ? 'निःशुल्क (FREE)' : 'FREE'}</span>
               ) : (
                 <span style={{ color: '#1e293b', fontWeight: '600' }}>₹{deliveryFee}</span>
               )}
@@ -449,7 +455,7 @@ export default function CartDrawer() {
                 color: '#111827',
               }}
             >
-              <span>Total Payable:</span>
+              <span>{lang === 'hi' ? 'कुल देय राशि:' : lang === 'hi-en' ? 'Total Payable:' : 'Total Payable:'}</span>
               <span style={{ color: '#2D5F3F', fontSize: '1.25rem' }}>
                 ₹{grandTotal.toLocaleString()}
               </span>
@@ -476,7 +482,7 @@ export default function CartDrawer() {
                   transition: 'background 0.2s',
                 }}
               >
-                Proceed to Checkout <ArrowRight size={17} />
+                {lang === 'hi' ? 'ऑर्डर पूरा करें (चेकआउट)' : lang === 'hi-en' ? 'Checkout Karein' : 'Proceed to Checkout'} <ArrowRight size={17} />
               </button>
             </div>
 

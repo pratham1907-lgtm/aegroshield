@@ -7,8 +7,10 @@ import { db, auth, signInWithGoogle } from "@/lib/firebase";
 import { collection, getDocs, query, where, addDoc } from "firebase/firestore";
 import { Lock, Loader2, MapPin, X, RotateCcw } from "lucide-react";
 import { getAllIndianStates, getDistrictsForState } from "@/lib/india-locations";
+import { useLanguage } from "@/lib/language-context";
 
 export default function Page() {
+  const { lang, t } = useLanguage();
   const { user, userData, loading: authLoading } = useAuth();
   const [liveLabour, setLiveLabour] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -354,9 +356,9 @@ export default function Page() {
 {/*  ── Page Hero ─────────────────────────────────────────────  */}
 <div className="page-hero">
   <div className="container">
-    <div className="page-hero-badge">👥 Farm Labour Board</div>
-    <h1>Farm Labour Board</h1>
-    <p>Find workers for your field or post your availability</p>
+    <div className="page-hero-badge">👥 {t('nav.labour')}</div>
+    <h1>{t('labour.title')}</h1>
+    <p>{t('labour.sub')}</p>
   </div>
 
   <div className="hero-wave">

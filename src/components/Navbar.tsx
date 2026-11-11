@@ -55,8 +55,8 @@ export default function Navbar() {
     { href: '/market', label: t('nav.mandi') || 'Mandi Rates', isActive: pathname.startsWith('/market') || pathname.startsWith('/mandi') },
     { href: '/calculator', label: t('nav.calculator'), isActive: pathname.startsWith('/calculator') },
     ...(isLoggedIn ? [
-      { href: '/orders', label: '📦 Orders', isActive: pathname.startsWith('/orders') },
-      { href: '/bookings', label: '🚜 Bookings', isActive: pathname.startsWith('/bookings') },
+      { href: '/orders', label: `📦 ${t('nav.orders')}`, isActive: pathname.startsWith('/orders') },
+      { href: '/bookings', label: `🚜 ${t('nav.bookings')}`, isActive: pathname.startsWith('/bookings') },
     ] : []),
   ];
 
@@ -94,7 +94,7 @@ export default function Navbar() {
           title="Open Cart Drawer"
         >
           <ShoppingBag size={18} />
-          <span>Cart</span>
+          <span>{t('nav.cart')}</span>
           {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
         </button>
 
@@ -141,7 +141,7 @@ export default function Navbar() {
               className="nav-logout-btn cursor-pointer"
               title="Sign Out"
             >
-              <LogOut size={15} color="currentColor" /> Logout
+              <LogOut size={15} color="currentColor" /> {t('nav.logout')}
             </button>
           </div>
         ) : (

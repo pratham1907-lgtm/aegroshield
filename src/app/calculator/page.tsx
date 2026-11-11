@@ -1,6 +1,10 @@
 "use client";
 import Link from "next/link";
+import { useLanguage } from "@/lib/language-context";
+
 export default function Page() {
+  const { lang, t } = useLanguage();
+
   return (
     <main>
 {/*  ── Navbar ────────────────────────────────────────────────  */}
@@ -10,9 +14,9 @@ export default function Page() {
 {/*  ── Page Hero ─────────────────────────────────────────────  */}
 <div className="page-hero">
   <div className="container">
-    <div className="page-hero-badge">🧮 Smart Calculator</div>
-    <h1>Smart Input Calculator</h1>
-    <p>Calculate exact pesticide and fertilizer doses for your field — no waste, no under-dosing</p>
+    <div className="page-hero-badge">🧮 {t('nav.calculator')}</div>
+    <h1>{t('calc.title')}</h1>
+    <p>{t('calc.sub')}</p>
   </div>
 
   <div className="hero-wave">
