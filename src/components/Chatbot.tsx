@@ -126,30 +126,46 @@ export default function Chatbot() {
     }
   };
 
-  // Load chat history from localStorage on mount
+  // On mount: purge any old/legacy error history from localStorage so chat starts fresh
   useEffect(() => {
     try {
-      const savedHistory =
-        localStorage.getItem('aegroshield_chat_history_v2') ||
-        localStorage.getItem('agrishield_chat_history');
-
-      if (savedHistory) {
-        const parsed = JSON.parse(savedHistory);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
-        }
-      }
-    } catch (e) {
-      console.warn('[Chatbot] Error reading history from localStorage:', e);
-    }
+      localStorage.removeItem('aegroshield_chat_history_v2');
+      localStorage.removeItem('agrishield_chat_history');
+    } catch (e) {}
   }, []);
 
-  // Auto-scroll to latest message on update or open
+  // Automatic cleanup whenever chat window is closed
+  const handleCloseChat = () => {
+    setIsOpen(false);
+    // Delete conversation history automatically upon closing the chat
+    setMessages([]);
+    setInput('');
+    setIsListening(false);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+    }
+    try {
+      localStorage.removeItem('aegroshield_chat_history_v2');
+      localStorage.removeItem('agrishield_chat_history');
+    } catch (e) {}
+  };
+
+  // Auto-scroll to latest message on update or open, and handle Escape key to close
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          handleCloseChat();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
     }
   }, [messages, isLoading, isOpen]);
 
@@ -163,28 +179,14 @@ export default function Chatbot() {
     return now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
   };
 
+  // Keep messages in state during the active chat session (cleared upon close)
   const saveMessages = (newMessages: ChatMessage[]) => {
     setMessages(newMessages);
-    try {
-      localStorage.setItem('aegroshield_chat_history_v2', JSON.stringify(newMessages));
-      localStorage.setItem('agrishield_chat_history', JSON.stringify(newMessages));
-    } catch (e) {
-      console.warn('[Chatbot] Failed to save history:', e);
-    }
   };
 
   const handleClearHistory = () => {
-    if (messages.length === 0) return;
-    const confirmMsg =
-      lang === 'hi'
-        ? 'क्या आप चैट इतिहास साफ करना चाहते हैं?'
-        : lang === 'en'
-        ? 'Do you want to clear the conversation history?'
-        : 'Kya aap conversation history saaf karna chahte hain?';
-
-    const confirmClear = window.confirm(confirmMsg);
-    if (!confirmClear) return;
     setMessages([]);
+    setInput('');
     try {
       localStorage.removeItem('aegroshield_chat_history_v2');
       localStorage.removeItem('agrishield_chat_history');
@@ -467,7 +469,7 @@ export default function Chatbot() {
               <button
                 id="closeChat"
                 className="close-btn"
-                onClick={() => setIsOpen(false)}
+                onClick={handleCloseChat}
                 title="Close chat"
                 style={{
                   background: 'transparent',
