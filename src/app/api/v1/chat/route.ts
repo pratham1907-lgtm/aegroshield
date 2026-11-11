@@ -12,16 +12,32 @@ function getGeminiClient() {
 
 export async function POST(req: Request) {
   try {
-    // 1. Mandatory User Authentication
-    const user = await requireUser(req);
+    // 1. User Authentication (Optional for public farming advisory, with strict IP fallback)
+    let userId = 'guest';
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const user = await requireUser(req);
+        if (user?.id) userId = user.id;
+      } catch (authErr) {
+        // If expired or invalid token, fall back to guest IP rate limit
+      }
+    }
 
-    // 2. Sliding Window Rate Limiting (20 requests / minute / user)
-    const rateLimit = checkRateLimit(`chat_${user.id}`, 20, 60 * 1000);
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+                     req.headers.get('x-real-ip') ||
+                     'guest_client';
+
+    const rateKey = userId !== 'guest' ? `chat_user_${userId}` : `chat_ip_${clientIp}`;
+    const maxReqs = userId !== 'guest' ? 30 : 15;
+
+    // 2. Sliding Window Rate Limiting (Prevents quota abuse)
+    const rateLimit = checkRateLimit(rateKey, maxReqs, 60 * 1000);
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {
           success: false,
-          error: `Too many chat requests. Please wait ${rateLimit.resetInSec} seconds before sending another message.`,
+          error: `Bahut zyada requests. Kripya ${rateLimit.resetInSec} seconds intezaar karein. (Too many requests. Please wait ${rateLimit.resetInSec}s).`,
         },
         { status: 429 }
       );
@@ -49,16 +65,36 @@ export async function POST(req: Request) {
       throw new HttpError('Total conversation text exceeds maximum allowed limit of 8,000 characters', 400);
     }
 
+    const lastUserQuery = messages[messages.length - 1]?.parts?.[0]?.text || '';
+
+    // Smart Agricultural Fallback Advisor (Active if external AI service is offline or rate-capped)
+    const getFallbackAgriReply = (query: string) => {
+      const q = query.toLowerCase();
+      if (q.includes('mandi') || q.includes('bhav') || q.includes('rate') || q.includes('price')) {
+        return "🌾 Aaj ke taaza APMC Mandi rates dekhne ke liye aap hamare '📈 Mandi Rates' section par ja sakte hain jaha har ghante verify kiye gaye daam uplabdh hain.\n\nVishesh fasal ki jankari ke liye Kisan Helpline: 1800-180-1551 par call karein.";
+      }
+      if (q.includes('khad') || q.includes('fertilizer') || q.includes('urea') || q.includes('dap') || q.includes('dawa') || q.includes('pesticide')) {
+        return "🌱 Fasal ke anusaar santulit khad (Urea, DAP, MOP) dalein. Prati acre uchit matra ke liye hamara Smart Input Calculator use karein ya local store se certified batch mangwayein.\n\nWhatsApp Sahayata: +91 98765 43210 par message karein.";
+      }
+      if (q.includes('tractor') || q.includes('kiraya') || q.includes('machinery') || q.includes('harvester')) {
+        return "🚜 Tractor, Rotavator, Combine Harvester aur Sprayer kiraye par lene ke liye hamare '🚜 Machinery Rentals' portal par jayein jaha verified CHC centers se equipment book kiya ja sakta hai.";
+      }
+      if (q.includes('majdoor') || q.includes('labour') || q.includes('labor')) {
+        return "👥 Fasal katai, buwai ya spraying ke liye verified majdoor squad book karne ke liye '👥 Farm Labour' section dekhein.";
+      }
+      if (q.includes('help') || q.includes('helpline') || q.includes('call') || q.includes('phone') || q.includes('contact')) {
+        return "📞 Kisan Sahayata Helpline:\n• Toll-Free Helpline: 1800-180-1551 (Kisan Call Centre)\n• WhatsApp Helpdesk: +91 98765 43210\n• Timings: 8:00 AM – 8:00 PM (Somvaar se Ravivaar)";
+      }
+      return "Namaste! Main AegroShield AI Assistant hoon. Fasal bimari, khad ki matra, beej, tractor kiraya, majdoor aur mandi bhav ke baare me aap mujhse pooch sakte hain.\n\nKisan Helpline: 1800-180-1551 / WhatsApp: +91 98765 43210";
+    };
+
     // 5. Initialize AI Client
     const ai = getGeminiClient();
     if (!ai) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'AI advisory service is temporarily unavailable (Gemini API key is not configured).',
-        },
-        { status: 503 }
-      );
+      return NextResponse.json({
+        success: true,
+        message: getFallbackAgriReply(lastUserQuery),
+      });
     }
 
     const userLanguage = context?.language || 'en';
@@ -128,16 +164,25 @@ If you use a tool, you DO NOT need to output text, the system will handle the re
       parts: msg.parts.map(p => ({ text: p.text.trim() })),
     }));
 
-    const geminiRes = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
-      contents: formattedMessages,
-      config: {
-        systemInstruction: systemPrompt,
-        // @ts-ignore
-        tools: tools,
-        temperature: 0.2
-      }
-    });
+    let geminiRes;
+    try {
+      geminiRes = await ai.models.generateContent({
+        model: 'gemini-1.5-flash',
+        contents: formattedMessages,
+        config: {
+          systemInstruction: systemPrompt,
+          // @ts-ignore
+          tools: tools,
+          temperature: 0.2
+        }
+      });
+    } catch (modelErr: any) {
+      console.warn('[Chat] Gemini API error, falling back to local advisor:', modelErr?.message);
+      return NextResponse.json({
+        success: true,
+        message: getFallbackAgriReply(lastUserQuery),
+      });
+    }
 
     if (geminiRes.functionCalls && geminiRes.functionCalls.length > 0) {
       const call = geminiRes.functionCalls[0];

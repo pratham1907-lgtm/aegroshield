@@ -5,7 +5,6 @@ import NavbarClient from '@/components/Navbar';
 import CartDrawer from '@/components/cart/CartDrawer';
 import Footer from '@/components/Footer';
 import Chatbot from '@/components/Chatbot';
-import WhatsAppSupport from '@/components/WhatsAppSupport';
 import PwaRegister from '@/components/PwaRegister';
 import './globals.css';
 
@@ -45,7 +44,6 @@ export default function RootLayout({
               {children}
               <Footer />
               <Chatbot />
-              <WhatsAppSupport />
               <PwaRegister />
             </CartProvider>
           </LanguageProvider>
