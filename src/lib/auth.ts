@@ -12,6 +12,7 @@ export class HttpError extends Error {
     super(message);
     this.name = 'HttpError';
     this.status = status;
+    Object.setPrototypeOf(this, HttpError.prototype);
   }
 }
 
@@ -153,10 +154,14 @@ export async function requireAdmin(req: Request) {
  * Helper to catch and format HttpErrors into standard JSON responses.
  */
 export function handleAuthError(error: unknown) {
-  if (error instanceof HttpError) {
+  if (
+    error instanceof HttpError ||
+    (error && typeof error === 'object' && 'status' in error && typeof (error as any).status === 'number')
+  ) {
+    const status = (error as any).status || 400;
     return NextResponse.json(
-      { success: false, error: error.message },
-      { status: error.status }
+      { success: false, error: (error as any).message || 'Request failed' },
+      { status }
     );
   }
 
