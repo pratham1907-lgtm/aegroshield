@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { MessageCircle, X, Send, Phone, Trash2, ExternalLink, ShieldCheck, Sparkles, HelpCircle } from 'lucide-react';
+import { MessageCircle, X, Send, Phone, Trash2, ExternalLink, ShieldCheck, Sparkles, HelpCircle, Mic, MicOff } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -59,7 +59,77 @@ export default function Chatbot() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Toggle voice recognition (Web Speech API)
+  const toggleVoiceInput = () => {
+    if (typeof window === 'undefined') return;
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert('Voice Recognition is supported on Chrome, Edge & Android browsers. Please use a supported browser.');
+      return;
+    }
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      const langMap: Record<string, string> = {
+        'hi': 'hi-IN',
+        'hi-en': 'hi-IN',
+        'pa': 'pa-Guru-IN',
+        'te': 'te-IN',
+        'ta': 'ta-IN',
+        'mr': 'mr-IN',
+        'gu': 'gu-IN',
+        'bn': 'bn-IN',
+        'kn': 'kn-IN',
+        'en': 'en-IN',
+      };
+      recognition.lang = langMap[language] || 'hi-IN';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0]?.[0]?.transcript || '';
+        if (transcript) {
+          setInput(prev => (prev ? `${prev} ${transcript}` : transcript));
+        }
+        setIsListening(false);
+      };
+
+      recognition.onerror = (err: any) => {
+        console.warn('[Chatbot] Speech recognition error:', err);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (e) {
+      console.error('[Chatbot] Speech recognition initialization failed:', e);
+      setIsListening(false);
+    }
+  };
 
   // Load chat history and language preference from localStorage on mount
   useEffect(() => {
@@ -622,13 +692,58 @@ export default function Chatbot() {
             ))}
           </div>
 
+          {/* Listening Indicator Banner */}
+          {isListening && (
+            <div
+              style={{
+                backgroundColor: '#fee2e2',
+                borderTop: '1px solid #fca5a5',
+                padding: '6px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '0.78rem',
+                color: '#b91c1c',
+                fontWeight: 700,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: '#dc2626',
+                    display: 'inline-block',
+                    animation: 'pulse 1s infinite',
+                  }}
+                />
+                <span>🎙️ बोलिए... हम सुन रहे हैं (Listening... speak clearly)</span>
+              </div>
+              <button
+                type="button"
+                onClick={toggleVoiceInput}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#b91c1c',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                }}
+              >
+                Stop ✕
+              </button>
+            </div>
+          )}
+
           {/* User Input Bar */}
           <div
             className="input-area"
             style={{
               padding: '10px 12px',
               backgroundColor: '#ffffff',
-              borderTop: '1px solid #e2e8f0',
+              borderTop: isListening ? 'none' : '1px solid #e2e8f0',
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
@@ -638,7 +753,11 @@ export default function Chatbot() {
               type="text"
               id="userInput"
               className="user-input"
-              placeholder={INPUT_PLACEHOLDERS[language] || INPUT_PLACEHOLDERS['hi-en']}
+              placeholder={
+                isListening
+                  ? 'Listening to your voice...'
+                  : INPUT_PLACEHOLDERS[language] || INPUT_PLACEHOLDERS['hi-en']
+              }
               value={input}
               maxLength={1000}
               onChange={(e) => setInput(e.target.value)}
@@ -648,11 +767,35 @@ export default function Chatbot() {
                 flex: 1,
                 padding: '9px 12px',
                 borderRadius: '8px',
-                border: '1px solid #cbd5e1',
+                border: isListening ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
                 fontSize: '0.86rem',
                 outline: 'none',
               }}
             />
+
+            {/* Voice Input Button */}
+            <button
+              type="button"
+              onClick={toggleVoiceInput}
+              title={isListening ? 'Stop recording' : 'बोलकर पूछें (Voice input)'}
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '8px',
+                backgroundColor: isListening ? '#fee2e2' : '#f0fdf4',
+                border: isListening ? '1.5px solid #dc2626' : '1px solid #86efac',
+                color: isListening ? '#dc2626' : '#15803d',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {isListening ? <MicOff size={17} /> : <Mic size={17} />}
+            </button>
+
             <button
               id="sendButton"
               className="send-btn"
@@ -669,6 +812,7 @@ export default function Chatbot() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                flexShrink: 0,
                 transition: 'background-color 0.15s ease',
               }}
             >

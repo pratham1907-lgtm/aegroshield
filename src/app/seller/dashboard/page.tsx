@@ -24,6 +24,12 @@ import {
   Image as ImageIcon,
   Check,
   Building2,
+  Truck,
+  Phone,
+  ShoppingBag,
+  Clock,
+  MapPin,
+  MessageSquare,
 } from 'lucide-react';
 import FileUploader from '@/components/FileUploader';
 
@@ -115,6 +121,11 @@ export default function SellerDashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [stockFilter, setStockFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
+  const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
+  const [orders, setOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderFilter, setOrderFilter] = useState<'ALL' | 'PENDING' | 'CONFIRMED' | 'DISPATCHED' | 'DELIVERED'>('ALL');
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
   // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -185,9 +196,63 @@ export default function SellerDashboardPage() {
     }
   }, [user, sellerSession]);
 
+  // Fetch vendor-specific incoming customer orders from /api/orders?asSeller=true
+  const fetchSellerOrders = useCallback(async () => {
+    try {
+      setOrdersLoading(true);
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+      const token = await currentUser.getIdToken();
+      const res = await fetch('/api/orders?asSeller=true', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setOrders(data.data);
+      }
+    } catch (err) {
+      console.error('[SellerDashboard] Failed to fetch orders:', err);
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts]);
+    fetchSellerOrders();
+  }, [fetchProducts, fetchSellerOrders]);
+
+  const handleUpdateOrderStatus = async (orderId: string, nextStatus: string) => {
+    setUpdatingOrderId(orderId);
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) throw new Error('Authentication required');
+      const token = await currentUser.getIdToken();
+
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ orderId, status: nextStatus }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update order status');
+      }
+
+      showToast(`Order status updated to ${nextStatus}!`, 'success');
+      setOrders(prev =>
+        prev.map(o => (o.id === orderId ? { ...o, status: nextStatus } : o))
+      );
+    } catch (err: any) {
+      showToast(err.message || 'Error updating order', 'error');
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
 
   // Inventory Metrics
   const metrics = useMemo(() => {
@@ -223,6 +288,12 @@ export default function SellerDashboardPage() {
       return matchesSearch && matchesCategory && matchesStock;
     });
   }, [products, searchQuery, selectedCategory, stockFilter]);
+
+  // Filtered Orders
+  const filteredOrders = useMemo(() => {
+    if (orderFilter === 'ALL') return orders;
+    return orders.filter(o => o.status === orderFilter);
+  }, [orders, orderFilter]);
 
   // Handle Form Validation
   const validateForm = () => {
@@ -577,6 +648,71 @@ export default function SellerDashboardPage() {
       </header>
 
       <div className="container" style={{ paddingTop: '28px' }}>
+        {/* ── Dashboard Tab Selector ── */}
+        <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid #e2e8f0', marginBottom: '24px' }}>
+          <button
+            onClick={() => setActiveTab('products')}
+            style={{
+              padding: '12px 20px',
+              fontWeight: 700,
+              fontSize: '0.98rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'products' ? '3px solid #16a34a' : '3px solid transparent',
+              color: activeTab === 'products' ? '#16a34a' : '#64748b',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease',
+              marginBottom: '-2px',
+            }}
+          >
+            <Package size={18} />
+            <span>Product Inventory ({products.length})</span>
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('orders');
+              if (orders.length === 0) fetchSellerOrders();
+            }}
+            style={{
+              padding: '12px 20px',
+              fontWeight: 700,
+              fontSize: '0.98rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'orders' ? '3px solid #16a34a' : '3px solid transparent',
+              color: activeTab === 'orders' ? '#16a34a' : '#64748b',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease',
+              marginBottom: '-2px',
+            }}
+          >
+            <ShoppingBag size={18} />
+            <span>Customer Orders ({orders.length})</span>
+            {orders.filter(o => o.status === 'PENDING').length > 0 && (
+              <span
+                style={{
+                  background: '#ef4444',
+                  color: '#fff',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                }}
+              >
+                {orders.filter(o => o.status === 'PENDING').length} new
+              </span>
+            )}
+          </button>
+        </div>
+
+        {activeTab === 'products' && (
+          <>
         {/* ── Metric Summary Cards ── */}
         <div
           style={{
@@ -988,6 +1124,521 @@ export default function SellerDashboardPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+          </>
+        )}
+
+        {/* ── Tab 2: Orders Fulfillment ── */}
+        {activeTab === 'orders' && (
+          <div>
+            {/* Orders Metric Cards */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '16px',
+                marginBottom: '24px',
+              }}
+            >
+              <div className="metric-card">
+                <div className="metric-icon blue">
+                  <ShoppingBag size={22} />
+                </div>
+                <div>
+                  <div className="metric-val">{orders.length}</div>
+                  <div className="metric-lbl">Total Orders Received</div>
+                </div>
+              </div>
+
+              <div className="metric-card">
+                <div
+                  className="metric-icon"
+                  style={{
+                    background: orders.filter(o => o.status === 'PENDING').length > 0 ? '#fef3c7' : '#f1f5f9',
+                    color: '#d97706',
+                  }}
+                >
+                  <Clock size={22} />
+                </div>
+                <div>
+                  <div
+                    className="metric-val"
+                    style={{
+                      color: orders.filter(o => o.status === 'PENDING').length > 0 ? '#d97706' : undefined,
+                    }}
+                  >
+                    {orders.filter(o => o.status === 'PENDING').length}
+                  </div>
+                  <div className="metric-lbl">Action Required (Pending)</div>
+                </div>
+              </div>
+
+              <div className="metric-card">
+                <div className="metric-icon purple" style={{ background: '#f3e8ff', color: '#9333ea' }}>
+                  <Truck size={22} />
+                </div>
+                <div>
+                  <div className="metric-val">{orders.filter(o => o.status === 'DISPATCHED').length}</div>
+                  <div className="metric-lbl">In Transit / Dispatched</div>
+                </div>
+              </div>
+
+              <div className="metric-card">
+                <div className="metric-icon green">
+                  <CheckCircle2 size={22} />
+                </div>
+                <div>
+                  <div className="metric-val">{orders.filter(o => o.status === 'DELIVERED').length}</div>
+                  <div className="metric-lbl">Fulfilled / Delivered</div>
+                </div>
+              </div>
+
+              <div className="metric-card">
+                <div className="metric-icon orange">
+                  <TrendingUp size={22} />
+                </div>
+                <div>
+                  <div className="metric-val">
+                    ₹{orders
+                      .filter(o => o.status !== 'CANCELLED')
+                      .reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0)
+                      .toLocaleString('en-IN')}
+                  </div>
+                  <div className="metric-lbl">Total Order Volume</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Orders Filter & Actions Bar */}
+            <div
+              style={{
+                background: '#fff',
+                padding: '16px 20px',
+                borderRadius: '16px',
+                border: '1px solid #e2e8f0',
+                marginBottom: '20px',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '12px',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {(['ALL', 'PENDING', 'CONFIRMED', 'DISPATCHED', 'DELIVERED'] as const).map(st => {
+                  const count = st === 'ALL' ? orders.length : orders.filter(o => o.status === st).length;
+                  const isActive = orderFilter === st;
+                  return (
+                    <button
+                      key={st}
+                      onClick={() => setOrderFilter(st)}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '20px',
+                        border: isActive ? '1px solid #16a34a' : '1px solid #cbd5e1',
+                        background: isActive ? '#16a34a' : '#fff',
+                        color: isActive ? '#fff' : '#475569',
+                        fontSize: '0.84rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <span>{st === 'ALL' ? 'All Orders' : st}</span>
+                      <span
+                        style={{
+                          background: isActive ? 'rgba(255,255,255,0.25)' : '#f1f5f9',
+                          color: isActive ? '#fff' : '#64748b',
+                          padding: '1px 7px',
+                          borderRadius: '10px',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={fetchSellerOrders}
+                disabled={ordersLoading}
+                className="btn btn-outline btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <RefreshCw size={14} className={ordersLoading ? 'animate-spin' : ''} />
+                {ordersLoading ? 'Loading...' : 'Refresh Orders'}
+              </button>
+            </div>
+
+            {/* Orders List */}
+            {ordersLoading && orders.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+                <RefreshCw size={32} className="animate-spin" style={{ margin: '0 auto 12px', color: '#16a34a' }} />
+                <p style={{ fontWeight: 600 }}>Loading incoming customer orders...</p>
+              </div>
+            ) : filteredOrders.length === 0 ? (
+              <div
+                style={{
+                  background: '#fff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '16px',
+                  padding: '50px 20px',
+                  textAlign: 'center',
+                }}
+              >
+                <ShoppingBag size={48} style={{ color: '#94a3b8', margin: '0 auto 16px' }} />
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', marginBottom: '8px' }}>
+                  No orders found in this category
+                </h4>
+                <p style={{ color: '#64748b', fontSize: '0.9rem', maxWidth: '440px', margin: '0 auto' }}>
+                  When farmers and customers place orders for items listed in your inventory, they will appear here with full delivery details and instant status updates.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {filteredOrders.map(order => {
+                  const isUpdating = updatingOrderId === order.id;
+                  const orderDate = new Date(order.createdAt).toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  });
+                  const customerPhone = order.user?.phone || '';
+                  const customerName = order.user?.name || 'Customer / Farmer';
+                  const cleanPhone = customerPhone.replace(/\D/g, '');
+                  const itemsList = Array.isArray(order.items) ? order.items : [];
+
+                  const getStatusBadge = (status: string) => {
+                    switch (status) {
+                      case 'PENDING':
+                        return { label: 'Pending Acceptance', bg: '#fef3c7', color: '#b45309', border: '#fde68a' };
+                      case 'CONFIRMED':
+                        return { label: 'Confirmed & Packing', bg: '#dbeafe', color: '#1d4ed8', border: '#bfdbfe' };
+                      case 'DISPATCHED':
+                        return { label: 'Dispatched / In Transit', bg: '#f3e8ff', color: '#7e22ce', border: '#e9d5ff' };
+                      case 'DELIVERED':
+                        return { label: 'Delivered & Completed', bg: '#dcfce7', color: '#15803d', border: '#bbf7d0' };
+                      case 'CANCELLED':
+                        return { label: 'Cancelled', bg: '#fee2e2', color: '#b91c1c', border: '#fecaca' };
+                      default:
+                        return { label: status, bg: '#f1f5f9', color: '#475569', border: '#e2e8f0' };
+                    }
+                  };
+
+                  const badge = getStatusBadge(order.status);
+
+                  return (
+                    <div
+                      key={order.id}
+                      style={{
+                        background: '#fff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '16px',
+                        padding: '20px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                      }}
+                    >
+                      {/* Order Header */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          borderBottom: '1px solid #f1f5f9',
+                          paddingBottom: '14px',
+                          marginBottom: '16px',
+                          flexWrap: 'wrap',
+                          gap: '12px',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1e293b' }}>
+                              Order #{order.id.slice(-8).toUpperCase()}
+                            </span>
+                            <span
+                              style={{
+                                background: badge.bg,
+                                color: badge.color,
+                                border: `1px solid ${badge.border}`,
+                                padding: '3px 10px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {badge.label}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>
+                            Placed on {orderDate}
+                          </div>
+                        </div>
+
+                        {/* Customer Direct Contact */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {cleanPhone && (
+                            <>
+                              <a
+                                href={`tel:${cleanPhone}`}
+                                className="btn btn-outline btn-xs"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '5px',
+                                  fontSize: '0.8rem',
+                                  padding: '5px 10px',
+                                }}
+                              >
+                                <Phone size={13} />
+                                <span>Call {customerPhone}</span>
+                              </a>
+                              <a
+                                href={`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(
+                                  `Namaste ${customerName}, this is regarding your order #${order.id.slice(-6).toUpperCase()} on AegroShield.`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-outline btn-xs"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '5px',
+                                  fontSize: '0.8rem',
+                                  padding: '5px 10px',
+                                  color: '#16a34a',
+                                  borderColor: '#86efac',
+                                  background: '#f0fdf4',
+                                }}
+                              >
+                                <MessageSquare size={13} />
+                                <span>WhatsApp</span>
+                              </a>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Customer & Delivery Grid */}
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                          gap: '16px',
+                          background: '#f8fafc',
+                          padding: '14px 16px',
+                          borderRadius: '12px',
+                          marginBottom: '16px',
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>
+                            Customer Details
+                          </div>
+                          <div style={{ fontWeight: 700, color: '#1e293b', marginTop: '2px' }}>{customerName}</div>
+                          {order.user?.email && (
+                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{order.user.email}</div>
+                          )}
+                          {customerPhone && (
+                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Phone: {customerPhone}</div>
+                          )}
+                        </div>
+
+                        <div>
+                          <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>
+                            Delivery Destination
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginTop: '2px' }}>
+                            <MapPin size={15} style={{ color: '#16a34a', flexShrink: 0, marginTop: '2px' }} />
+                            <span style={{ fontSize: '0.85rem', color: '#334155', fontWeight: 500 }}>
+                              {order.shippingAddress || 'Store Pickup / Counter Delivery'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>
+                            Payment & Value
+                          </div>
+                          <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#16a34a', marginTop: '2px' }}>
+                            ₹{Number(order.totalAmount || 0).toLocaleString('en-IN')}
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                            Method: <span style={{ fontWeight: 600, color: '#334155' }}>{order.paymentMethod || 'COD'}</span> • Status:{' '}
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                color: order.paymentStatus === 'PAID' ? '#16a34a' : '#d97706',
+                              }}
+                            >
+                              {order.paymentStatus || 'PENDING'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Items Ordered */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', marginBottom: '8px' }}>
+                          Items in this Order ({itemsList.length})
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {itemsList.map((item: any, idx: number) => (
+                            <div
+                              key={item.id || idx}
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '8px 12px',
+                                background: '#f8fafc',
+                                borderRadius: '8px',
+                                fontSize: '0.88rem',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Package size={15} style={{ color: '#16a34a' }} />
+                                <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                                  {item.name || item.title || 'Product Item'}
+                                </span>
+                                <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                                  × {item.quantity || 1}
+                                </span>
+                              </div>
+                              <div style={{ fontWeight: 700, color: '#334155' }}>
+                                ₹{Number((item.price || 0) * (item.quantity || 1)).toLocaleString('en-IN')}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Order Fulfillment Action Controls */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          borderTop: '1px solid #f1f5f9',
+                          paddingTop: '14px',
+                          flexWrap: 'wrap',
+                          gap: '12px',
+                        }}
+                      >
+                        <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                          Order Fulfillment Actions:
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          {order.status === 'PENDING' && (
+                            <>
+                              <button
+                                onClick={() => handleUpdateOrderStatus(order.id, 'CANCELLED')}
+                                disabled={isUpdating}
+                                className="btn btn-outline btn-xs"
+                                style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+                              >
+                                Cancel Order
+                              </button>
+                              <button
+                                onClick={() => handleUpdateOrderStatus(order.id, 'CONFIRMED')}
+                                disabled={isUpdating}
+                                className="btn btn-primary btn-sm"
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                              >
+                                {isUpdating ? (
+                                  <RefreshCw size={14} className="animate-spin" />
+                                ) : (
+                                  <Check size={15} />
+                                )}
+                                Accept & Confirm Order
+                              </button>
+                            </>
+                          )}
+
+                          {order.status === 'CONFIRMED' && (
+                            <button
+                              onClick={() => handleUpdateOrderStatus(order.id, 'DISPATCHED')}
+                              disabled={isUpdating}
+                              className="btn btn-primary btn-sm"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                background: '#7e22ce',
+                                borderColor: '#7e22ce',
+                              }}
+                            >
+                              {isUpdating ? (
+                                <RefreshCw size={14} className="animate-spin" />
+                              ) : (
+                                <Truck size={15} />
+                              )}
+                              Dispatch / Out for Delivery
+                            </button>
+                          )}
+
+                          {order.status === 'DISPATCHED' && (
+                            <button
+                              onClick={() => handleUpdateOrderStatus(order.id, 'DELIVERED')}
+                              disabled={isUpdating}
+                              className="btn btn-primary btn-sm"
+                              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                            >
+                              {isUpdating ? (
+                                <RefreshCw size={14} className="animate-spin" />
+                              ) : (
+                                <CheckCircle2 size={15} />
+                              )}
+                              Mark as Delivered & Fulfilled
+                            </button>
+                          )}
+
+                          {order.status === 'DELIVERED' && (
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                color: '#15803d',
+                                fontWeight: 700,
+                                fontSize: '0.88rem',
+                              }}
+                            >
+                              <CheckCircle2 size={16} /> Order Successfully Fulfilled
+                            </div>
+                          )}
+
+                          {order.status === 'CANCELLED' && (
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                color: '#dc2626',
+                                fontWeight: 600,
+                                fontSize: '0.88rem',
+                              }}
+                            >
+                              <X size={16} /> Order Cancelled
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

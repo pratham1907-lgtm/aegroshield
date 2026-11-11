@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getAllIndianStates, getDistrictsForState, isStateMatching } from "@/lib/india-locations";
+import WeatherWidget from "@/components/WeatherWidget";
 
 export interface PriceHistoryItem {
   date: string;
@@ -657,6 +658,11 @@ export default function Page() {
               <strong>Last Updated:</strong> {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
             </div>
           </div>
+        </div>
+
+        {/* ── Live Agro-Weather & Spray Advisory ─────────────────────── */}
+        <div style={{ marginBottom: "24px" }}>
+          <WeatherWidget />
         </div>
 
         {/* ── Search & Filter Card ─────────────────────────────────── */}

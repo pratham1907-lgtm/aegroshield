@@ -9,19 +9,49 @@ import PwaRegister from '@/components/PwaRegister';
 import './globals.css';
 
 export const metadata = {
-  title: 'AegroShield — Kisan Agri OS & Marketplace',
-  description: 'Unified smart agriculture platform for Indian farmers. Order verified farm inputs, book machinery & labour, and check live mandi rates.',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://aegroshield.vercel.app'),
+  title: 'AegroShield — Kisan Agri OS & Local Marketplace',
+  description: 'Unified smart agriculture platform for Indian farmers. Order verified seeds & fertilizers, book tractors & farm labour, and check live APMC mandi rates.',
+  keywords: [
+    'AegroShield',
+    'Kisan Agri Marketplace',
+    'Live Mandi Rates',
+    'APMC Mandi Bhav',
+    'Fertilizer Online',
+    'Seeds Store',
+    'Tractor Rental India',
+    'Farm Labour Booking',
+    'Kisan Helpline',
+    'Agro Weather Advisory',
+  ],
   manifest: '/manifest.json',
   icons: {
     icon: '/icon.svg',
     apple: '/icon.svg',
   },
   openGraph: {
-    title: 'AegroShield — Kisan Agri OS & Marketplace',
-    description: 'Direct farm inputs, verified local agri-stores, live APMC mandi prices, and smart crop advisory for Indian farmers.',
-    type: 'website',
-    locale: 'en_IN',
+    title: 'AegroShield — Kisan Agri OS & Local Marketplace',
+    description: 'Order verified seeds & fertilizers from local agri-stores, book tractors & labour, and get live APMC mandi rates with AI crop advisory.',
+    url: 'https://aegroshield.vercel.app',
     siteName: 'AegroShield',
+    locale: 'en_IN',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'AegroShield — Kisan Agri OS & Local Marketplace',
+    description: 'Direct farm inputs, live APMC mandi rates, machinery rental, and 24/7 Kisan AI assistant.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
 };
 

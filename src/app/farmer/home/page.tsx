@@ -1,4 +1,5 @@
 import Link from "next/link";
+import WeatherWidget from "@/components/WeatherWidget";
 
 export default function FarmerHomePage() {
   return (
@@ -102,6 +103,11 @@ export default function FarmerHomePage() {
     <div className="sb-num">5</div>
     <div className="sb-lbl">Smart Tools</div>
   </div>
+</div>
+
+{/* ── Live Agro-Weather & Spray Advisory Widget ── */}
+<div className="container" style={{ margin: '36px auto', maxWidth: '1200px', padding: '0 20px' }}>
+  <WeatherWidget />
 </div>
 
 {/*  ── Features Grid ────────────────────────────────────────────── */}
