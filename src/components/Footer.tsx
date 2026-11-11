@@ -93,6 +93,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/bookings" style={{ color: '#86efac', fontWeight: '600', textDecoration: 'none' }}>
+                  🚜 My Equipment &amp; Labour Bookings
+                </Link>
+              </li>
+              <li>
                 <Link href="/machinery" style={{ color: '#cbd5e1', textDecoration: 'none' }}>
                   🚜 Machinery Rentals (CHC)
                 </Link>

@@ -54,7 +54,10 @@ export default function Navbar() {
     { href: '/labour', label: t('nav.labour'), isActive: pathname.startsWith('/labour') },
     { href: '/market', label: t('nav.mandi') || 'Mandi Rates', isActive: pathname.startsWith('/market') || pathname.startsWith('/mandi') },
     { href: '/calculator', label: t('nav.calculator'), isActive: pathname.startsWith('/calculator') },
-    ...(isLoggedIn ? [{ href: '/orders', label: '📦 Orders', isActive: pathname.startsWith('/orders') }] : []),
+    ...(isLoggedIn ? [
+      { href: '/orders', label: '📦 Orders', isActive: pathname.startsWith('/orders') },
+      { href: '/bookings', label: '🚜 Bookings', isActive: pathname.startsWith('/bookings') },
+    ] : []),
   ];
 
   return (

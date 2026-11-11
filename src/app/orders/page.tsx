@@ -18,8 +18,10 @@ import {
   ShoppingBag,
   ArrowLeft,
   X,
-  FileText
+  FileText,
+  Printer,
 } from 'lucide-react';
+import InvoiceModal from '@/components/InvoiceModal';
 
 interface OrderItem {
   productId?: string;
@@ -109,6 +111,7 @@ export default function OrdersPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'DELIVERED' | 'CANCELLED'>('ALL');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<OrderRecord | null>(null);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -569,6 +572,27 @@ export default function OrdersPage() {
                     </div>
 
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {/* Download / Print Tax Invoice Action */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedInvoiceOrder(order)}
+                        style={{
+                          fontSize: '0.82rem',
+                          color: '#0f172a',
+                          fontWeight: 600,
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          background: '#ffffff',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Printer size={13} color="#15803d" /> Invoice (रसीद)
+                      </button>
+
                       {/* Help / WhatsApp Support */}
                       <a
                         href={`https://wa.me/919999999999?text=${encodeURIComponent(`Namaste AegroShield, mujhe mere Order #${order.id.slice(-8).toUpperCase()} ke baare me jankari chahiye.`)}`}
@@ -622,6 +646,12 @@ export default function OrdersPage() {
           </div>
         )}
       </section>
+      {/* Printable Tax Invoice Modal */}
+      <InvoiceModal
+        isOpen={!!selectedInvoiceOrder}
+        onClose={() => setSelectedInvoiceOrder(null)}
+        order={selectedInvoiceOrder}
+      />
     </main>
   );
 }

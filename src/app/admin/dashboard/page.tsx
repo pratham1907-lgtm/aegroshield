@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { auth } from '@/lib/firebase';
-import { Shield, Users, Store, Package, ShoppingBag, TrendingUp, CheckCircle2, AlertTriangle, Ban, LogOut, Check, X, Search, RefreshCw, Tractor, UserCheck } from 'lucide-react';
+import { Shield, Users, Store, Package, ShoppingBag, TrendingUp, CheckCircle2, AlertTriangle, Ban, LogOut, Check, X, Search, RefreshCw, Tractor, UserCheck, FileText, ExternalLink } from 'lucide-react';
 
 export interface AdminVendor {
   id: string;
@@ -13,6 +13,7 @@ export interface AdminVendor {
   district: string;
   phone: string;
   license: string;
+  documentUrl?: string | null;
   address?: string;
   rating?: number;
   verified: boolean;
@@ -87,6 +88,7 @@ export default function AdminDashboardPage() {
   const [vendors, setVendors] = useState<AdminVendor[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; storeName: string; license: string } | null>(null);
   const [machinery, setMachinery] = useState<AdminMachinery[]>([]);
   const [labour, setLabour] = useState<AdminLabour[]>([]);
   const [search, setSearch] = useState('');
@@ -111,7 +113,8 @@ export default function AdminDashboardPage() {
         ownerName: s.ownerName,
         district: s.district,
         phone: s.phone,
-        license: s.licenseOrGstin || 'N/A',
+        license: s.licenseNumber || s.licenseOrGstin || s.gstin || 'N/A',
+        documentUrl: s.documentUrl || null,
         address: s.shopAddress || s.district,
         rating: 4.8,
         verified: Boolean(s.isVerified),
@@ -506,6 +509,7 @@ export default function AdminDashboardPage() {
                     <th>Store Name & Owner</th>
                     <th>District</th>
                     <th>License Number</th>
+                    <th>Compliance Scan</th>
                     <th>Status</th>
                     <th>Registration Date</th>
                     <th>Action</th>
@@ -520,6 +524,31 @@ export default function AdminDashboardPage() {
                       </td>
                       <td>📍 {v.district}</td>
                       <td><code style={{ background: '#0f172a', padding: '2px 6px', borderRadius: '4px', color: '#38bdf8' }}>{v.license}</code></td>
+                      <td>
+                        {v.documentUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewDoc({ url: v.documentUrl!, storeName: v.name, license: v.license })}
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '0.78rem',
+                              borderRadius: '6px',
+                              background: '#0284c7',
+                              color: '#ffffff',
+                              border: 'none',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontWeight: 600,
+                            }}
+                          >
+                            <FileText size={12} /> View Scan
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '0.76rem', color: '#64748b' }}>No Upload</span>
+                        )}
+                      </td>
                       <td>
                         <span className={`accreditation-tag ${v.accreditationStatus.toLowerCase()}`}>
                           {v.accreditationStatus === 'Verified' ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
@@ -813,6 +842,117 @@ export default function AdminDashboardPage() {
           </div>
         )}
       </div>
+      {/* Licence Scan Preview Lightbox */}
+      {previewDoc && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPreviewDoc(null);
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#1e293b',
+              borderRadius: '16px',
+              maxWidth: '800px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              border: '1px solid #334155',
+            }}
+          >
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid #334155',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <strong style={{ color: '#f8fafc', fontSize: '1rem', display: 'block' }}>
+                  {previewDoc.storeName} — Licence Scan
+                </strong>
+                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                  Licence / GSTIN: <code style={{ color: '#38bdf8' }}>{previewDoc.license}</code>
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <a
+                  href={previewDoc.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    background: '#334155',
+                    color: '#f8fafc',
+                    textDecoration: 'none',
+                    fontSize: '0.8rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <ExternalLink size={14} /> Open Full
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDoc(null)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: '4px',
+                  }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '20px',
+                overflowY: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#0f172a',
+                minHeight: '300px',
+              }}
+            >
+              {previewDoc.url.toLowerCase().endsWith('.pdf') || previewDoc.url.startsWith('data:application/pdf') ? (
+                <iframe
+                  src={previewDoc.url}
+                  title="Licence PDF"
+                  style={{ width: '100%', height: '550px', border: 'none', borderRadius: '8px' }}
+                />
+              ) : (
+                <img
+                  src={previewDoc.url}
+                  alt="Dealer Licence Scan"
+                  style={{ maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain', borderRadius: '8px' }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -22,7 +22,10 @@ import {
   Database,
   Calendar,
   AlertCircle,
+  Printer,
 } from 'lucide-react';
+import InvoiceModal from '@/components/InvoiceModal';
+import UpiPaymentBox from '@/components/UpiPaymentBox';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -41,6 +44,7 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [placedOrder, setPlacedOrder] = useState<any | null>(null);
+  const [showInvoice, setShowInvoice] = useState(false);
 
   // Auto-fill from user authentication session if available
   useEffect(() => {
@@ -59,7 +63,7 @@ export default function CheckoutPage() {
       <main className="container" style={{ padding: '100px 20px', textAlign: 'center' }}>
         <Loader2 size={36} className="spin" style={{ margin: '0 auto', color: 'var(--primary)' }} />
         <p style={{ marginTop: '16px', color: '#64748b', fontWeight: '500' }}>Loading your cart...</p>
-      </main>
+    </main>
     );
   }
 
@@ -76,7 +80,7 @@ export default function CheckoutPage() {
             Browse Store →
           </Link>
         </div>
-      </main>
+    </main>
     );
   }
 
@@ -354,8 +358,35 @@ export default function CheckoutPage() {
               </div>
             </div>
 
+            {/* Instant UPI Payment Box if chosen */}
+            {placedOrder.paymentMethod === 'UPI / Pay on Delivery' && (
+              <div style={{ marginBottom: '20px' }}>
+                <UpiPaymentBox amount={placedOrder.totalAmount} orderId={placedOrder.id} />
+              </div>
+            )}
+
             {/* Bottom Actions */}
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setShowInvoice(true)}
+                className="btn btn-outline"
+                style={{
+                  padding: '12px 20px',
+                  borderRadius: '10px',
+                  fontWeight: '700',
+                  fontSize: '0.92rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: '#15803d',
+                  borderColor: '#86efac',
+                  backgroundColor: '#f0fdf4',
+                  cursor: 'pointer',
+                }}
+              >
+                <Printer size={16} /> Print / Download Invoice (रसीद)
+              </button>
               <Link
                 href="/orders"
                 className="btn btn-primary"
@@ -398,7 +429,7 @@ export default function CheckoutPage() {
             </div>
           </div>
         </div>
-      </main>
+    </main>
     );
   }
 
@@ -574,13 +605,21 @@ export default function CheckoutPage() {
                 <label htmlFor="upi" style={{ cursor: 'pointer', flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <strong style={{ color: '#1e293b', fontSize: '0.92rem' }}>📱 UPI / Pay on Delivery</strong>
+                    <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: '8px', fontWeight: '700' }}>
+                      INSTANT SCAN
+                    </span>
                   </div>
                   <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0' }}>
-                    Scan QR code via Google Pay, PhonePe, or Paytm when products are handed over.
+                    Scan QR code via Google Pay, PhonePe, or Paytm right now or upon delivery.
                   </p>
                 </label>
               </div>
             </div>
+
+            {/* Dynamic Live UPI QR Preview if UPI is chosen */}
+            {paymentMethod === 'UPI / Pay on Delivery' && (
+              <UpiPaymentBox amount={grandTotal} orderId="CART" compact={true} />
+            )}
 
             {errorMsg && (
               <div
@@ -676,6 +715,12 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+      {/* Printable Tax Invoice Modal */}
+      <InvoiceModal
+        isOpen={showInvoice}
+        onClose={() => setShowInvoice(false)}
+        order={placedOrder}
+      />
     </main>
   );
 }
