@@ -58,7 +58,15 @@ export async function GET(request: NextRequest) {
     });
 
     // Pure real database rows - never merge or fallback to mock data
-    return NextResponse.json({ success: true, data: items || [] });
+    const isPublicQuery = !ownerId && !phone && !firebaseUid;
+    return NextResponse.json(
+      { success: true, data: items || [] },
+      {
+        headers: isPublicQuery
+          ? { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120' }
+          : { 'Cache-Control': 'no-store' },
+      }
+    );
   } catch (error: any) {
     console.error('[API/Machinery] Database query failed:', error?.message || error);
     return NextResponse.json(

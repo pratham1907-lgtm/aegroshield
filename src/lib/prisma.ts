@@ -12,12 +12,22 @@ function getOptimizedDatabaseUrl(): string {
     return 'postgresql://postgres:postgres@localhost:5432/postgres?connection_limit=1&connect_timeout=20';
   }
 
+  // 1. Ensure connection limit is set for serverless environments (1 connection per lambda to avoid exhausting pool)
   if (!url.includes('connection_limit=')) {
     url += (url.includes('?') ? '&' : '?') + 'connection_limit=1';
   }
+
+  // 2. Ensure connection timeout is bounded
   if (!url.includes('connect_timeout=')) {
     url += '&connect_timeout=20';
   }
+
+  // 3. Ensure pgbouncer=true for Supabase/PostgreSQL Transaction Pooler (port 6543 or pooler host)
+  const isPooler = url.includes(':6543') || url.includes('pooler.supabase.com') || url.includes('pgbouncer');
+  if (isPooler && !url.includes('pgbouncer=true')) {
+    url += '&pgbouncer=true';
+  }
+
   return url;
 }
 

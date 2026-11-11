@@ -26,6 +26,7 @@ model User {
   orders      Order[]
 
   @@index([firebaseUid])
+  @@index([firebaseUid, role])
 }
 
 model Seller {
@@ -57,6 +58,9 @@ model Seller {
   @@index([district])
   @@index([isVerified])
   @@index([verificationStatus])
+  @@index([state, district, isVerified])
+  @@index([district, isVerified])
+  @@index([verificationStatus, createdAt])
 }
 
 model Product {
@@ -77,6 +81,9 @@ model Product {
   @@index([sellerId])
   @@index([category])
   @@index([createdAt])
+  @@index([sellerId, stock])
+  @@index([category, createdAt])
+  @@index([sellerId, createdAt])
 }
 
 model Machinery {
@@ -100,6 +107,10 @@ model Machinery {
   @@index([district])
   @@index([machineType])
   @@index([available])
+  @@index([state, district, available])
+  @@index([district, available])
+  @@index([machineType, district, available])
+  @@index([ownerId, createdAt])
 }
 
 model LabourPost {
@@ -122,6 +133,9 @@ model LabourPost {
   @@index([leaderId])
   @@index([district])
   @@index([primarySkill])
+  @@index([state, district])
+  @@index([primarySkill, district])
+  @@index([leaderId, createdAt])
 }
 
 model Booking {
@@ -152,6 +166,10 @@ model Booking {
   @@index([labourPostId])
   @@index([status])
   @@index([bookingDate])
+  @@index([userId, status, createdAt])
+  @@index([machineryId, status])
+  @@index([labourPostId, status])
+  @@index([status, bookingDate])
 }
 
 model Order {
@@ -173,4 +191,7 @@ model Order {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([district, status])
 }

@@ -89,7 +89,12 @@ export async function GET(request: NextRequest) {
 
     console.log("FARMER_STORE_ACTIVE_PRODUCTS:", products.length);
 
-    return NextResponse.json(products);
+    const isPublicQuery = !sellerId && !phone && !firebaseUid;
+    return NextResponse.json(products, {
+      headers: isPublicQuery
+        ? { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120' }
+        : { 'Cache-Control': 'no-store' },
+    });
   } catch (error: any) {
     console.error('[API/Products] Database query failed:', error?.message || error);
     return NextResponse.json(
