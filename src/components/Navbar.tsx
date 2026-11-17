@@ -56,7 +56,6 @@ export default function Navbar() {
     { href: '/calculator', label: t('nav.calculator'), isActive: pathname.startsWith('/calculator') },
     ...(isLoggedIn ? [
       { href: '/orders', label: `📦 ${t('nav.orders')}`, isActive: pathname.startsWith('/orders') },
-      { href: '/bookings', label: `🚜 ${t('nav.bookings')}`, isActive: pathname.startsWith('/bookings') },
     ] : []),
   ];
 

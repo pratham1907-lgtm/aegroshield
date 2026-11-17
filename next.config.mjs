@@ -3,6 +3,20 @@ import { withSentryConfig } from "@sentry/nextjs/config";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
+  async redirects() {
+    return [
+      {
+        source: '/bookings',
+        destination: '/machinery',
+        permanent: false,
+      },
+      {
+        source: '/farmer/bookings',
+        destination: '/machinery',
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {
