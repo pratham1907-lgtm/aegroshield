@@ -21,7 +21,7 @@ export const TRANSLATIONS: Record<string, Record<Language, string>> = {
   'nav.mandi':       { en: 'Mandi Rates',  hi: 'मंडी भाव',         'hi-en': 'Mandi Rates' },
   'nav.calculator':  { en: 'Calculator',   hi: 'कैलकुलेटर',        'hi-en': 'Calculator' },
   'nav.orders':      { en: 'Orders',       hi: 'मेरे ऑर्डर',       'hi-en': 'Mere Orders' },
-  'nav.bookings':    { en: 'Bookings',     hi: 'मेरी बुकिंग',      'hi-en': 'Meri Bookings' },
+  'nav.weather':     { en: 'Weather',      hi: 'मौसम सलाह',        'hi-en': 'Weather' },
   'nav.cart':        { en: 'Cart',         hi: 'कार्ट',            'hi-en': 'Cart' },
   'nav.signin':      { en: 'Sign In',      hi: 'लॉगिन करें',       'hi-en': 'Sign In' },
   'nav.logout':      { en: 'Logout',       hi: 'लॉगआउट',           'hi-en': 'Logout' },

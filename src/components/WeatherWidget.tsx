@@ -14,6 +14,7 @@ import {
   MapPin,
   RefreshCw,
   Info,
+  X,
 } from 'lucide-react';
 
 interface DistrictOption {
@@ -52,7 +53,7 @@ export interface WeatherData {
   }>;
 }
 
-export default function WeatherWidget({ compact = false }: { compact?: boolean }) {
+export default function WeatherWidget({ compact = false, onClose }: { compact?: boolean; onClose?: () => void }) {
   const { lang, t } = useLanguage();
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictOption>(DISTRICT_LIST[0]);
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -354,6 +355,25 @@ export default function WeatherWidget({ compact = false }: { compact?: boolean }
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
           </button>
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              title="Close Weather Advisory"
+              aria-label="Close"
+              className="btn btn-outline btn-xs"
+              style={{
+                padding: '6px',
+                color: '#64748b',
+                backgroundColor: '#f1f5f9',
+                borderColor: '#e2e8f0',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={15} />
+            </button>
+          )}
         </div>
       </div>
 

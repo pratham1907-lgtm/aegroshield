@@ -95,6 +95,7 @@ h1, h2, h3, h4, h5, h6 { font-weight: 600; }
 .nav-links a,
 .nav-links .nav-item-link,
 .nav-cart-btn,
+.nav-weather-btn,
 .nav-btn-signin {
   color: #ffffff !important;
   font-size: 14px;
@@ -113,6 +114,7 @@ h1, h2, h3, h4, h5, h6 { font-weight: 600; }
 .nav-links a:hover,
 .nav-links .nav-item-link:hover,
 .nav-cart-btn:hover,
+.nav-weather-btn:hover,
 .nav-btn-signin:hover {
   color: var(--primary) !important;
   background-color: #ffffff !important;

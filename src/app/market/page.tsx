@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getAllIndianStates, getDistrictsForState, isStateMatching } from "@/lib/india-locations";
-import WeatherWidget from "@/components/WeatherWidget";
 import { useLanguage } from "@/lib/language-context";
+import { useWeather } from "@/context/WeatherContext";
 
 export interface PriceHistoryItem {
   date: string;
@@ -232,6 +232,7 @@ function ensureItemAnalytics(item: MandiRateItem): MandiRateItem {
 
 export default function Page() {
   const { lang, t } = useLanguage();
+  const { openWeather } = useWeather();
   const { user, userData } = useAuth();
 
   // Reactive search filter selections
@@ -638,7 +639,7 @@ export default function Page() {
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <div style={{
               background: "#ffffff",
               padding: "6px 12px",
@@ -659,12 +660,32 @@ export default function Page() {
             }}>
               <strong>Last Updated:</strong> {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
             </div>
+            {/* ── Corner Weather Tab ── */}
+            <button
+              onClick={() => openWeather()}
+              type="button"
+              style={{
+                background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+                padding: "6px 14px",
+                borderRadius: "8px",
+                border: "1.5px solid #86efac",
+                fontSize: "0.82rem",
+                color: "#15803d",
+                fontWeight: 700,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "7px",
+                cursor: "pointer",
+                boxShadow: "0 1px 3px rgba(22, 101, 52, 0.08)",
+                transition: "all 0.2s ease",
+              }}
+              title={lang === 'hi' ? 'ताज़ा मौसम, नमी, हवा और छिड़काव सुरक्षा देखने के लिए क्लिक करें' : 'Click to view live weather, humidity, wind & spray safety window'}
+            >
+              <span style={{ fontSize: "1rem" }}>🌤️</span>
+              <span>{lang === 'hi' ? 'मौसम व छिड़काव सलाह' : lang === 'en' ? 'Weather & Spray Advisory' : 'Agro-Weather Advisory'}</span>
+              <span style={{ display: "inline-block", width: "7px", height: "7px", borderRadius: "50%", background: "#16a34a", boxShadow: "0 0 0 2px #bbf7d0" }}></span>
+            </button>
           </div>
-        </div>
-
-        {/* ── Live Agro-Weather & Spray Advisory ─────────────────────── */}
-        <div style={{ marginBottom: "24px" }}>
-          <WeatherWidget />
         </div>
 
         {/* ── Search & Filter Card ─────────────────────────────────── */}

@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage, type Language } from '@/lib/language-context';
 import { useCart } from '@/lib/cart-context';
+import { useWeather } from '@/context/WeatherContext';
 import { useAuth } from '@/context/AuthContext';
-import { ShoppingBag, User, LogOut } from 'lucide-react';
+import { ShoppingBag, User, LogOut, CloudSun } from 'lucide-react';
 
 const LANG_OPTIONS: { value: Language; label: string }[] = [
   { value: 'en',    label: '🇬🇧 English' },
@@ -17,6 +18,7 @@ export default function Navbar() {
   const rawPathname = usePathname();
   const { lang, setLang, t } = useLanguage();
   const { cartCount, openCart, isCartOpen } = useCart();
+  const { openWeather, isWeatherOpen } = useWeather();
   const { user, userData, logout } = useAuth();
 
   const pathname = rawPathname || '';
@@ -95,6 +97,20 @@ export default function Navbar() {
           <ShoppingBag size={18} />
           <span>{t('nav.cart')}</span>
           {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
+        </button>
+
+        {/* ── Weather & Spray Advisory Trigger ── */}
+        <button
+          onClick={() => openWeather()}
+          type="button"
+          style={{ cursor: 'pointer' }}
+          className={`nav-weather-btn px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer flex items-center gap-1.5 ${
+            isWeatherOpen ? 'active' : ''
+          }`}
+          title={t('weather.title') || "Agro-Weather & Spray Advisory"}
+        >
+          <CloudSun size={18} color="#fef08a" />
+          <span className="hidden lg:inline">{t('nav.weather') || 'Weather'}</span>
         </button>
 
         {/* ── Language Toggle ── */}

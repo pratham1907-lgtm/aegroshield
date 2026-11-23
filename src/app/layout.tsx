@@ -1,8 +1,10 @@
 import { AuthProvider } from '@/context/AuthContext';
 import { LanguageProvider } from '@/lib/language-context';
 import { CartProvider } from '@/lib/cart-context';
+import { WeatherProvider } from '@/context/WeatherContext';
 import NavbarClient from '@/components/Navbar';
 import CartDrawer from '@/components/cart/CartDrawer';
+import WeatherModal from '@/components/WeatherModal';
 import Footer from '@/components/Footer';
 import Chatbot from '@/components/Chatbot';
 import PwaRegister from '@/components/PwaRegister';
@@ -69,12 +71,15 @@ export default function RootLayout({
         <AuthProvider>
           <LanguageProvider>
             <CartProvider>
-              <NavbarClient />
-              <CartDrawer />
-              {children}
-              <Footer />
-              <Chatbot />
-              <PwaRegister />
+              <WeatherProvider>
+                <NavbarClient />
+                <CartDrawer />
+                <WeatherModal />
+                {children}
+                <Footer />
+                <Chatbot />
+                <PwaRegister />
+              </WeatherProvider>
             </CartProvider>
           </LanguageProvider>
         </AuthProvider>
