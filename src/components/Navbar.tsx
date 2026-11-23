@@ -1,12 +1,12 @@
 "use client";
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage, type Language } from '@/lib/language-context';
 import { useCart } from '@/lib/cart-context';
 import { useWeather } from '@/context/WeatherContext';
 import { useAuth } from '@/context/AuthContext';
-import { ShoppingBag, User, LogOut, CloudSun } from 'lucide-react';
+import { ShoppingBag, User, LogOut, CloudSun, ArrowLeft } from 'lucide-react';
 
 const LANG_OPTIONS: { value: Language; label: string }[] = [
   { value: 'en',    label: '🇬🇧 English' },
@@ -15,6 +15,7 @@ const LANG_OPTIONS: { value: Language; label: string }[] = [
 ];
 
 export default function Navbar() {
+  const router = useRouter();
   const rawPathname = usePathname();
   const { lang, setLang, t } = useLanguage();
   const { cartCount, openCart, isCartOpen } = useCart();
@@ -22,6 +23,14 @@ export default function Navbar() {
   const { user, userData, logout } = useAuth();
 
   const pathname = rawPathname || '';
+
+  const handleGoBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/');
+    }
+  };
 
   // Render Navbar on Root (/) and Farmer/User App pages ONLY!
   const isFarmerRoute =
@@ -63,13 +72,29 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <Link
-        href="/"
-        style={{ cursor: 'pointer' }}
-        className="nav-brand text-white font-bold text-xl cursor-pointer flex items-center gap-2"
-      >
-        🌿 Aegroshield
-      </Link>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {pathname !== '/' && (
+          <button
+            onClick={handleGoBack}
+            type="button"
+            className="nav-back-btn"
+            title={lang === 'hi' ? 'पिछले पेज पर वापस जाएं' : 'Go back to previous page'}
+            aria-label="Back"
+          >
+            <ArrowLeft size={16} strokeWidth={2.5} />
+            <span>{lang === 'hi' ? 'वापस' : lang === 'en' ? 'Back' : 'Back'}</span>
+          </button>
+        )}
+
+        <Link
+          href="/"
+          style={{ cursor: 'pointer' }}
+          className="nav-brand text-white font-bold text-xl cursor-pointer flex items-center gap-2"
+        >
+          🌿 Aegroshield
+        </Link>
+      </div>
+
       <div className="nav-links flex items-center gap-2">
         {navItems.map(item => (
           <Link
@@ -104,27 +129,26 @@ export default function Navbar() {
           onClick={() => openWeather()}
           type="button"
           style={{ cursor: 'pointer' }}
-          className={`nav-weather-btn px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer flex items-center gap-1.5 ${
-            isWeatherOpen ? 'active' : ''
-          }`}
+          className="nav-weather-btn"
           title={t('weather.title') || "Agro-Weather & Spray Advisory"}
         >
-          <CloudSun size={18} color="#fef08a" />
-          <span className="hidden lg:inline">{t('nav.weather') || 'Weather'}</span>
+          <CloudSun size={18} color="#d97706" />
+          <span>{t('nav.weather') || 'Weather'}</span>
         </button>
 
         {/* ── Language Toggle ── */}
         <div className="lang-toggle-wrap">
           <select
-            className="lang-select px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer"
-            style={{ cursor: 'pointer' }}
+            className="lang-select"
             value={lang}
             onChange={e => setLang(e.target.value as Language)}
             aria-label="Select language"
             title="Change Language"
           >
             {LANG_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value} style={{ color: '#0f172a', background: '#ffffff' }}>{opt.label}</option>
+              <option key={opt.value} value={opt.value} style={{ color: '#0f172a', background: '#ffffff', fontWeight: 600 }}>
+                {opt.label}
+              </option>
             ))}
           </select>
         </div>
