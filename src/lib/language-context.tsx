@@ -233,7 +233,7 @@ export const TRANSLATIONS: Record<string, Record<Language, string>> = {
   'weather.gps':      { en: 'GPS', hi: 'जीपीएस', 'hi-en': 'GPS' },
 
   // ── AI Chatbot ────────────────────────────────────────────────
-  'chat.launcher':    { en: '🌱 AI Sahayak & Helpline', hi: '🌱 AI सहायक व हेल्पलाइन', 'hi-en': '🌱 AI Sahayak & Helpline' },
+  'chat.launcher':    { en: 'AI Sahayak & Helpline', hi: 'AI सहायक व हेल्पलाइन', 'hi-en': 'AI Sahayak & Helpline' },
   'chat.title':       { en: 'AegroShield AI Sahayak', hi: 'एग्रोशील्ड AI सहायक', 'hi-en': 'AegroShield AI Sahayak' },
   'chat.status':      { en: 'Online • 24/7 Farming Guidance', hi: 'ऑनलाइन • 24/7 कृषि परामर्श', 'hi-en': 'Online • 24/7 Kisan Guidance' },
   'chat.clear':       { en: 'Clear Chat', hi: 'चैट साफ करें', 'hi-en': 'Chat Clear Karein' },
