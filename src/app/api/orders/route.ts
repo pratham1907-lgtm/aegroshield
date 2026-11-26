@@ -35,7 +35,10 @@ export async function GET(request: NextRequest) {
         return items.some((item: any) => item.sellerId === seller.id);
       });
 
-      return NextResponse.json({ success: true, data: sellerOrders, source: 'postgres' });
+      return NextResponse.json(
+        { success: true, data: sellerOrders, source: 'postgres' },
+        { headers: { 'Cache-Control': 'no-store' } }
+      );
     }
 
     // Default Customer Order History: strictly limited to the authenticated user's ID
@@ -49,7 +52,10 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, data: userOrders, source: 'postgres' });
+    return NextResponse.json(
+      { success: true, data: userOrders, source: 'postgres' },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
   } catch (error: any) {
     console.error('[API/Orders] GET error:', error);
     return handleAuthError(error);

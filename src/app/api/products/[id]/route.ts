@@ -33,7 +33,10 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: product });
+    return NextResponse.json(
+      { success: true, data: product },
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
+    );
   } catch (error: any) {
     console.error('[API/Products/[id]] GET error:', error?.message || error);
     return NextResponse.json(

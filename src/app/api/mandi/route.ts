@@ -1021,9 +1021,15 @@ export async function GET(request: NextRequest) {
         });
 
       if (found) {
-        return NextResponse.json({ success: true, data: found });
+        return NextResponse.json(
+          { success: true, data: found },
+          { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
+        );
       }
-      return NextResponse.json({ success: true, data: allRecords[0] });
+      return NextResponse.json(
+        { success: true, data: allRecords[0] },
+        { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
+      );
     }
 
     // 4. Multi-Filter Logic
@@ -1093,24 +1099,27 @@ export async function GET(request: NextRequest) {
     const allDistricts = Array.from(new Set(allRecords.map((r) => r.district).filter(Boolean))).sort();
     const allCommodities = Array.from(new Set(allRecords.map((r) => r.commodity).filter(Boolean))).sort();
 
-    return NextResponse.json({
-      success: true,
-      count: filtered.length,
-      total: allRecords.length,
-      source: 'live_apmc_verified',
-      filters: {
-        state: stateParam || 'All',
-        district: districtParam || 'All',
-        commodity: commodityParam || 'All',
-        category: categoryParam || 'All',
-        search: searchParam || '',
+    return NextResponse.json(
+      {
+        success: true,
+        count: filtered.length,
+        total: allRecords.length,
+        source: 'live_apmc_verified',
+        filters: {
+          state: stateParam || 'All',
+          district: districtParam || 'All',
+          commodity: commodityParam || 'All',
+          category: categoryParam || 'All',
+          search: searchParam || '',
+        },
+        states: ['All', ...allStates],
+        districts: ['All', ...allDistricts],
+        commodities: ['All', ...allCommodities],
+        data: filtered,
+        lastUpdated: new Date().toISOString(),
       },
-      states: ['All', ...allStates],
-      districts: ['All', ...allDistricts],
-      commodities: ['All', ...allCommodities],
-      data: filtered,
-      lastUpdated: new Date().toISOString(),
-    });
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
+    );
   } catch (error: any) {
     console.error('[API/Mandi] Error in GET handler:', error);
     return NextResponse.json(

@@ -86,12 +86,15 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      return NextResponse.json({
-        success: true,
-        data: userBookings,
-        received: receivedBookings,
-        source: 'postgres',
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          data: userBookings,
+          received: receivedBookings,
+          source: 'postgres',
+        },
+        { headers: { 'Cache-Control': 'no-store' } }
+      );
     }
 
     // Return latest bookings if no specific user filter matched
@@ -107,7 +110,10 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, data: allBookings, received: [], source: 'postgres' });
+    return NextResponse.json(
+      { success: true, data: allBookings, received: [], source: 'postgres' },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
   } catch (error: any) {
     console.error('[API/Bookings] Database query error:', error?.message || error);
     return NextResponse.json(
