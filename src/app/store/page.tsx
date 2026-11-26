@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/context/AuthContext';
 import { auth, signInWithGoogle } from '@/lib/firebase';
@@ -382,10 +383,14 @@ export default function StoreCatalogPage() {
                       {/* Product Image */}
                       <div style={{ height: '170px', background: '#f1f5f9', position: 'relative', overflow: 'hidden' }}>
                         {p.imageUrl ? (
-                          <img
+                          <Image
                             src={p.imageUrl}
                             alt={p.name}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 280px"
+                            loading="lazy"
+                            unoptimized={String(p.imageUrl).startsWith('data:') || String(p.imageUrl).startsWith('blob:')}
+                            style={{ objectFit: 'cover' }}
                           />
                         ) : (
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '2.5rem' }}>

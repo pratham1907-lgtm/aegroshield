@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { QrCode, Copy, Check, ExternalLink, ShieldCheck, Smartphone } from 'lucide-react';
 
 interface UpiPaymentBoxProps {
@@ -65,11 +66,13 @@ export default function UpiPaymentBox({
           marginBottom: '12px',
         }}
       >
-        <img
+        <Image
           src={qrUrl}
           alt={`UPI QR Code for ₹${cleanAmount}`}
           width={180}
           height={180}
+          sizes="180px"
+          loading="lazy"
           style={{ display: 'block', borderRadius: '6px' }}
         />
       </div>

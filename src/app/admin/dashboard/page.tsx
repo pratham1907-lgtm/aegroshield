@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { auth } from '@/lib/firebase';
 import { Shield, Users, Store, Package, ShoppingBag, TrendingUp, CheckCircle2, AlertTriangle, Ban, LogOut, Check, X, Search, RefreshCw, Tractor, UserCheck, FileText, ExternalLink } from 'lucide-react';
 
@@ -943,10 +944,15 @@ export default function AdminDashboardPage() {
                   style={{ width: '100%', height: '550px', border: 'none', borderRadius: '8px' }}
                 />
               ) : (
-                <img
+                <Image
                   src={previewDoc.url}
                   alt="Dealer Licence Scan"
-                  style={{ maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain', borderRadius: '8px' }}
+                  width={800}
+                  height={600}
+                  sizes="(max-width: 768px) 95vw, 800px"
+                  loading="lazy"
+                  unoptimized={previewDoc.url.startsWith('data:') || previewDoc.url.startsWith('blob:')}
+                  style={{ width: 'auto', height: 'auto', maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain', borderRadius: '8px' }}
                 />
               )}
             </div>

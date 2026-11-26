@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { auth } from '@/lib/firebase';
 import {
   Package,
@@ -524,10 +525,15 @@ export default function OrdersPage() {
                               }}
                             >
                               {item.image || item.imageUrl ? (
-                                <img
-                                  src={item.image || item.imageUrl}
+                                <Image
+                                  src={(item.image || item.imageUrl) as string}
                                   alt={item.name || item.title || 'Product'}
-                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  width={42}
+                                  height={42}
+                                  sizes="42px"
+                                  loading="lazy"
+                                  unoptimized={String(item.image || item.imageUrl).startsWith('data:') || String(item.image || item.imageUrl).startsWith('blob:')}
+                                  style={{ objectFit: 'cover' }}
                                 />
                               ) : (
                                 '🌾'

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { auth, db, signInWithGoogle } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -968,12 +969,15 @@ export default function SellerDashboardPage() {
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           {product.imageUrl ? (
-                            <img
+                            <Image
                               src={product.imageUrl}
                               alt={product.name}
+                              width={44}
+                              height={44}
+                              sizes="44px"
+                              loading="lazy"
+                              unoptimized={String(product.imageUrl).startsWith('data:') || String(product.imageUrl).startsWith('blob:')}
                               style={{
-                                width: '44px',
-                                height: '44px',
                                 objectFit: 'cover',
                                 borderRadius: '8px',
                                 border: '1px solid #e2e8f0',

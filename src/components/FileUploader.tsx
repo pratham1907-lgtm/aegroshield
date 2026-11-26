@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from 'react';
+import Image from 'next/image';
 import { Upload, FileText, CheckCircle2, X, AlertCircle, Loader2, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 
@@ -141,7 +142,16 @@ export default function FileUploader({
               </div>
             ) : isImage ? (
               <div style={{ width: '44px', height: '44px', borderRadius: '8px', overflow: 'hidden', background: '#e2e8f0', flexShrink: 0 }}>
-                <img src={previewUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <Image
+                  src={previewUrl}
+                  alt="Preview"
+                  width={44}
+                  height={44}
+                  sizes="44px"
+                  loading="lazy"
+                  unoptimized={previewUrl.startsWith('data:') || previewUrl.startsWith('blob:')}
+                  style={{ objectFit: 'cover' }}
+                />
               </div>
             ) : (
               <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
