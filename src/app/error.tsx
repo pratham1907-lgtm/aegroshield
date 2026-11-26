@@ -11,8 +11,11 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Safely capture error in Sentry
-    Sentry.captureException(error);
+    // Capture route-level UI exception in Sentry with error boundary context
+    Sentry.captureException(error, {
+      tags: { boundary: "route_error" },
+      extra: { digest: error.digest },
+    });
   }, [error]);
 
   return (

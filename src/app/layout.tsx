@@ -8,6 +8,8 @@ import WeatherModal from '@/components/WeatherModal';
 import Footer from '@/components/Footer';
 import Chatbot from '@/components/Chatbot';
 import PwaRegister from '@/components/PwaRegister';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
 
 export const metadata = {
@@ -83,6 +85,8 @@ export default function RootLayout({
             </CartProvider>
           </LanguageProvider>
         </AuthProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

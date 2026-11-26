@@ -11,8 +11,12 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Safely capture global root error in Sentry
-    Sentry.captureException(error);
+    // Capture unhandled root UI exception in Sentry with fatal boundary context
+    Sentry.captureException(error, {
+      level: "fatal",
+      tags: { boundary: "global_root_error" },
+      extra: { digest: error.digest },
+    });
   }, [error]);
 
   return (

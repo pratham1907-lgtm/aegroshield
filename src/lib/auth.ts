@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { adminAuth } from '@/lib/firebaseAdmin';
 import { prisma } from '@/lib/prisma';
 
@@ -159,11 +160,22 @@ export function handleAuthError(error: unknown) {
     (error && typeof error === 'object' && 'status' in error && typeof (error as any).status === 'number')
   ) {
     const status = (error as any).status || 400;
+    if (status >= 500) {
+      Sentry.captureException(error, {
+        level: 'error',
+        tags: { source: 'api_handler', status: String(status) },
+      });
+    }
     return NextResponse.json(
       { success: false, error: (error as any).message || 'Request failed' },
       { status }
     );
   }
+
+  Sentry.captureException(error, {
+    level: 'error',
+    tags: { source: 'api_handler', error_type: 'unhandled_api_500' },
+  });
 
   return NextResponse.json(
     { success: false, error: (error as any)?.message || 'Internal server error' },
