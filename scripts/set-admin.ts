@@ -29,8 +29,25 @@ function loadEnv() {
 
 loadEnv();
 
-import { adminAuth } from '../src/lib/firebaseAdmin';
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { prisma } from '../src/lib/prisma';
+
+function getScriptAdminAuth() {
+  if (getApps().length === 0) {
+    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'agrishield-ce28a';
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    if (projectId && clientEmail && privateKey) {
+      initializeApp({ credential: cert({ projectId, clientEmail, privateKey }), projectId });
+    } else {
+      initializeApp({ projectId });
+    }
+  }
+  return getAuth(getApps()[0]);
+}
+
+const adminAuth = getScriptAdminAuth();
 
 async function main() {
   const targetUid = process.argv[2] || process.env.ADMIN_UID;
