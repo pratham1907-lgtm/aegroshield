@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { requireUser, handleAuthError, HttpError } from '@/lib/auth';
 import { chatRequestSchema, formatZodError } from '@/lib/validations';
-import { checkRateLimit } from '@/lib/rateLimit';
+import { checkDistributedRateLimit } from '@/lib/rateLimit';
+import { getCachedJson, setCachedJson, buildSemanticCacheKey } from '@/lib/redis';
 
 function getGeminiClient() {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -31,8 +32,8 @@ export async function POST(req: Request) {
     const rateKey = userId !== 'guest' ? `chat_user_${userId}` : `chat_ip_${clientIp}`;
     const maxReqs = userId !== 'guest' ? 30 : 15;
 
-    // 2. Sliding Window Rate Limiting (Prevents quota abuse)
-    const rateLimit = checkRateLimit(rateKey, maxReqs, 60 * 1000);
+    // 2. Distributed Sliding Window Rate Limiting via Upstash Redis (Prevents quota abuse)
+    const rateLimit = await checkDistributedRateLimit(rateKey, maxReqs, 60, 'rl:chat');
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {
@@ -129,7 +130,28 @@ export async function POST(req: Request) {
       return "Namaste! Main AegroShield AI Assistant hoon. Khad ki sahi matra, beej, tractor kiraya, majdoor, mausam salah aur mandi bhav ke baare me aap mujhse pooch sakte hain.\n\nKisan Helpline: 1800-180-1551 / WhatsApp: +91 98765 43210";
     };
 
-    // 5. Initialize AI Client
+    // 5. Semantic Query Cache Lookup in Redis (bypasses Gemini for recurring agricultural queries)
+    const isCacheableQuery = messages.length <= 2 && lastUserQuery.trim().length >= 4;
+    const semanticKey = isCacheableQuery
+      ? buildSemanticCacheKey('chat:sem:v1', lastUserQuery, userLanguage)
+      : null;
+
+    if (semanticKey) {
+      const cachedReply = await getCachedJson<{ message: string; action?: { type: string; target: string } }>(semanticKey);
+      if (cachedReply && cachedReply.message) {
+        return NextResponse.json(
+          {
+            success: true,
+            message: cachedReply.message,
+            ...(cachedReply.action ? { action: cachedReply.action } : {}),
+            cached: true,
+          },
+          { headers: { 'Cache-Control': 'no-store' } }
+        );
+      }
+    }
+
+    // 6. Initialize AI Client
     const ai = getGeminiClient();
     if (!ai) {
       return NextResponse.json({
@@ -210,6 +232,8 @@ If you use a tool, you DO NOT need to output text, the system will handle the re
     }));
 
     let geminiRes;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
     try {
       geminiRes = await Promise.race([
         ai.models.generateContent({
@@ -217,37 +241,57 @@ If you use a tool, you DO NOT need to output text, the system will handle the re
           contents: formattedMessages,
           config: {
             systemInstruction: systemPrompt,
+            abortSignal: controller.signal,
             // @ts-ignore
             tools: tools,
-            temperature: 0.2
-          }
+            temperature: 0.2,
+          },
         }),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Gemini API timeout (6500ms)')), 6500)
+          setTimeout(() => reject(new Error('Gemini API timeout (2500ms)')), 2500)
         ),
       ]);
     } catch (modelErr: any) {
-      console.warn('[Chat] Gemini API error, falling back to local advisor:', modelErr?.message);
-      return NextResponse.json({
-        success: true,
-        message: getFallbackAgriReply(lastUserQuery, userLanguage),
-      });
+      console.warn('[Chat] Gemini API error/timeout, using offline agri knowledge base:', modelErr?.message);
+      const fallbackMessage = getFallbackAgriReply(lastUserQuery, userLanguage);
+      return NextResponse.json(
+        {
+          success: true,
+          message: fallbackMessage,
+          fallback: true,
+        },
+        { headers: { 'Cache-Control': 'no-store' } }
+      );
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     if (geminiRes.functionCalls && geminiRes.functionCalls.length > 0) {
       const call = geminiRes.functionCalls[0];
       if (call.name === 'navigate_to_page') {
         const targetPage = (call.args as any).pageName;
-        return NextResponse.json({ 
-          success: true, 
+        const navPayload = {
           action: { type: 'navigate', target: targetPage },
-          message: "Navigating you there right now..."
-        });
+          message: 'Navigating you there right now...',
+        };
+        if (semanticKey) {
+          await setCachedJson(semanticKey, navPayload, 86400);
+        }
+        return NextResponse.json(
+          { success: true, ...navPayload },
+          { headers: { 'Cache-Control': 'no-store' } }
+        );
       }
     }
 
-    const assistantMessage = geminiRes.text;
-    return NextResponse.json({ success: true, message: assistantMessage });
+    const assistantMessage = geminiRes.text || getFallbackAgriReply(lastUserQuery, userLanguage);
+    if (semanticKey && geminiRes.text) {
+      await setCachedJson(semanticKey, { message: assistantMessage }, 86400);
+    }
+    return NextResponse.json(
+      { success: true, message: assistantMessage },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
     
   } catch (error: any) {
     if (error instanceof HttpError) {

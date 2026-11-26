@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireUser, handleAuthError, HttpError } from '@/lib/auth';
 import { createOrderSchema, formatZodError } from '@/lib/validations';
 import { sendOrderPlacedAlert } from '@/lib/notifications';
+import { checkDistributedRateLimit } from '@/lib/rateLimit';
 
 export async function GET(request: NextRequest) {
   try {
@@ -65,6 +66,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireUser(request);
+
+    // Distributed rate limiting via Upstash Redis (prevents order flood/spam)
+    const rateLimit = await checkDistributedRateLimit(`orders_post_${user.id}`, 15, 60, 'rl:orders');
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Too many order requests. Please wait ${rateLimit.resetInSec} seconds before placing another order.`,
+        },
+        { status: 429, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
 
     let rawBody;
     try {
@@ -237,6 +250,17 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const user = await requireUser(request);
+
+    const rateLimit = await checkDistributedRateLimit(`orders_patch_${user.id}`, 30, 60, 'rl:orders');
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Too many status update requests. Please wait ${rateLimit.resetInSec} seconds.`,
+        },
+        { status: 429, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
     let body;
     try {
       body = await request.json();

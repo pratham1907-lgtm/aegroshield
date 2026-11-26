@@ -1,14 +1,17 @@
+import { Ratelimit } from '@upstash/ratelimit';
+import { getRedisClient } from '@/lib/redis';
+
 /**
- * Lightweight in-memory sliding window rate limiter for API routes.
+ * Lightweight in-memory sliding window rate limiter fallback for local dev or Redis outages.
  * Tracks requests per identifier (userId or IP address).
  */
-
 interface RateLimitRecord {
   count: number;
   resetAt: number;
 }
 
 const rateLimitStore = new Map<string, RateLimitRecord>();
+const upstashLimiterCache = new Map<string, Ratelimit>();
 
 const CLEANUP_INTERVAL_MS = 60 * 1000;
 let lastCleanup = Date.now();
@@ -26,11 +29,7 @@ function purgeExpiredRecords() {
 }
 
 /**
- * Checks if the given key has exceeded the maximum allowed requests in the window.
- *
- * @param identifier - Unique identifier (e.g. userId or IP)
- * @param limit - Maximum allowed requests within window (default: 20)
- * @param windowMs - Time window in milliseconds (default: 60,000 ms / 1 minute)
+ * Synchronous in-memory rate limit check (used as fallback when Upstash Redis is unconfigured).
  */
 export function checkRateLimit(
   identifier: string,
@@ -69,4 +68,53 @@ export function checkRateLimit(
     remaining: limit - record.count,
     resetInSec: Math.ceil((record.resetAt - now) / 1000),
   };
+}
+
+/**
+ * Distributed sliding-window rate limiter powered by Upstash Redis (@upstash/ratelimit).
+ * Gracefully falls back to in-memory sliding window when Upstash credentials are missing.
+ */
+export async function checkDistributedRateLimit(
+  identifier: string,
+  limit: number = 20,
+  windowSeconds: number = 60,
+  prefix: string = 'aegroshield:rl'
+): Promise<{ allowed: boolean; remaining: number; resetInSec: number; source: 'upstash' | 'memory' }> {
+  const redis = getRedisClient();
+
+  if (redis) {
+    try {
+      const limiterKey = `${prefix}:${limit}:${windowSeconds}`;
+      let limiter = upstashLimiterCache.get(limiterKey);
+      if (!limiter) {
+        limiter = new Ratelimit({
+          redis,
+          limiter: Ratelimit.slidingWindow(limit, `${windowSeconds} s`),
+          analytics: false,
+          prefix,
+        });
+        upstashLimiterCache.set(limiterKey, limiter);
+      }
+
+      const result = await Promise.race([
+        limiter.limit(identifier),
+        new Promise<null>(resolve => setTimeout(() => resolve(null), 1000)),
+      ]);
+
+      if (result) {
+        const resetInSec = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000));
+        return {
+          allowed: result.success,
+          remaining: result.remaining,
+          resetInSec,
+          source: 'upstash',
+        };
+      }
+    } catch (err) {
+      console.warn('[RateLimit] Upstash limit check failed, falling back to memory:', (err as Error)?.message || err);
+    }
+  }
+
+  const mem = checkRateLimit(`${prefix}:${identifier}`, limit, windowSeconds * 1000);
+  return { ...mem, source: 'memory' };
 }

@@ -4,7 +4,8 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { GoogleGenAI } from '@google/genai';
 import { requireUser, handleAuthError, HttpError } from '@/lib/auth';
 import { mandiAdvisorySchema, formatZodError } from '@/lib/validations';
-import { checkRateLimit } from '@/lib/rateLimit';
+import { checkDistributedRateLimit } from '@/lib/rateLimit';
+import { getCachedJson, setCachedJson } from '@/lib/redis';
 
 function sanitizeDocIdPart(str: string = ''): string {
   return str.toString().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -61,8 +62,8 @@ export async function POST(req: Request) {
     // 1. Mandatory User Authentication
     const user = await requireUser(req);
 
-    // 2. Sliding Window Rate Limiting (30 requests / minute / user)
-    const rateLimit = checkRateLimit(`mandi_advisory_${user.id}`, 30, 60 * 1000);
+    // 2. Distributed Sliding Window Rate Limiting via Upstash Redis (30 requests / minute / user)
+    const rateLimit = await checkDistributedRateLimit(`mandi_advisory_${user.id}`, 30, 60, 'rl:mandi_adv');
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {
@@ -121,7 +122,17 @@ export async function POST(req: Request) {
 
     // ─── Detailed Advisory Path ───────────────────────────────────────────
     if (isDetailed) {
-      // 1. Check 24-hour cache for detailed advisory
+      const redisKey = `mandi_adv:v1:detailed:${effectiveDocId || 'generic'}`;
+      const cachedRedisDetailed = await getCachedJson<DetailedAdvisory>(redisKey);
+      if (cachedRedisDetailed && cachedRedisDetailed.detailedText) {
+        return NextResponse.json({
+          success: true,
+          detailed: cachedRedisDetailed,
+          cached: true,
+        });
+      }
+
+      // 1. Check 24-hour cache for detailed advisory in Firestore
       if (effectiveDocId) {
         try {
           const docRef = doc(db, 'mandi_rates', effectiveDocId);
@@ -180,19 +191,27 @@ Generate a JSON object with exactly these 4 fields (each 1-2 sentences in Hingli
 
 Respond ONLY with valid JSON, no markdown.`;
 
-          const geminiRes = await Promise.race([
-            ai.models.generateContent({
-              model: 'gemini-2.5-flash',
-              contents: userPrompt,
-              config: {
-                systemInstruction,
-                temperature: 0.35,
-              },
-            }),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('Gemini timeout')), 6500)
-            ),
-          ]);
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2500);
+          let geminiRes;
+          try {
+            geminiRes = await Promise.race([
+              ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: userPrompt,
+                config: {
+                  systemInstruction,
+                  abortSignal: controller.signal,
+                  temperature: 0.35,
+                },
+              }),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('Gemini timeout (2500ms)')), 2500)
+              ),
+            ]);
+          } finally {
+            clearTimeout(timeoutId);
+          }
 
           if (geminiRes.text && geminiRes.text.trim()) {
             let jsonText = geminiRes.text.trim();
@@ -213,7 +232,8 @@ Respond ONLY with valid JSON, no markdown.`;
         }
       }
 
-      // 3. Cache in Firestore
+      // 3. Cache in Redis (24h) and Firestore
+      await setCachedJson(redisKey, detailedAdvisory, 86400);
       if (effectiveDocId) {
         try {
           const docRef = doc(db, 'mandi_rates', effectiveDocId);
@@ -234,6 +254,16 @@ Respond ONLY with valid JSON, no markdown.`;
     }
 
     // ─── Standard (Simple) Advisory Path ────────────────────────────────
+    const simpleRedisKey = `mandi_adv:v1:simple:${effectiveDocId || 'generic'}`;
+    const cachedSimpleRedis = await getCachedJson<string>(simpleRedisKey);
+    if (cachedSimpleRedis && cachedSimpleRedis.trim().length > 10) {
+      return NextResponse.json({
+        success: true,
+        advisory: cachedSimpleRedis,
+        cached: true,
+      });
+    }
+
     // 1. Check 24-hour cache in Firestore
     if (effectiveDocId) {
       try {
@@ -288,19 +318,27 @@ Platform Action: ${rec === 'SELL_NOW' ? 'BECHO (Sell Now)' : 'ROKO (Hold 7-10 Da
 
 Provide exactly 2 actionable lines in Hinglish for the farmer.`;
 
-        const geminiRes = await Promise.race([
-          ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: userPrompt,
-            config: {
-              systemInstruction,
-              temperature: 0.3,
-            },
-          }),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Gemini timeout')), 6500)
-          ),
-        ]);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        let geminiRes;
+        try {
+          geminiRes = await Promise.race([
+            ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: userPrompt,
+              config: {
+                systemInstruction,
+                abortSignal: controller.signal,
+                temperature: 0.3,
+              },
+            }),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Gemini timeout (2500ms)')), 2500)
+            ),
+          ]);
+        } finally {
+          clearTimeout(timeoutId);
+        }
 
         if (geminiRes.text && geminiRes.text.trim().length > 10) {
           generatedAdvisory = geminiRes.text.trim();
@@ -314,7 +352,8 @@ Provide exactly 2 actionable lines in Hinglish for the farmer.`;
       generatedAdvisory = getFallbackAdvisory(commName, mPrice, rec);
     }
 
-    // 3. Cache generated advisory in Firestore
+    // 3. Cache generated advisory in Redis (24h) and Firestore
+    await setCachedJson(simpleRedisKey, generatedAdvisory, 86400);
     if (effectiveDocId) {
       try {
         const docRef = doc(db, 'mandi_rates', effectiveDocId);

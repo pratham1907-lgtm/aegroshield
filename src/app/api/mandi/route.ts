@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { BASELINE_MANDI_RECORDS } from '@/app/api/mandi-sync/route';
+import { getCachedJson, setCachedJson } from '@/lib/redis';
 
 export interface DetailedAdvisory {
   sentiment: string;
@@ -879,8 +880,13 @@ export async function GET(request: NextRequest) {
   const stateParam = searchParams.get('state');
 
   try {
-    // 1. Build master dataset combining APMC dataset & Pan-India baseline records
-    const masterMap = new Map<string, MandiRecord>();
+    // 0. Check 1-hour Upstash Redis cache first (<2ms lookup under high traffic)
+    const MANDI_CACHE_KEY = 'mandi:all_records:v1';
+    let allRecords = await getCachedJson<MandiRecord[]>(MANDI_CACHE_KEY);
+
+    if (!allRecords || allRecords.length === 0) {
+      // 1. Build master dataset combining APMC dataset & Pan-India baseline records
+      const masterMap = new Map<string, MandiRecord>();
 
     // Add baseline pan-India mandis first
     if (Array.isArray(BASELINE_MANDI_RECORDS)) {
@@ -1006,7 +1012,10 @@ export async function GET(request: NextRequest) {
       console.warn('[API/Mandi] Firestore query safely skipped (using verified APMC records):', (fsErr as any)?.message || fsErr);
     }
 
-    const allRecords = Array.from(masterMap.values());
+      allRecords = Array.from(masterMap.values());
+      // Persist pan-India APMC dataset in Redis with 1-hour TTL (3600s)
+      await setCachedJson(MANDI_CACHE_KEY, allRecords, 3600);
+    }
 
     // 3. Single Item ID Lookup (for /market/[id] detail page)
     if (idParam && idParam.trim()) {
