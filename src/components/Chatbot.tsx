@@ -13,9 +13,9 @@ const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
 ];
 
 const WELCOME_MESSAGES: Record<Language, string> = {
-  'en': "👋 Hello! I'm AegroShield AI Assistant.\n\nI can help you with:\n🌾 Crop diseases, fertilizer doses & seed selection\n📈 Today's live APMC Mandi rates\n🚜 Machinery rental (Tractors, Harvesters)\n👥 Hiring agricultural labour squads\n📞 24/7 Kisan Helpline & WhatsApp Support\n\nHow can I help you today?",
-  'hi': "👋 नमस्ते! मैं AegroShield AI सहायक हूँ।\n\nमैं आपकी सहायता कर सकता हूँ:\n🌾 फसल रोग, खाद (यूरिया/डीएपी) और प्रमाणित बीज\n📈 आज के ताज़ा सरकारी APMC मंडी भाव\n🚜 ट्रैक्टर व कृषि यंत्र किराया बुकिंग\n👥 बुवाई व कटाई हेतु खेत मजदूर दल\n📞 24/7 किसान हेल्पलाइन व व्हाट्सएप सहायता\n\nआज आपकी क्या सहायता करूँ?",
-  'hi-en': "👋 Namaste! Main AegroShield AI Assistant hoon.\n\nMain aapki help kar sakta hoon:\n🌾 Fasal bimari, fertilizer aur certified seed guidance\n📈 Live APMC Mandi rates\n🚜 Tractor aur machinery rental booking\n👥 Khet majdoor squad booking\n📞 24/7 Kisan Helpline & WhatsApp Help\n\nAap kis cheez me jankari chahte hain?",
+  'en': "👋 Hello! I'm AegroShield AI Assistant.\n\nI can help you with:\n🌱 Certified seeds, fertilizers & smart dosage calculator\n📈 Today's live APMC Mandi rates\n🚜 Machinery rental (Tractors, Harvesters)\n👥 Hiring agricultural labour squads\n📞 24/7 Kisan Helpline & WhatsApp Support\n\nHow can I help you today?",
+  'hi': "👋 नमस्ते! मैं AegroShield AI सहायक हूँ।\n\nमैं आपकी सहायता कर सकता हूँ:\n🌱 प्रमाणित बीज, खाद (यूरिया/डीएपी) और स्मार्ट मात्रा कैलकुलेटर\n📈 आज के ताज़ा सरकारी APMC मंडी भाव\n🚜 ट्रैक्टर व कृषि यंत्र किराया बुकिंग\n👥 बुवाई व कटाई हेतु खेत मजदूर दल\n📞 24/7 किसान हेल्पलाइन व व्हाट्सएप सहायता\n\nआज आपकी क्या सहायता करूँ?",
+  'hi-en': "👋 Namaste! Main AegroShield AI Assistant hoon.\n\nMain aapki help kar sakta hoon:\n🌱 Certified seeds, fertilizer aur smart dosage calculator\n📈 Live APMC Mandi rates\n🚜 Tractor aur machinery rental booking\n👥 Khet majdoor squad booking\n📞 24/7 Kisan Helpline & WhatsApp Help\n\nAap kis cheez me jankari chahte hain?",
 };
 
 const INPUT_PLACEHOLDERS: Record<Language, string> = {

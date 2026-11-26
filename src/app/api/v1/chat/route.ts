@@ -88,7 +88,7 @@ export async function POST(req: Request) {
         if (q.includes('help') || q.includes('हेल्पलाइन') || q.includes('कॉल') || q.includes('नंबर')) {
           return "📞 किसान सहायता हेल्पलाइन:\n• टोल-फ्री किसान कॉल सेंटर: 1800-180-1551\n• आधिकारिक व्हाट्सएप डेस्क: +91 98765 43210\n• कार्य समय: सुबह 8:00 से रात 8:00 (सभी 7 दिन)";
         }
-        return "नमस्ते! मैं AegroShield AI सहायक हूँ। फसल रोग, खाद की मात्रा, उन्नत बीज, ट्रैक्टर किराया, मजदूर और ताज़ा मंडी भाव के बारे में आप मुझसे पूछ सकते हैं।\n\nकिसान हेल्पलाइन: 1800-180-1551 / व्हाट्सएप: +91 98765 43210";
+        return "नमस्ते! मैं AegroShield AI सहायक हूँ। खाद की सही मात्रा, उन्नत बीज, ट्रैक्टर किराया, मजदूर, मौसम सलाह और ताज़ा मंडी भाव के बारे में आप मुझसे पूछ सकते हैं।\n\nकिसान हेल्पलाइन: 1800-180-1551 / व्हाट्सएप: +91 98765 43210";
       }
 
       if (lang === 'en') {
@@ -107,7 +107,7 @@ export async function POST(req: Request) {
         if (q.includes('help') || q.includes('helpline') || q.includes('call') || q.includes('contact')) {
           return "📞 24/7 Kisan Sahayata Helpline:\n• Toll-Free Kisan Helpline: 1800-180-1551 (Kisan Call Centre)\n• Official WhatsApp Helpdesk: +91 98765 43210\n• Operating Hours: 8:00 AM – 8:00 PM (Monday to Sunday)";
         }
-        return "Hello! I am the AegroShield AI Assistant. You can ask me anything about crop diseases, fertilizer dosages, seed varieties, machinery rental, farm labour, and live APMC mandi rates.\n\nKisan Helpline: 1800-180-1551 / WhatsApp: +91 98765 43210";
+        return "Hello! I am the AegroShield AI Assistant. You can ask me anything about fertilizer dosages, certified seed varieties, machinery rental, farm labour, weather advisory, and live APMC mandi rates.\n\nKisan Helpline: 1800-180-1551 / WhatsApp: +91 98765 43210";
       }
 
       // Default: Hinglish ('hi-en')
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
       if (q.includes('help') || q.includes('helpline') || q.includes('call') || q.includes('phone') || q.includes('contact')) {
         return "📞 Kisan Sahayata Helpline:\n• Toll-Free Helpline: 1800-180-1551 (Kisan Call Centre)\n• WhatsApp Helpdesk: +91 98765 43210\n• Timings: 8:00 AM – 8:00 PM (Somvaar se Ravivaar)";
       }
-      return "Namaste! Main AegroShield AI Assistant hoon. Fasal bimari, khad ki matra, beej, tractor kiraya, majdoor aur mandi bhav ke baare me aap mujhse pooch sakte hain.\n\nKisan Helpline: 1800-180-1551 / WhatsApp: +91 98765 43210";
+      return "Namaste! Main AegroShield AI Assistant hoon. Khad ki sahi matra, beej, tractor kiraya, majdoor, mausam salah aur mandi bhav ke baare me aap mujhse pooch sakte hain.\n\nKisan Helpline: 1800-180-1551 / WhatsApp: +91 98765 43210";
     };
 
     // 5. Initialize AI Client
@@ -145,7 +145,7 @@ export async function POST(req: Request) {
         ? `CRITICAL LANGUAGE DIRECTIVE: The user has chosen HINDI (हिन्दी).
 You MUST reply ENTIRELY in pure Hindi using the Devanagari script (हिन्दी लिपि).
 Do NOT output in English or Roman script.
-Use clear, courteous, and accurate agricultural Hindi terms (e.g. फसल, खाद, यूरिया, डीएपी, बीज, कीटनाशक, रोग, मंडी भाव, सिंचाई, उपज).
+Use clear, courteous, and accurate agricultural Hindi terms (e.g. फसल, खाद, यूरिया, डीएपी, बीज, कीटनाशक, मंडी भाव, सिंचाई, उपज).
 Even if the user types in English or Roman Hinglish, you MUST formulate your entire response in pure Devanagari Hindi.`
         : userLanguage === 'en'
         ? `CRITICAL LANGUAGE DIRECTIVE: The user has chosen ENGLISH.
