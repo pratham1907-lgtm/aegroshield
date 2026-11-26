@@ -70,42 +70,49 @@ h1, h2, h3, h4, h5, h6 { font-weight: 600; }
 /* ── Navbar ────────────────────────────────────────────────── */
 .navbar {
   background: var(--primary);
-  height: 64px;
+  min-height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 40px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 8px 20px;
   position: sticky;
   top: 0;
   z-index: 100;
 }
 .nav-brand {
   color: var(--white);
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .nav-links a,
 .nav-links .nav-item-link,
 .nav-cart-btn,
 .nav-btn-signin {
   color: #ffffff !important;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 500;
-  padding: 7px 14px !important;
+  padding: 6px 10px !important;
   border-radius: 10px !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
+  gap: 5px !important;
   text-decoration: none !important;
   cursor: pointer !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
   border: 1px solid transparent !important;
 }
@@ -3114,12 +3121,14 @@ footer a:hover {
   color: #15803d !important;
   border: 1.5px solid #86efac !important;
   border-radius: 20px !important;
-  padding: 6px 14px !important;
-  font-size: 0.85rem !important;
+  padding: 5px 11px !important;
+  font-size: 0.82rem !important;
   font-weight: 700 !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
+  gap: 5px !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
   cursor: pointer !important;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -3138,12 +3147,14 @@ footer a:hover {
   color: #15803d !important;
   border: 1.5px solid #86efac !important;
   border-radius: 20px !important;
-  padding: 6px 14px !important;
-  font-size: 0.85rem !important;
+  padding: 5px 11px !important;
+  font-size: 0.82rem !important;
   font-weight: 700 !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
+  gap: 5px !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
   cursor: pointer !important;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -3159,6 +3170,7 @@ footer a:hover {
 .lang-toggle-wrap {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 .lang-select {
   appearance: none;
@@ -3166,11 +3178,12 @@ footer a:hover {
   background: #ffffff !important;
   border: 1.5px solid #86efac !important;
   border-radius: 20px !important;
-  padding: 6px 14px !important;
-  font-size: 0.85rem !important;
+  padding: 5px 11px !important;
+  font-size: 0.82rem !important;
   font-weight: 700 !important;
   color: #15803d !important;
   cursor: pointer !important;
+  white-space: nowrap !important;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
   outline: none !important;

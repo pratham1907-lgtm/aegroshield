@@ -1063,47 +1063,6 @@ export default function Page() {
 
 
 
-{/*  ── Firebase Integration ────────────────────────────────  */}
-
-
-
-
-
-{/*  ── Aegroshield AI Chatbot Widget ──  */}
-<div id="chatbotWidget">
-  <button id="chatToggle" className="chat-toggle" title="Chat with Aegroshield AI" aria-label="Open chat">💬</button>
-  <div id="chatWindow" className="chat-window">
-    <div className="chat-header">
-      <span className="chat-title">🌱 Aegroshield Assistant</span>
-      <select id="languageSelector" className="language-selector" aria-label="Select language">
-        <option defaultValue="en">English</option>
-        <option defaultValue="hi">हिन्दी</option>
-        <option defaultValue="pa">ਪੰਜਾਬੀ</option>
-        <option defaultValue="hi-en">Hinglish</option>
-        <option defaultValue="te">తెలుగు</option>
-        <option defaultValue="ta">தமிழ்</option>
-        <option defaultValue="kn">ಕನ್ನಡ</option>
-        <option defaultValue="mr">मराठी</option>
-        <option defaultValue="gu">ગુજરાતી</option>
-        <option defaultValue="bn">বাংলা</option>
-        <option defaultValue="or">ଓଡ଼ିଆ</option>
-        <option defaultValue="ml">മലയാളം</option>
-        <option defaultValue="as">অসমীয়া</option>
-        <option defaultValue="ur">اردو</option>
-        <option defaultValue="sd">سندھی</option>
-      </select>
-      <button id="closeChat" className="close-btn" aria-label="Close chat">✕</button>
-    </div>
-    <div id="messagesContainer" className="messages-container">
-      <div className="welcome-message" id="welcomeMsg"></div>
-    </div>
-    <div className="input-area">
-      <input type="text" id="userInput" className="user-input" placeholder="Type your question..." autoComplete="off" aria-label="Chat input" />
-      <button id="sendButton" className="send-btn" aria-label="Send message">➤</button>
-    </div>
-  </div>
-</div>
-
 {bookingMachine && (
   <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
     <div style={{ background: '#fff', borderRadius: '20px', maxWidth: '480px', width: '100%', padding: '28px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>

@@ -211,16 +211,21 @@ If you use a tool, you DO NOT need to output text, the system will handle the re
 
     let geminiRes;
     try {
-      geminiRes = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: formattedMessages,
-        config: {
-          systemInstruction: systemPrompt,
-          // @ts-ignore
-          tools: tools,
-          temperature: 0.2
-        }
-      });
+      geminiRes = await Promise.race([
+        ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: formattedMessages,
+          config: {
+            systemInstruction: systemPrompt,
+            // @ts-ignore
+            tools: tools,
+            temperature: 0.2
+          }
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Gemini API timeout (6500ms)')), 6500)
+        ),
+      ]);
     } catch (modelErr: any) {
       console.warn('[Chat] Gemini API error, falling back to local advisor:', modelErr?.message);
       return NextResponse.json({

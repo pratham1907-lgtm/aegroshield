@@ -180,14 +180,19 @@ Generate a JSON object with exactly these 4 fields (each 1-2 sentences in Hingli
 
 Respond ONLY with valid JSON, no markdown.`;
 
-          const geminiRes = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
-            contents: userPrompt,
-            config: {
-              systemInstruction,
-              temperature: 0.35,
-            },
-          });
+          const geminiRes = await Promise.race([
+            ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: userPrompt,
+              config: {
+                systemInstruction,
+                temperature: 0.35,
+              },
+            }),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Gemini timeout')), 6500)
+            ),
+          ]);
 
           if (geminiRes.text && geminiRes.text.trim()) {
             let jsonText = geminiRes.text.trim();
@@ -283,14 +288,19 @@ Platform Action: ${rec === 'SELL_NOW' ? 'BECHO (Sell Now)' : 'ROKO (Hold 7-10 Da
 
 Provide exactly 2 actionable lines in Hinglish for the farmer.`;
 
-        const geminiRes = await ai.models.generateContent({
-          model: 'gemini-1.5-flash',
-          contents: userPrompt,
-          config: {
-            systemInstruction,
-            temperature: 0.3,
-          },
-        });
+        const geminiRes = await Promise.race([
+          ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: userPrompt,
+            config: {
+              systemInstruction,
+              temperature: 0.3,
+            },
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Gemini timeout')), 6500)
+          ),
+        ]);
 
         if (geminiRes.text && geminiRes.text.trim().length > 10) {
           generatedAdvisory = geminiRes.text.trim();
